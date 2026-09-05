@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --ink:#09053d; --surface:#f5f4ff; --accent:#18dff2; --pink:#ed20e7; --muted:#8884a6; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--surface); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
+.shell { max-width:1200px; margin:auto; padding:20px 20px 110px; }
+.hero-image { background-image:linear-gradient(90deg,rgba(7,4,59,.95) 0%,rgba(7,4,59,.68) 49%,rgba(7,4,59,.12) 100%),url('https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=1600&q=85'); background-position:center; background-size:cover; }
+.hero-orb { background:radial-gradient(circle,rgba(237,32,231,.95) 0 18%,rgba(24,223,242,.88) 19% 30%,transparent 31%); filter:blur(1px); }
+.card { border:1px solid #e3e1f2; border-radius:20px; background:white; box-shadow:0 8px 24px rgba(28,17,103,.05); }
+.pill { border:1px solid #dfdced; border-radius:999px; padding:7px 11px; font-size:12px; font-weight:700; }
+@media (min-width:768px) { .shell { padding-bottom:40px; } }
