@@ -54,7 +54,10 @@ export function TournamentClient() {
       if (te) { setError(te.message); setLoading(false); return; }
       if (tse) setError(tse.message);
       if (fe) setError(fe.message);
-      setTournament(t); setTeams(ts || []); setFixtures(fs || []);
+      const normalizedTournament = t
+        ? { ...t, profiles: Array.isArray(t.profiles) ? t.profiles[0] ?? null : t.profiles }
+        : null;
+      setTournament(normalizedTournament); setTeams(ts || []); setFixtures(fs || []);
       if (userData.user && t) setIsAdmin(t.organizer_id === userData.user.id || !!(await supabase.from("tournament_admins").select("user_id").eq("tournament_id", params.id).eq("user_id", userData.user.id).eq("permission", "admin").maybeSingle()).data);
       setLoading(false);
     };
