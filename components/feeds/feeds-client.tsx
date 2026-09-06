@@ -19,8 +19,33 @@ const menuItems = [
   { id: "logout", label: "Log out", icon: LogOut },
 ];
 
+const FEED_STORAGE_KEY = "matchup.feed.state.v1";
+
+function readPersistedPosts(): Post[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(FEED_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed as Post[];
+  } catch {
+    return null;
+  }
+}
+
+function persistPosts(posts: Post[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(posts));
+  } catch {
+    // Storage may be unavailable; the feed still works for the current session.
+  }
+}
+
 export function FeedsClient() {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [hydrated, setHydrated] = useState(false);
   const [tab, setTab] = useState<FeedTab>("for-you");
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -28,6 +53,16 @@ export function FeedsClient() {
   const [composerText, setComposerText] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const saved = readPersistedPosts();
+    if (saved) setPosts(saved);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) persistPosts(posts);
+  }, [posts, hydrated]);
 
   useEffect(() => {
     if (!menuOpen) return;
