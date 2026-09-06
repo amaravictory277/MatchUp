@@ -7,6 +7,7 @@
 html { background: var(--background); }
 body { margin: 0; min-width: 320px; background: radial-gradient(circle at 50% -20%, #16142a 0, #05060f 42rem); color: #fff; font-family: Arial, Helvetica, sans-serif; }
 a { text-decoration: none; }
+button { font: inherit; }
 .app-shell { width: min(100%, 760px); margin: 0 auto; padding: 24px 20px 110px; }
 .wordmark { color: #f5f4f8; font-size: 25px; font-style: italic; font-weight: 900; letter-spacing: -1.8px; }
 .wordmark span { color: #8745ff; }
@@ -26,10 +27,10 @@ a { text-decoration: none; }
 .tournament-card:hover { border-color: #51417b; transform: translateY(-2px); }
 .avatar { display: grid; height: 28px; width: 28px; place-items: center; border: 2px solid #111223; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 900; }
 .bottom-nav { position: fixed; bottom: 18px; left: 50%; z-index: 30; display: grid; width: min(calc(100% - 40px), 720px); grid-template-columns: repeat(5, 1fr); align-items: center; transform: translateX(-50%); border: 1px solid #1d1d37; border-radius: 32px; background: rgba(13,13,33,.92); padding: 9px 10px; box-shadow: 0 14px 40px rgba(0,0,0,.45); backdrop-filter: blur(18px); }
-.nav-link { display: flex; flex-direction: column; align-items: center; gap: 3px; color: #aaa8bd; font-size: 9px; font-weight: 700; transition: color .2s; }
+.nav-link { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; margin: 0; color: #aaa8bd; font-size: 9px; font-weight: 700; cursor: pointer; transition: color .2s; }
 .nav-link:hover, .nav-link.active { color: #fff; }
 .nav-link.active svg { color: #b26cff; filter: drop-shadow(0 0 6px rgba(139,69,255,.6)); }
-.create-link { display: grid; height: 52px; width: 52px; place-items: center; justify-self: center; margin-top: -22px; border: 5px solid #13132b; border-radius: 999px; background: linear-gradient(145deg, #8e3cff, #5e1be4); color: #fff; box-shadow: 0 0 24px rgba(122,43,255,.65); transition: transform .2s; }
+.create-link { display: grid; height: 52px; width: 52px; place-items: center; justify-self: center; margin-top: -22px; border: 5px solid #13132b; border-radius: 999px; background: linear-gradient(145deg, #8e3cff, #5e1be4); color: #fff; box-shadow: 0 0 24px rgba(122,43,255,.65); transition: transform .2s; cursor: pointer; }
 .create-link:hover { transform: translateY(-2px) scale(1.04); }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
