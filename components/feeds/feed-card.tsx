@@ -50,11 +50,13 @@ export function FeedCard({ post, onToggleLike, onToggleFollow, onComment, onEdit
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         video.muted = true;
+        video.volume = 0;
         setSoundOn(false);
         void video.play().catch(() => undefined);
       } else {
         video.pause();
         video.muted = true;
+        video.volume = 0;
         setSoundOn(false);
       }
     }, { threshold: 0.6 });
@@ -74,13 +76,30 @@ export function FeedCard({ post, onToggleLike, onToggleFollow, onComment, onEdit
   const saveEdit = () => { const text = draft.trim(); if (!text) return; onEdit(post.id, text); setEditing(false); };
   const startCommentEdit = (id: string, text: string) => { setEditingComment(id); setCommentDraft(text); setCommentMenu(null); };
   const saveCommentEdit = (id: string) => { const text = commentDraft.trim(); if (!text) return; onEditComment(post.id, id, text); setEditingComment(null); setCommentDraft(""); };
-  const toggleVideoMute = () => {
+
+  const toggleVideoMute = async () => {
     const video = videoRef.current;
     if (!video) return;
-    video.muted = !video.muted;
-    setSoundOn(!video.muted);
-    void video.play().catch(() => undefined);
+
+    if (video.muted || video.volume === 0) {
+      video.muted = false;
+      video.volume = 1;
+      setSoundOn(true);
+      try {
+        await video.play();
+      } catch {
+        video.muted = true;
+        video.volume = 0;
+        setSoundOn(false);
+      }
+      return;
+    }
+
+    video.muted = true;
+    video.volume = 0;
+    setSoundOn(false);
   };
+
   const [g1, g2] = post.author.gradient;
 
   return (
@@ -104,7 +123,7 @@ export function FeedCard({ post, onToggleLike, onToggleFollow, onComment, onEdit
       <div className="relative aspect-[4/3] w-full touch-pan-y select-none overflow-hidden bg-[#111223]" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp}>
         {post.videoUrl ? (
           <>
-            <video ref={videoRef} src={post.videoUrl} poster={post.media[index]} muted playsInline loop autoPlay preload="auto" className="absolute inset-0 size-full object-cover" aria-label={`${post.author.name} video`} />
+            <video ref={videoRef} src={post.videoUrl} poster={post.media[index]} muted playsInline loop autoPlay preload="auto" className="absolute inset-0 size-full cursor-pointer object-cover" onClick={toggleVideoMute} aria-label={`${post.author.name} video`} />
             <button type="button" onClick={toggleVideoMute} aria-label={soundOn ? "Mute video" : "Unmute video"} className="absolute bottom-3 right-3 z-10 grid size-10 place-items-center rounded-full border border-white/20 bg-black/55 text-white shadow-lg backdrop-blur-sm">
               {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
