@@ -1,0 +1,62 @@
+name: Fix tournament profiles typing
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-build:
+    if: github.event.head_commit.message != 'Fix tournament profiles normalization'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Normalize tournament profiles
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('components/tournaments/tournament-client.tsx')
+          text = path.read_text()
+          old = '      setTournament(t); setTeams(ts || []); setFixtures(fs || []);'
+          new = '''      const normalizedTournament = t
+        ? { ...t, profiles: Array.isArray(t.profiles) ? t.profiles[0] ?? null : t.profiles }
+        : null;
+      setTournament(normalizedTournament); setTeams(ts || []); setFixtures(fs || []);'''
+          if old not in text:
+              raise SystemExit('Expected tournament state update was not found.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Inspect tournament/profile queries
+        run: |
+          echo 'Tournament queries containing embedded profiles:'
+          rg -n --glob '*.{ts,tsx}' 'from\("tournaments"\)|profiles:' app components lib || true
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Production build
+        run: npm run build
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/tournaments/tournament-client.tsx
+          git rm .github/workflows/fix-tournament-profiles.yml
+          git commit -m 'Fix tournament profiles normalization'
+          git push origin main
