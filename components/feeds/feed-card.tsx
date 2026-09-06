@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Heart,
   MessageCircle,
+  MoreHorizontal,
   Pause,
+  Pencil,
   Play,
   Send,
+  Trash2,
+  X,
 } from "lucide-react";
 import { formatCount, type Post } from "./data";
 
@@ -18,6 +23,8 @@ type FeedCardProps = {
   onToggleFollow: (id: string) => void;
   onComment: (id: string, text: string) => void;
   onShare: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (id: string, caption: string) => void;
 };
 
 export function FeedCard({
@@ -26,32 +33,42 @@ export function FeedCard({
   onToggleFollow,
   onComment,
   onShare,
+  onDelete,
+  onEdit,
 }: FeedCardProps) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [showComment, setShowComment] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [dragStartX, setDragStartX] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(post.caption);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const total = post.media.length;
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
   const goTo = (next: number) => {
-    setIndex((prev) => {
-      const clamped = (next + total) % total;
-      return clamped;
-    });
+    setIndex(() => (next + total) % total);
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setDragStartX(e.clientX);
-  };
+  const handlePointerDown = (e: React.PointerEvent) => setDragStartX(e.clientX);
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (dragStartX === null) return;
     const delta = e.clientX - dragStartX;
-    if (Math.abs(delta) > 40) {
-      goTo(delta < 0 ? index + 1 : index - 1);
-    }
+    if (Math.abs(delta) > 40) goTo(delta < 0 ? index + 1 : index - 1);
     setDragStartX(null);
   };
 
@@ -60,7 +77,13 @@ export function FeedCard({
     if (!text) return;
     onComment(post.id, text);
     setCommentText("");
-    setShowComment(false);
+  };
+
+  const saveEdit = () => {
+    const text = draft.trim();
+    if (!text) return;
+    onEdit(post.id, text);
+    setEditing(false);
   };
 
   const [g1, g2] = post.author.gradient;
@@ -79,22 +102,70 @@ export function FeedCard({
           <p className="truncate font-bold text-white">{post.author.name}</p>
           <p className="text-xs text-[#9694aa]">{post.time}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => onToggleFollow(post.id)}
-          aria-pressed={post.following}
-          className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-            post.following
-              ? "border border-[#35334e] bg-transparent text-[#c5c3d4] hover:border-[#7843ee]"
-              : "bg-[#6d27ff] text-white shadow-[0_0_18px_rgba(109,39,255,.4)] hover:brightness-110"
-          }`}
-        >
-          {post.following ? "Following" : "Follow"}
-        </button>
+
+        {post.isOwn ? (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Post options"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              className="grid size-9 place-items-center rounded-full text-[#c5c3d4] transition hover:bg-[#181a30] hover:text-white"
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 top-11 z-30 w-40 overflow-hidden rounded-2xl border border-[#26263d] bg-[#0d0e20] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,.5)]"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setDraft(post.caption);
+                    setEditing(true);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#dcdae8] transition hover:bg-[#181a30]"
+                >
+                  <Pencil size={16} />
+                  Edit text
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onDelete(post.id);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#ff6b81] transition hover:bg-[#181a30]"
+                >
+                  <Trash2 size={16} />
+                  Delete post
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onToggleFollow(post.id)}
+            aria-pressed={post.following}
+            className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+              post.following
+                ? "border border-[#35334e] bg-transparent text-[#c5c3d4] hover:border-[#7843ee]"
+                : "bg-[#6d27ff] text-white shadow-[0_0_18px_rgba(109,39,255,.4)] hover:brightness-110"
+            }`}
+          >
+            {post.following ? "Following" : "Follow"}
+          </button>
+        )}
       </div>
 
       <div
-        className="relative aspect-square w-full touch-pan-y select-none overflow-hidden bg-[#111223]"
+        className="relative aspect-[4/3] w-full touch-pan-y select-none overflow-hidden bg-[#111223]"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
       >
@@ -115,9 +186,9 @@ export function FeedCard({
             type="button"
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? "Pause" : "Play"}
-            className="absolute left-1/2 top-1/2 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/25 text-white backdrop-blur-md transition hover:bg-white/35"
+            className="absolute left-1/2 top-1/2 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] border-[#13132b] bg-[linear-gradient(145deg,#8e3cff,#5e1be4)] text-white shadow-[0_0_24px_rgba(122,43,255,.65)] transition hover:scale-105"
           >
-            {playing ? <Pause size={26} /> : <Play size={26} className="ml-1" />}
+            {playing ? <Pause size={24} /> : <Play size={24} className="ml-0.5" />}
           </button>
         ) : null}
 
@@ -160,7 +231,36 @@ export function FeedCard({
       </div>
 
       <div className="p-4">
-        <p className="text-sm leading-6 text-[#e7e5f2]">{post.caption}</p>
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              autoFocus
+              rows={3}
+              className="w-full resize-none rounded-2xl border border-[#26263d] bg-[#0d0e20] p-3 text-sm text-white outline-none placeholder:text-[#6f6d83] focus:border-[#7843ee]"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="flex items-center gap-1.5 rounded-full bg-[#6d27ff] px-4 py-2 text-xs font-bold text-white transition hover:brightness-110"
+              >
+                <Check size={15} />
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-full border border-[#35334e] px-4 py-2 text-xs font-bold text-[#c5c3d4] transition hover:border-[#7843ee]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm leading-6 text-[#e7e5f2]">{post.caption}</p>
+        )}
 
         <div className="mt-4 flex items-center gap-6 text-sm font-semibold">
           <button
@@ -176,9 +276,11 @@ export function FeedCard({
           </button>
           <button
             type="button"
-            onClick={() => setShowComment((s) => !s)}
-            aria-expanded={showComment}
-            className="flex items-center gap-2 text-[#c5c3d4] transition hover:text-white"
+            onClick={() => setShowComments((s) => !s)}
+            aria-expanded={showComments}
+            className={`flex items-center gap-2 transition ${
+              showComments ? "text-white" : "text-[#c5c3d4] hover:text-white"
+            }`}
           >
             <MessageCircle size={20} />
             {formatCount(post.comments)}
@@ -193,26 +295,67 @@ export function FeedCard({
           </button>
         </div>
 
-        {showComment ? (
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
-                  submitComment();
-                }
-              }}
-              placeholder="Add a comment..."
-              className="flex-1 rounded-full border border-[#26263d] bg-[#0d0e20] px-4 py-2 text-sm text-white outline-none placeholder:text-[#6f6d83] focus:border-[#7843ee]"
-            />
-            <button
-              type="button"
-              onClick={submitComment}
-              className="rounded-full bg-[#6d27ff] px-4 py-2 text-xs font-bold text-white transition hover:brightness-110"
-            >
-              Post
-            </button>
+        {showComments ? (
+          <div className="mt-4 border-t border-[#22233a] pt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-bold text-white">Comments</p>
+              <button
+                type="button"
+                onClick={() => setShowComments(false)}
+                aria-label="Close comments"
+                className="grid size-7 place-items-center rounded-full text-[#6f6d83] transition hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {post.commentList.length > 0 ? (
+              <ul className="space-y-3">
+                {post.commentList.map((c) => (
+                  <li key={c.id} className="flex gap-2.5">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#1a1b33] text-[10px] font-black text-[#b9b6cf]">
+                      {c.author
+                        .split(" ")
+                        .map((w) => w[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1 rounded-2xl bg-[#12132599] px-3 py-2">
+                      <div className="flex items-baseline gap-2">
+                        <p className="truncate text-xs font-bold text-white">{c.author}</p>
+                        <span className="shrink-0 text-[10px] text-[#6f6d83]">{c.time}</span>
+                      </div>
+                      <p className="mt-0.5 break-words text-sm text-[#dcdae8]">{c.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-[#6f6d83]">Be the first to comment.</p>
+            )}
+
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
+                    submitComment();
+                  }
+                }}
+                placeholder="Add a comment..."
+                className="flex-1 rounded-full border border-[#26263d] bg-[#0d0e20] px-4 py-2 text-sm text-white outline-none placeholder:text-[#6f6d83] focus:border-[#7843ee]"
+              />
+              <button
+                type="button"
+                onClick={submitComment}
+                aria-label="Post comment"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-[#6d27ff] text-white transition hover:brightness-110"
+              >
+                <Send size={16} />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>

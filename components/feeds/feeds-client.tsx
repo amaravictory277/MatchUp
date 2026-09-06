@@ -81,10 +81,36 @@ export function FeedsClient() {
       prev.map((p) => (p.id === id ? { ...p, following: !p.following } : p)),
     );
 
-  const addComment = (id: string) =>
+  const addComment = (id: string, text: string) =>
     setPosts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, comments: p.comments + 1 } : p)),
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              comments: p.comments + 1,
+              commentList: [
+                ...p.commentList,
+                {
+                  id: `c-${Date.now()}`,
+                  author: "You",
+                  text,
+                  time: "Just now",
+                },
+              ],
+            }
+          : p,
+      ),
     );
+
+  const deletePost = (id: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== id));
+    setToast("Post deleted");
+  };
+
+  const editPost = (id: string, caption: string) => {
+    setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, caption } : p)));
+    setToast("Post updated");
+  };
 
   const share = (id: string) => {
     setPosts((prev) =>
@@ -124,9 +150,11 @@ export function FeedsClient() {
       hasVideo: composer.id === "upload-gameplay" || composer.id === "goal-highlight",
       likes: 0,
       comments: 0,
+      commentList: [],
       shares: 0,
       liked: false,
       following: true,
+      isOwn: true,
       category: "community",
     };
     setPosts((prev) => [newPost, ...prev]);
@@ -240,6 +268,8 @@ export function FeedsClient() {
               onToggleFollow={toggleFollow}
               onComment={addComment}
               onShare={share}
+              onDelete={deletePost}
+              onEdit={editPost}
             />
           ))
         )}

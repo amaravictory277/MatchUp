@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, FilePlus2, Video } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Plus, Video } from "lucide-react";
 import { feedActions, type FeedAction } from "./data";
 
 export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void }) {
@@ -15,8 +15,8 @@ export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void
         aria-expanded={open}
         className="flex w-full items-center gap-4 text-left"
       >
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#25134e] text-[#a979ff]">
-          <FilePlus2 size={24} />
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl border-2 border-[#13132b] bg-[linear-gradient(145deg,#8e3cff,#5e1be4)] text-white shadow-[0_0_18px_rgba(122,43,255,.55)]">
+          <Plus size={26} />
         </span>
         <span className="flex-1">
           <span className="block text-lg font-bold text-white">Create something</span>
@@ -41,18 +41,18 @@ export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/15 text-white">
               <Video size={20} />
             </span>
-            <span className="flex-1">
-              <span className="block text-sm font-bold text-white">
-                Post a squad / Upload gameplay
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-white">
+                Post squad / gameplay
               </span>
-              <span className="block text-xs text-white/75">
-                Show your skills, get noticed, and earn.
+              <span className="block truncate text-xs text-white/75">
+                Get noticed and earn.
               </span>
             </span>
-            <ChevronRight size={18} className="text-white/80" />
+            <ChevronRight size={18} className="shrink-0 text-white/80" />
           </button>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             {feedActions.map((action) => {
               const Icon = action.icon;
               return (
