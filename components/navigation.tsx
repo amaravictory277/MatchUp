@@ -1,14 +1,21 @@
 "use client";
 
-import { Bell, House, Newspaper, Plus, Search, Trophy, UsersRound } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { Bell, House, Link2, Newspaper, Plus, Search, Trophy, UsersRound } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const links = [
-  { label: "Home", icon: House, href: "/" },
-  { label: "Tournaments", icon: Trophy, href: "/#tournaments" },
-  { label: "Feeds", icon: Newspaper, href: "/feeds" },
-  { label: "Leaderboard", icon: UsersRound, href: "/#leaderboard" },
-];
+  { label: "Home", icon: House, href: "/", route: true },
+  { label: "Tournaments", icon: Trophy, href: "#tournaments", route: false },
+  { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
+  { label: "Leaderboard", icon: UsersRound, href: "#leaderboard", route: false },
+] as const;
+
+function getRouteActive(pathname: string) {
+  if (pathname === "/") return "Home";
+  if (pathname.startsWith("/feeds")) return "Feeds";
+  return null;
+}
 
 export function TopBar() {
   return (
@@ -24,9 +31,9 @@ export function TopBar() {
           <Bell size={18} />
           <span className="notification-dot">3</span>
         </button>
-        <button aria-label="Profile" className="profile-avatar">
+        <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">
           M<span />
-        </button>
+        </a>
       </div>
     </header>
   );
@@ -34,28 +41,58 @@ export function TopBar() {
 
 export function BottomNav() {
   const pathname = usePathname();
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    if (href.startsWith("/#")) return false;
-    return pathname.startsWith(href);
+  const router = useRouter();
+  const routeActive = getRouteActive(pathname);
+  const [selected, setSelected] = useState<string>(routeActive ?? "Home");
+
+  useEffect(() => {
+    if (routeActive) setSelected(routeActive);
+  }, [routeActive]);
+
+  const selectNav = (label: string) => {
+    setSelected(label);
   };
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
-      {links.slice(0, 2).map(({ label, icon: Icon, href }) => (
-        <a key={label} href={href} className={`nav-link ${isActive(href) ? "active" : ""}`}>
+      {links.slice(0, 2).map(({ label, icon: Icon, href, route }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => {
+            selectNav(label);
+            if (route) router.push(href);
+          }}
+          aria-current={selected === label ? "page" : undefined}
+          className={`nav-link ${selected === label ? "active" : ""}`}
+        >
           <Icon size={20} />
           <span>{label}</span>
-        </a>
+        </button>
       ))}
-      <a href="/feeds" className="create-link" aria-label="Create post">
+      <button
+        type="button"
+        onClick={() => router.push("/feeds")}
+        className="create-link"
+        aria-label="Create post"
+      >
         <Plus size={28} />
-      </a>
-      {links.slice(2).map(({ label, icon: Icon, href }) => (
-        <a key={label} href={href} className={`nav-link ${isActive(href) ? "active" : ""}`}>
+      </button>
+      {links.slice(2).map(({ label, icon: Icon, href, route }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => {
+            selectNav(label);
+            if (route) router.push(href);
+          }}
+          aria-current={selected === label ? "page" : undefined}
+          className={`nav-link ${selected === label ? "active" : ""}`}
+          data-link-href={href}
+        >
           <Icon size={20} />
           <span>{label}</span>
-        </a>
+        </button>
       ))}
     </nav>
   );
