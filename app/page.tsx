@@ -1,11 +1,166 @@
-import { ArrowRight, CalendarDays, Copy, Search, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChevronRight,
+  Gamepad2,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { Navigation } from "../components/navigation";
-const tournaments=[
- {name:"Lagos Elite Cup",tag:"FEATURED",players:"18 / 32 players",date:"Sat, 14 Sep · 7:00 PM",format:"Knockout",color:"from-[#ccf95a] to-[#77b84c]"},
- {name:"Weekend eFootball League",tag:"PINNED",players:"12 / 16 players",date:"Sun, 15 Sep · 4:30 PM",format:"League",color:"from-[#69cae7] to-[#2355a7]"},
- {name:"Road to Glory",tag:"BOOSTED",players:"28 / 64 players",date:"Fri, 20 Sep · 8:00 PM",format:"Group + KO",color:"from-[#dd8cda] to-[#79277e]"}
+
+type Tournament = {
+  name: string;
+  tag: string;
+  players: string;
+  format: string;
+  prize: string;
+  image: string;
+  accent: "violet" | "green" | "blue";
+};
+
+const pinnedTournaments: Tournament[] = [
+  {
+    name: "Elite Showdown",
+    tag: "PINNED",
+    players: "128 Players",
+    format: "Knockout",
+    prize: "₦25,000",
+    image: "https://images.pexels.com/photos/36000773/pexels-photo-36000773.jpeg?auto=compress&cs=tinysrgb&w=900",
+    accent: "green",
+  },
+  {
+    name: "Legends Cup",
+    tag: "PINNED",
+    players: "64 Players",
+    format: "Knockout",
+    prize: "₦15,000",
+    image: "https://images.pexels.com/photos/7005503/pexels-photo-7005503.jpeg?auto=compress&cs=tinysrgb&w=900",
+    accent: "violet",
+  },
+  {
+    name: "Weekend Clash",
+    tag: "PINNED",
+    players: "32 Players",
+    format: "Group Stage",
+    prize: "₦10,000",
+    image: "https://images.pexels.com/photos/27348425/pexels-photo-27348425.jpeg?auto=compress&cs=tinysrgb&w=900",
+    accent: "blue",
+  },
 ];
-export default function Home() { return <main className="shell"><Navigation/><section className="grid-bg relative overflow-hidden rounded-[28px] px-6 py-9 text-white md:px-12 md:py-14"><div className="relative z-10 max-w-2xl"><p className="mb-4 text-xs font-black tracking-[.2em] text-[#c9f950]">THE HOME OF eFOOTBALL TOURNAMENTS</p><h1 className="text-4xl font-black leading-[.95] tracking-tight md:text-6xl">Find your next<br/><span className="text-[#c9f950]">competition.</span></h1><p className="mt-5 max-w-md text-sm leading-6 text-[#c2cec5]">Create, discover and run competitive eFootball tournaments—all in one match-ready place.</p><div className="mt-7 flex flex-wrap gap-3"><button className="rounded-xl bg-[#c9f950] px-5 py-3 text-sm font-black text-[#07170f]">CREATE TOURNAMENT</button><button className="rounded-xl border border-white/25 px-5 py-3 text-sm font-bold">FIND TOURNAMENT</button></div></div><div className="absolute -right-12 -top-20 size-72 rounded-full border-[28px] border-[#c9f950]/15"/></section>
-<section className="mt-8"><div className="mb-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-[#758077]">Discover</p><h2 className="text-2xl font-black">Tournaments made to compete</h2></div><button className="pill flex items-center gap-2"><Search size={14}/> Search</button></div><div className="grid gap-4 md:grid-cols-3">{tournaments.map(t=><article className="card overflow-hidden" key={t.name}><div className={`h-28 bg-gradient-to-br ${t.color} p-4`}><span className="rounded-full bg-black/25 px-2 py-1 text-[10px] font-black tracking-wider text-white">{t.tag}</span><div className="mt-6 text-lg font-black text-white">{t.name}</div></div><div className="p-4"><div className="flex justify-between text-xs text-[#657066]"><span className="flex gap-1"><Users size={14}/>{t.players}</span><span>{t.format}</span></div><p className="mt-3 flex items-center gap-2 text-sm font-bold"><CalendarDays size={15} className="text-[#5e9d39]"/>{t.date}</p><button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#07170f] py-2.5 text-xs font-black text-white">VIEW TOURNAMENT <ArrowRight size={14}/></button></div></article>)}</div></section>
-<section className="mt-8 grid gap-4 md:grid-cols-[1.5fr_1fr]"><div className="card p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-[#758077]">Quick entry</p><h2 className="text-xl font-black">Have a tournament ID?</h2></div><Copy size={20} className="text-[#6d786f]"/></div><div className="mt-4 flex gap-2"><input aria-label="Tournament ID" placeholder="e.g. MU-7K2P" className="min-w-0 flex-1 rounded-xl border border-[#dce6d8] px-4 py-3 text-sm outline-none focus:border-[#5e9d39]"/><button className="rounded-xl bg-[#c9f950] px-4 text-xs font-black">JOIN</button></div></div><div className="rounded-[20px] bg-[#e7f4dd] p-5"><ShieldCheck className="text-[#438b28]"/><h2 className="mt-3 text-lg font-black">Built for fair play.</h2><p className="mt-1 text-sm leading-5 text-[#587152]">Submit results, confirm scores and keep every match moving.</p></div></section>
-<section className="mt-8"><p className="text-xs font-bold uppercase tracking-wider text-[#758077]">From the community</p><h2 className="mb-4 text-2xl font-black">Trending this week</h2><div className="grid gap-3 md:grid-cols-3">{["My 4-3-3 possession setup", "Last-minute winner in Elite Cup", "Who is ready for tonight’s bracket?"].map((post,i)=><article className="card p-4" key={post}><div className={`mb-4 h-24 rounded-xl ${i===0?"bg-[#d9e8d0]":i===1?"bg-[#d3e9ef]":"bg-[#ece1d4]"}`}/><p className="font-bold">{post}</p><p className="mt-2 text-xs text-[#758077]">Community · {12+i*7} comments</p></article>)}</div></section></main> }
+
+const featuredTournaments: Tournament[] = [
+  {
+    name: "MatchUp Champions Cup",
+    tag: "FEATURED",
+    players: "128 Players",
+    format: "Knockout",
+    prize: "₦50,000",
+    image: "https://images.pexels.com/photos/27348425/pexels-photo-27348425.jpeg?auto=compress&cs=tinysrgb&w=1400",
+    accent: "violet",
+  },
+  {
+    name: "Friday Night Showdown",
+    tag: "PINNED",
+    players: "64 Players",
+    format: "Knockout",
+    prize: "₦20,000",
+    image: "https://images.pexels.com/photos/36000773/pexels-photo-36000773.jpeg?auto=compress&cs=tinysrgb&w=1400",
+    accent: "green",
+  },
+  {
+    name: "Weekend Battle Arena",
+    tag: "BOOSTED",
+    players: "256 Players",
+    format: "Group Stage",
+    prize: "₦30,000",
+    image: "https://images.pexels.com/photos/7005503/pexels-photo-7005503.jpeg?auto=compress&cs=tinysrgb&w=1400",
+    accent: "blue",
+  },
+];
+
+const accentStyles = {
+  violet: { badge: "bg-[#6d27ff]", button: "bg-[#6d27ff] shadow-[0_0_24px_rgba(109,39,255,.45)]", icon: "text-[#9a73ff]", glow: "bg-[#6929ff]" },
+  green: { badge: "bg-[#62c51f]", button: "bg-[#62c51f] shadow-[0_0_24px_rgba(98,197,31,.3)]", icon: "text-[#7ce53a]", glow: "bg-[#57bd29]" },
+  blue: { badge: "bg-[#2367ff]", button: "bg-[#2367ff] shadow-[0_0_24px_rgba(35,103,255,.4)]", icon: "text-[#4d8bff]", glow: "bg-[#2367ff]" },
+};
+
+function AvatarGroup({ extra = "+125" }: { extra?: string }) {
+  return (
+    <div className="flex items-center">
+      {(["#d99a6c", "#8a5b42", "#e8bc8f", "#4d382f"] as string[]).map((color, index) => (
+        <span key={color} className="avatar -ml-2 first:ml-0" style={{ background: `linear-gradient(135deg, ${color}, #19182b)` }} aria-hidden="true">
+          {index === 0 ? "A" : index === 1 ? "K" : index === 2 ? "M" : "S"}
+        </span>
+      ))}
+      {extra ? <span className="avatar -ml-2 bg-[#252040] text-[10px] text-white">{extra}</span> : null}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-white sm:text-xl"><Sparkles size={17} className="text-[#9a73ff]" />{children}</h2>
+      <a href="#tournaments" className="flex items-center gap-1 text-xs font-semibold text-[#a979ff] transition hover:text-white">See All <ChevronRight size={15} /></a>
+    </div>
+  );
+}
+
+function PinnedCard({ tournament }: { tournament: Tournament }) {
+  const accent = accentStyles[tournament.accent];
+  return (
+    <article className="tournament-card group min-w-[238px] flex-1 overflow-hidden sm:min-w-[260px]">
+      <div className="relative h-32 overflow-hidden bg-[#1d1a36]">
+        <div className="absolute inset-0 bg-cover bg-center opacity-75 transition duration-500 group-hover:scale-105" style={{ backgroundImage: `linear-gradient(180deg, transparent 20%, #0a0b19 100%), url(${tournament.image})` }} />
+        <span className={`absolute left-3 top-3 rounded-md ${accent.badge} px-2 py-1 text-[10px] font-black tracking-wide text-white`}>{tournament.tag}</span>
+      </div>
+      <div className="p-4">
+        <h3 className="font-bold text-white">{tournament.name}</h3>
+        <div className="mt-2 flex gap-3 text-[11px] text-[#aaa8ba]"><span className="flex items-center gap-1"><Users size={13} />{tournament.players}</span><span className="flex items-center gap-1"><Trophy size={13} />{tournament.format}</span></div>
+        <div className="mt-4 flex items-end justify-between"><div><p className="text-[11px] text-[#9694a8]">Prize Pool</p><p className="mt-0.5 text-base font-black text-white">{tournament.prize}</p></div><span className={`grid size-9 place-items-center rounded-xl ${accent.glow} ${accent.icon} shadow-lg`}><Trophy size={18} /></span></div>
+      </div>
+    </article>
+  );
+}
+
+function FeaturedCard({ tournament }: { tournament: Tournament }) {
+  const accent = accentStyles[tournament.accent];
+  return (
+    <article className="tournament-card overflow-hidden">
+      <div className="relative h-28 overflow-hidden sm:h-32">
+        <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `linear-gradient(180deg, rgba(12,12,30,.08), #0b0c18 100%), url(${tournament.image})` }} />
+        <span className={`absolute left-4 top-4 rounded-md ${accent.badge} px-2.5 py-1 text-[10px] font-black tracking-wide text-white`}>{tournament.tag}</span>
+      </div>
+      <div className="relative -mt-px grid gap-5 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
+        <div><h3 className="text-lg font-bold text-white">{tournament.name}</h3><div className="mt-2 flex flex-wrap gap-3 text-xs text-[#c0bdcd]"><span className="flex items-center gap-1"><Users size={14} />{tournament.players}</span><span className="flex items-center gap-1"><Trophy size={14} />{tournament.format}</span><span className="flex items-center gap-1 text-[#81d63f]"><CalendarDays size={14} />Starts in 2d 14h</span></div><div className="mt-4 flex items-center gap-3"><AvatarGroup extra={tournament.name === "Weekend Battle Arena" ? "+253" : "+125"} /><div className="text-[10px] text-[#9896a8]">Organized by<br /><strong className="text-sm text-white">{tournament.name === "Friday Night Showdown" ? "ProGamers NG" : "Skillz Arena"}</strong></div></div></div>
+        <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end"><div className="rounded-xl bg-[#17172a] px-4 py-2"><p className="text-[10px] text-[#aaa8ba]">Prize Pool</p><p className="font-black text-white">{tournament.prize}</p></div><a href="#tournament" className={`flex items-center justify-center gap-2 rounded-xl ${accent.button} px-5 py-2.5 text-xs font-bold text-white transition hover:brightness-110`}>View Tournament <ArrowRight size={15} /></a></div>
+      </div>
+    </article>
+  );
+}
+
+export default function Home() {
+  return (
+    <main className="app-shell">
+      <Navigation />
+      <section className="hero relative overflow-hidden rounded-[28px] px-5 pb-8 pt-5 sm:px-8 sm:pb-12 sm:pt-8">
+        <div className="hero-player" aria-hidden="true" />
+        <div className="relative z-10 max-w-[470px]">
+          <p className="text-[11px] font-bold tracking-[.18em] text-[#d4d0df]">THE HOME OF</p>
+          <h1 className="mt-1 text-[42px] font-black leading-[.92] tracking-[-.05em] text-white sm:text-6xl"><span className="hero-gradient">eFOOTBALL</span><br />TOURNAMENTS</h1>
+          <p className="mt-4 max-w-[270px] text-sm leading-5 text-[#d3d0dd]">Compete. Connect. Conquer.<br />All in one place.</p>
+          <div className="mt-5 grid max-w-[280px] gap-3"><a href="#create" className="hero-button flex items-center justify-center gap-3 rounded-xl px-4 py-3 text-xs font-black text-white"><Trophy size={16} />CREATE TOURNAMENT</a><a href="#tournaments" className="flex items-center justify-center gap-3 rounded-xl border border-[#35334e] bg-[#0f1020]/70 px-4 py-3 text-xs font-bold text-white transition hover:border-[#7444ed]"><Search size={17} />FIND TOURNAMENT</a></div>
+          <div className="mt-6"><AvatarGroup extra="" /></div>
+        </div>
+      </section>
+
+      <section className="mt-7" id="tournaments"><SectionTitle>Pinned Tournaments</SectionTitle><div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">{pinnedTournaments.map((tournament) => <PinnedCard key={tournament.name} tournament={tournament} />)}</div></section>
+      <section className="mt-7"><SectionTitle>Featured Tournaments</SectionTitle><div className="grid gap-3">{featuredTournaments.map((tournament) => <FeaturedCard key={tournament.name} tournament={tournament} />)}</div></section>
+      <section className="mt-7 grid gap-3 sm:grid-cols-2"><div className="surface-card flex items-center gap-4 p-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#25134e] text-[#a979ff]"><Gamepad2 size={22} /></span><div><p className="text-xs text-[#a7a5b7]">Ready to compete?</p><h2 className="font-bold text-white">Join a tournament today</h2></div><ArrowRight className="ml-auto text-[#8e61ed]" size={17} /></div><div className="surface-card flex items-center gap-4 p-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#152e24] text-[#72d33b]"><ShieldCheck size={22} /></span><div><p className="text-xs text-[#a7a5b7]">Fair play, always</p><h2 className="font-bold text-white">Every match counts</h2></div></div></section>
+      <div className="h-8" />
+    </main>
+  );
+}

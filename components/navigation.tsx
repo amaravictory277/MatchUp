@@ -1,3 +1,28 @@
-import { House, Trophy, Plus, Newspaper, UserRound, Bell } from "lucide-react";
-const links = [{label:"Home",icon:House},{label:"Tournaments",icon:Trophy},{label:"Create",icon:Plus,primary:true},{label:"Community",icon:Newspaper},{label:"Profile",icon:UserRound}];
-export function Navigation() { return <><header className="flex items-center justify-between pb-6"><div className="flex items-center gap-2 font-black tracking-tight text-xl"><span className="grid size-8 place-items-center rounded-lg bg-[#c9f950] text-[#07170f]">M</span>MatchUp</div><button aria-label="Notifications" className="grid size-10 place-items-center rounded-full bg-white border border-[#e1e7df]"><Bell size={18}/></button></header><nav className="fixed bottom-0 left-0 z-20 flex w-full justify-around border-t border-[#dce6d8] bg-white/95 px-2 py-2 backdrop-blur md:static md:mb-8 md:w-auto md:justify-start md:gap-2 md:rounded-full md:border"><span className="sr-only">Main navigation</span>{links.map(({label,icon:Icon,primary})=><a key={label} href={label === "Home" ? "/" : `#${label.toLowerCase()}`} className={`flex min-w-14 flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold md:flex-row md:text-sm ${primary ? "bg-[#c9f950] text-[#07170f]" : "text-[#5f6d63]"}`}><Icon size={18}/>{label}</a>)}</nav></> }
+import { Bell, Gamepad2, House, Plus, Search, Trophy, UsersRound } from "lucide-react";
+
+const links = [
+  { label: "Home", icon: House, href: "/" },
+  { label: "Tournaments", icon: Trophy, href: "#tournaments" },
+  { label: "Games", icon: Gamepad2, href: "#games" },
+  { label: "Leaderboard", icon: UsersRound, href: "#leaderboard" },
+];
+
+export function Navigation() {
+  return (
+    <>
+      <header className="relative z-20 flex items-center justify-between pb-5">
+        <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
+        <div className="flex items-center gap-2">
+          <button aria-label="Search" className="icon-button hidden sm:grid"><Search size={19} /></button>
+          <button aria-label="Notifications" className="icon-button relative"><Bell size={18} /><span className="notification-dot">3</span></button>
+          <button aria-label="Profile" className="profile-avatar">M<span /></button>
+        </div>
+      </header>
+      <nav className="bottom-nav" aria-label="Main navigation">
+        {links.slice(0, 2).map(({ label, icon: Icon, href }) => <a key={label} href={href} className={`nav-link ${label === "Home" ? "active" : ""}`}><Icon size={20} /><span>{label}</span></a>)}
+        <a href="#create" className="create-link" aria-label="Create tournament"><Plus size={28} /></a>
+        {links.slice(2).map(({ label, icon: Icon, href }) => <a key={label} href={href} className="nav-link"><Icon size={20} /><span>{label}</span></a>)}
+      </nav>
+    </>
+  );
+}
