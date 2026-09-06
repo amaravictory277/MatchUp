@@ -149,9 +149,9 @@ export default function Home() {
       <section className="hero relative overflow-hidden rounded-[28px] px-5 pb-8 pt-5 sm:px-8 sm:pb-12 sm:pt-8">
         <div className="hero-player" aria-hidden="true" />
         <div className="relative z-10 max-w-[470px]">
-          <p className="text-[11px] font-bold tracking-[.18em] text-[#d4d0df]">THE HOME OF</p>
-          <h1 className="mt-1 text-[42px] font-black leading-[.92] tracking-[-.05em] text-white sm:text-6xl"><span className="hero-gradient">eFOOTBALL</span><br />TOURNAMENTS</h1>
-          <p className="mt-4 max-w-[270px] text-sm leading-5 text-[#d3d0dd]">Compete. Connect. Conquer.<br />All in one place.</p>
+          <p className="max-w-[300px] text-[11px] font-bold leading-[1.65] tracking-[.18em] text-[#d4d0df]"><span className="block">THE HOME OF EFOOTBALL</span><span className="block">TOURNAMENTS</span></p>
+          <h1 className="mt-5 text-[42px] font-black leading-[.94] tracking-[-.05em] text-white sm:text-6xl">Find your next<br /><span className="hero-gradient">competition.</span></h1>
+          <p className="mt-5 max-w-[315px] text-sm leading-6 text-[#d3d0dd]">Create, discover and run competitive EFootball tournaments—all in one match-ready place.</p>
           <div className="mt-5 grid max-w-[280px] gap-3"><a href="#create" className="hero-button flex items-center justify-center gap-3 rounded-xl px-4 py-3 text-xs font-black text-white"><Trophy size={16} />CREATE TOURNAMENT</a><a href="#tournaments" className="flex items-center justify-center gap-3 rounded-xl border border-[#35334e] bg-[#0f1020]/70 px-4 py-3 text-xs font-bold text-white transition hover:border-[#7444ed]"><Search size={17} />FIND TOURNAMENT</a></div>
           <div className="mt-6"><AvatarGroup extra="" /></div>
         </div>
