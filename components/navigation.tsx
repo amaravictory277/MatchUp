@@ -6,13 +6,14 @@ import { useEffect, useState } from "react";
 
 const links = [
   { label: "Home", icon: House, href: "/", route: true },
-  { label: "Tournaments", icon: Trophy, href: "#tournaments", route: false },
+  { label: "Tournaments", icon: Trophy, href: "/tournaments", route: true },
   { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
   { label: "Leaderboard", icon: UsersRound, href: "#leaderboard", route: false },
 ] as const;
 
 function getRouteActive(pathname: string) {
   if (pathname === "/") return "Home";
+  if (pathname.startsWith("/tournaments")) return "Tournaments";
   if (pathname.startsWith("/feeds")) return "Feeds";
   return null;
 }
@@ -20,9 +21,7 @@ function getRouteActive(pathname: string) {
 export function TopBar() {
   return (
     <header className="relative z-20 flex items-center justify-between pb-5">
-      <a href="/" className="wordmark" aria-label="MatchUp home">
-        Match<span>Up</span>
-      </a>
+      <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
       <div className="flex items-center gap-2">
         <button aria-label="Search" className="icon-button hidden sm:grid"><Search size={19} /></button>
         <button aria-label="Notifications" className="icon-button relative"><Bell size={18} /><span className="notification-dot">3</span></button>
@@ -37,10 +36,7 @@ export function BottomNav() {
   const router = useRouter();
   const routeActive = getRouteActive(pathname);
   const [selected, setSelected] = useState<string>(routeActive ?? "Home");
-
-  useEffect(() => {
-    if (routeActive) setSelected(routeActive);
-  }, [routeActive]);
+  useEffect(() => { if (routeActive) setSelected(routeActive); }, [routeActive]);
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
@@ -59,6 +55,4 @@ export function BottomNav() {
   );
 }
 
-export function Navigation() {
-  return <><TopBar /><BottomNav /></>;
-}
+export function Navigation() { return <><TopBar /><BottomNav /></>; }
