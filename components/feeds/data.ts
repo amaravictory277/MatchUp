@@ -17,6 +17,13 @@ export type Author = {
   initials: string;
 };
 
+export type Comment = {
+  id: string;
+  author: string;
+  text: string;
+  time: string;
+};
+
 export type Post = {
   id: string;
   author: Author;
@@ -26,9 +33,12 @@ export type Post = {
   hasVideo: boolean;
   likes: number;
   comments: number;
+  commentList: Comment[];
   shares: number;
   liked: boolean;
   following: boolean;
+  /** true when the signed-in user authored the post (enables edit/delete) */
+  isOwn?: boolean;
   category: "sports" | "community";
 };
 
@@ -104,7 +114,12 @@ export const initialPosts: Post[] = [
     ],
     hasVideo: true,
     likes: 1200,
-    comments: 1200,
+    comments: 3,
+    commentList: [
+      { id: "c1", author: "Amara Okafor", text: "Unreal finish!", time: "2 min ago" },
+      { id: "c2", author: "Kelvin Mensah", text: "Been watching this on repeat 🔁", time: "1 min ago" },
+      { id: "c3", author: "Sofia Reyes", text: "Squad looking sharp this season.", time: "just now" },
+    ],
     shares: 70,
     liked: false,
     following: false,
@@ -126,7 +141,11 @@ export const initialPosts: Post[] = [
     ],
     hasVideo: false,
     likes: 842,
-    comments: 96,
+    comments: 2,
+    commentList: [
+      { id: "c4", author: "Daniel Taylor", text: "Count me in for the Cup!", time: "10 min ago" },
+      { id: "c5", author: "Sofia Reyes", text: "Let's run it back 💪", time: "5 min ago" },
+    ],
     shares: 34,
     liked: true,
     following: true,
@@ -147,7 +166,10 @@ export const initialPosts: Post[] = [
     ],
     hasVideo: true,
     likes: 3100,
-    comments: 410,
+    comments: 1,
+    commentList: [
+      { id: "c6", author: "Amara Okafor", text: "Clutch! Congrats on the win 🏆", time: "40 min ago" },
+    ],
     shares: 220,
     liked: false,
     following: true,
@@ -170,7 +192,11 @@ export const initialPosts: Post[] = [
     ],
     hasVideo: true,
     likes: 560,
-    comments: 78,
+    comments: 2,
+    commentList: [
+      { id: "c7", author: "Kelvin Mensah", text: "Solid 9/10 from me.", time: "1 hr ago" },
+      { id: "c8", author: "Daniel Taylor", text: "That first touch though 👀", time: "50 min ago" },
+    ],
     shares: 12,
     liked: false,
     following: false,
