@@ -116,6 +116,7 @@ export function TopBar() {
   const [query, setQuery] = useState("");
   const [tournamentResults, setTournamentResults] = useState<GlobalTournament[]>([]);
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -174,11 +175,13 @@ export function TopBar() {
     setSearchOpen(true);
     setSearchType(null);
     setQuery("");
+    setCategoryMenuOpen(false);
   };
 
   const chooseSearchType = (type: SearchType) => {
     setSearchType(type);
     setQuery("");
+    setCategoryMenuOpen(false);
   };
 
   return (
@@ -201,35 +204,44 @@ export function TopBar() {
             </div>
 
             {!searchType ? (
-              <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="mt-6 grid grid-cols-1 gap-3">
                 {searchOptions.map((option) => {
                   const Icon = option.icon;
-                  return <button key={option.id} type="button" onClick={() => chooseSearchType(option.id)} className="flex min-h-[112px] flex-col items-start justify-between rounded-2xl border border-[#302b4b] bg-[#17152e] p-4 text-left transition hover:border-[#6f4ad8] hover:bg-[#1a1835]"><span className="grid size-10 place-items-center rounded-xl bg-[#251e45] text-[#a979ff]"><Icon size={19} /></span><span className="text-xs font-black text-[#d7d3e4]">{option.label}</span></button>;
+                  return <button key={option.id} type="button" onClick={() => chooseSearchType(option.id)} className="flex min-h-[92px] w-full items-center gap-4 rounded-2xl border border-[#302b4b] bg-[#17152e] p-4 text-left transition hover:border-[#6f4ad8] hover:bg-[#1a1835]"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#251e45] text-[#a979ff]"><Icon size={19} /></span><span className="text-sm font-black text-[#d7d3e4]">{option.label}</span></button>;
                 })}
               </div>
             ) : (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <label className="flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${activeSearchOption?.label.replace("Search ", "").toLowerCase()}...`} aria-label={`Search ${activeSearchOption?.label || "content"}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
-                  <div className="relative min-w-0 sm:min-w-[210px]">
-                    <select value={searchType} onChange={(e) => chooseSearchType(e.target.value as SearchType)} aria-label="Search category" className="h-full w-full appearance-none rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 pr-10 text-sm font-black text-[#d7d3e4] outline-none focus:border-[#6f4ad8]">
-                      {searchOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                    </select>
-                    <ChevronDown size={17} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#9a73ff]" />
+                  <div className="relative min-w-0 sm:min-w-[240px]">
+                    <button type="button" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)} className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 text-sm font-black text-[#d7d3e4] outline-none transition hover:border-[#6f4ad8] focus:border-[#6f4ad8]">
+                      <span className="flex min-w-0 items-center gap-2.5 truncate"><activeSearchOption.icon size={17} className="shrink-0 text-[#a979ff]" />{activeSearchOption.label}</span>
+                      <ChevronDown size={17} className={`shrink-0 text-[#9a73ff] transition-transform ${categoryMenuOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {categoryMenuOpen ? (
+                      <div role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-[#3b315e] bg-[#17152e] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,.48)]">
+                        {searchOptions.map((option) => {
+                          const Icon = option.icon;
+                          const active = option.id === searchType;
+                          return <button key={option.id} type="button" role="option" aria-selected={active} onClick={() => chooseSearchType(option.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-black transition ${active ? "bg-[#251e45] text-white" : "text-[#c3bfd2] hover:bg-[#211e3b] hover:text-white"}`}><Icon size={17} className="shrink-0 text-[#a979ff]" /><span className="flex-1">{option.label}</span>{active ? <span className="size-2 rounded-full bg-[#a979ff]" /> : null}</button>;
+                        })}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="mt-5 min-h-0 flex-1 overflow-y-auto scroll-smooth overscroll-contain pr-1 [scrollbar-width:thin]">
+                <div className="mt-5 min-h-0 flex-1 overflow-y-scroll overscroll-y-contain scroll-smooth touch-pan-y pr-1 [scrollbar-width:thin]">
                   {searchType === "tournaments" ? (
                     filteredTournaments.length > 0 ? (
-                      <div className="grid gap-4 sm:grid-cols-2 pb-4">
+                      <div className="grid grid-cols-1 gap-4 pb-6">
                         {filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}
                       </div>
                     ) : (
                       <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No tournaments found" : "No public tournaments yet"}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try the tournament name, tournament ID, format, or another search term." : "Public tournaments from across MatchUp will appear here."}</p></div></div>
                     )
                   ) : query.trim() && visibleLines.length > 0 ? (
-                    <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div>
+                    <div className="grid gap-2 pb-6 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div>
                   ) : (
                     <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No matches found" : `Search ${activeSearchOption?.label.replace("Search ", "")}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category." : "Type above to start searching."}</p></div></div>
                   )}
