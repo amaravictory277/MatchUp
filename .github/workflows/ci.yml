@@ -32,8 +32,11 @@ jobs:
           bad_delete = 'const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString(), body: "", sticker_key: null }).eq("id", message.id);'
           good_delete = 'const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString() }).eq("id", message.id);'
           s = s.replace(bad_delete, good_delete)
-          s = s.replace('  ArrowLeft,\n', '').replace('  Heart,\n', '').replace('  Link2,\n', '')
+          s = s.replace('  ArrowLeft,\\n', '').replace('  Heart,\\n', '').replace('  Link2,\\n', '')
           s = s.replace('entries as Presence[]', 'entries as unknown as Presence[]')
+          old = 'if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]">Sign in to use MatchUp group chat.</section>;'
+          new = 'if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>Sign in to use MatchUp group chat.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#6d27ff] px-4 py-3 text-center text-sm font-bold text-white transition hover:brightness-110">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#6d27ff] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#a979ff] transition hover:bg-[#17132b]">Sign Up</a></div></section>;'
+          s = s.replace(old, new)
           p.write_text(s)
           PY
       - run: npm ci
@@ -47,6 +50,6 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add components/chat/chat-hub.tsx
-            git commit -m 'fix: harden chat message state and realtime presence typing'
+            git commit -m 'feat: add sign in and sign up chat actions'
             git push origin main
           fi
