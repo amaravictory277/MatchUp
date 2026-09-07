@@ -15,15 +15,15 @@ import { Navigation } from "../components/navigation";
 type Tournament = { name: string; tag: string; players: string; format: string; prize: string; image: string; accent: "violet" | "green" | "blue" };
 
 const pinnedTournaments: Tournament[] = [
-  { name: "Elite Showdown", tag: "PINNED", players: "128 Players", format: "Knockout", prize: "₦25,000", image: "https://images.pexels.com/photos/36000773/pexels-photo-36000773.jpeg?auto=compress&cs=tinysrgb&w=900", accent: "green" },
-  { name: "Legends Cup", tag: "PINNED", players: "64 Players", format: "Knockout", prize: "₦15,000", image: "https://images.pexels.com/photos/7005503/pexels-photo-7005503.jpeg?auto=compress&cs=tinysrgb&w=900", accent: "violet" },
-  { name: "Weekend Clash", tag: "PINNED", players: "32 Players", format: "Group Stage", prize: "₦10,000", image: "https://images.pexels.com/photos/27348425/pexels-photo-27348425.jpeg?auto=compress&cs=tinysrgb&w=900", accent: "blue" },
+  { name: "Elite Showdown", tag: "PINNED", players: "128 Players", format: "Knockout", prize: "₦25,000", image: "/images/preview_(13).webp", accent: "green" },
+  { name: "Legends Cup", tag: "PINNED", players: "64 Players", format: "Knockout", prize: "₦15,000", image: "/images/preview_(13).webp", accent: "violet" },
+  { name: "Weekend Clash", tag: "PINNED", players: "32 Players", format: "Group Stage", prize: "₦10,000", image: "/images/preview_(13).webp", accent: "blue" },
 ];
 
 const featuredTournaments: Tournament[] = [
-  { name: "MatchUp Champions Cup", tag: "FEATURED", players: "128 Players", format: "Knockout", prize: "₦50,000", image: "https://images.pexels.com/photos/27348425/pexels-photo-27348425.jpeg?auto=compress&cs=tinysrgb&w=1400", accent: "violet" },
-  { name: "Friday Night Showdown", tag: "FEATURED", players: "64 Players", format: "Knockout", prize: "₦20,000", image: "https://images.pexels.com/photos/36000773/pexels-photo-36000773.jpeg?auto=compress&cs=tinysrgb&w=1400", accent: "green" },
-  { name: "Weekend Battle Arena", tag: "FEATURED", players: "256 Players", format: "Group Stage", prize: "₦30,000", image: "https://images.pexels.com/photos/7005503/pexels-photo-7005503.jpeg?auto=compress&cs=tinysrgb&w=1400", accent: "blue" },
+  { name: "MatchUp Champions Cup", tag: "FEATURED", players: "128 Players", format: "Knockout", prize: "₦50,000", image: "/images/preview_(13).webp", accent: "violet" },
+  { name: "Friday Night Showdown", tag: "FEATURED", players: "64 Players", format: "Knockout", prize: "₦20,000", image: "/images/preview_(13).webp", accent: "green" },
+  { name: "Weekend Battle Arena", tag: "FEATURED", players: "256 Players", format: "Group Stage", prize: "₦30,000", image: "/images/preview_(13).webp", accent: "blue" },
 ];
 
 const accentStyles = {
