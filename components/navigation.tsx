@@ -108,21 +108,21 @@ export function TopBar() {
             <div className="pr-10">
               <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9a73ff]">Find anything</p>
               <h2 id="search-modal-title" className="mt-1 text-2xl font-black text-white">Search MatchUp</h2>
-              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Live search through the content currently visible on the homepage.</p>
+              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Search through the content currently visible on the homepage.</p>
             </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <label className="mt-5 flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${searchType}...`} aria-label={`Search ${searchType}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
+            <div className="mt-4 grid grid-cols-2 gap-3">
               {searchOptions.map((option) => {
                 const Icon = option.icon;
                 const active = searchType === option.id;
                 return <button key={option.id} type="button" onClick={() => setSearchType(option.id)} className={`flex min-h-[92px] flex-col items-start justify-between rounded-2xl border p-4 text-left transition ${active ? "border-[#6d27ff] bg-[#6d27ff] shadow-[0_0_24px_rgba(112,38,245,.28)]" : "border-[#302b4b] bg-[#17152e] hover:border-[#5f4b95]"}`}><span className={`grid size-10 place-items-center rounded-xl ${active ? "bg-white/15 text-white" : "bg-[#251e45] text-[#a979ff]"}`}><Icon size={19} /></span><span className={`text-xs font-black ${active ? "text-white" : "text-[#d7d3e4]"}`}>{option.label}</span></button>;
               })}
             </div>
-            <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${searchType}...`} aria-label={`Search ${searchType}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[#292743] bg-[#0b0c19]/60 p-4">
               {query.trim() && results.length > 0 ? (
                 <div className="grid gap-2 text-left">{results.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{searchOptions.find((option) => option.id === searchType)?.label}:</span> {result}</div>)}</div>
               ) : (
-                <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No visible matches" : `Search ${searchType}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category. Results update live as the visible homepage content changes." : "Type to search the content currently visible in the homepage."}</p></div></div>
+                <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No visible matches" : `Search ${searchType}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category. Results update live as the visible homepage content changes." : "Type to search the content currently visible on the homepage."}</p></div></div>
               )}
             </div>
           </div>
