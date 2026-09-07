@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - name: Harden chat source before build
         shell: bash
@@ -33,12 +33,11 @@ jobs:
           good_delete = 'const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString() }).eq("id", message.id);'
           s = s.replace(bad_delete, good_delete)
           s = s.replace('  ArrowLeft,\n', '').replace('  Heart,\n', '').replace('  Link2,\n', '')
-          presence_bad = 'entries as Presence[]'
-          s = s.replace(presence_bad, 'entries as unknown as Presence[]')
+          s = s.replace('entries as Presence[]', 'entries as unknown as Presence[]')
           p.write_text(s)
           PY
       - run: npm ci
-      - run: npm run build
+      - run: NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-placeholder npm run build
       - name: Commit source fixes
         shell: bash
         run: |
@@ -48,6 +47,6 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add components/chat/chat-hub.tsx
-            git commit -m 'fix: harden chat message state and emoji detection'
+            git commit -m 'fix: harden chat message state and realtime presence typing'
             git push origin main
           fi
