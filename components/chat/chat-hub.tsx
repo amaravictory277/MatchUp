@@ -341,7 +341,7 @@ export function ChatHub() {
   const clearPointerTimers = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); swipeRef.current = null; };
 
   if (loading) return <section className="surface-card p-6 text-sm text-[#8e8b9f]">Loading chat…</section>;
-  if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]">Sign in to use MatchUp group chat.</section>;
+  if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>Sign in to use MatchUp group chat.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#6d27ff] px-4 py-3 text-center text-sm font-bold text-white transition hover:brightness-110">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#6d27ff] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#a979ff] transition hover:bg-[#17132b]">Sign Up</a></div></section>;
 
   return (
     <section className="relative min-h-[70vh] overflow-hidden rounded-[28px] border border-[#2a2941] bg-[#fafafa] text-[#1b1b22] shadow-[0_24px_70px_rgba(0,0,0,.28)]">
