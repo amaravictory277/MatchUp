@@ -2,7 +2,7 @@
 
 import { Bell, House, MessageSquare, Newspaper, Plus, Search, Trophy, X, FileText, UserPlus, UsersRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const links = [
   { label: "Home", icon: House, href: "/", route: true },
@@ -19,26 +19,76 @@ function getRouteActive(pathname: string) {
   return null;
 }
 
+type SearchType = "tournaments" | "posts" | "friends" | "groups";
+
+const searchOptions: { id: SearchType; label: string; icon: typeof Trophy }[] = [
+  { id: "tournaments", label: "Search Tournament", icon: Trophy },
+  { id: "posts", label: "Search Posts", icon: FileText },
+  { id: "friends", label: "Search Friends", icon: UserPlus },
+  { id: "groups", label: "Search Groups", icon: UsersRound },
+];
+
+const searchTerms: Record<SearchType, string[]> = {
+  tournaments: ["tournament", "competition", "cup", "showdown", "clash", "arena", "matchup", "players", "prize", "knockout", "group stage"],
+  posts: ["post", "share", "highlight", "gameplay", "feed", "connect", "community"],
+  friends: ["friend", "friends", "player", "follow", "followers", "network"],
+  groups: ["group", "groups", "community", "team", "teams"],
+};
+
+function readVisibleSearchLines(type: SearchType, query: string) {
+  if (typeof document === "undefined") return [];
+  const normalizedQuery = query.trim().toLowerCase();
+  const root = document.querySelector("main");
+  if (!root) return [];
+
+  const lines = Array.from(root.querySelectorAll("h1,h2,h3,h4,p,a,button,span"))
+    .filter((node) => {
+      const element = node as HTMLElement;
+      if (!element.innerText?.trim()) return false;
+      if (element.closest('[role="dialog"], nav')) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    })
+    .map((node) => (node as HTMLElement).innerText.trim())
+    .filter(Boolean);
+
+  const unique = Array.from(new Set(lines));
+  const typeTerms = searchTerms[type];
+  return unique
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      const typeMatches = typeTerms.some((term) => lower.includes(term));
+      const queryMatches = !normalizedQuery || lower.includes(normalizedQuery);
+      return typeMatches && queryMatches;
+    })
+    .slice(0, 30);
+}
+
 export function TopBar() {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchType, setSearchType] = useState<"tournaments" | "posts" | "friends" | "groups">("tournaments");
+  const [searchType, setSearchType] = useState<SearchType>("tournaments");
   const [query, setQuery] = useState("");
+  const [visibleLines, setVisibleLines] = useState<string[]>([]);
   const isHome = pathname === "/";
 
   useEffect(() => {
     if (!searchOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
-  }, [searchOpen]);
 
-  const searchOptions = [
-    { id: "tournaments" as const, label: "Search Tournament", icon: Trophy },
-    { id: "posts" as const, label: "Search Posts", icon: FileText },
-    { id: "friends" as const, label: "Search Friends", icon: UserPlus },
-    { id: "groups" as const, label: "Search Groups", icon: UsersRound },
-  ];
+    const refresh = () => setVisibleLines(readVisibleSearchLines(searchType, query));
+    refresh();
+    const observer = new MutationObserver(refresh);
+    observer.observe(document.querySelector("main") ?? document.body, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      observer.disconnect();
+    };
+  }, [searchOpen, searchType, query]);
+
+  const results = useMemo(() => visibleLines, [visibleLines]);
 
   return (
     <>
@@ -52,23 +102,29 @@ export function TopBar() {
       </header>
 
       {searchOpen ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#03040c]/80 p-0 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="search-modal-title" onClick={() => setSearchOpen(false)}>
-          <div className="relative flex h-[80vh] w-[80vw] flex-col overflow-hidden rounded-[26px] border border-[#302553] bg-[#101024] p-5 shadow-[0_20px_70px_rgba(0,0,0,.58)] sm:p-7" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#03040c]/80 p-1.5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="search-modal-title" onClick={() => setSearchOpen(false)}>
+          <div className="relative flex h-[95vh] w-[95vw] flex-col overflow-hidden rounded-[26px] border border-[#302553] bg-[#101024] p-4 shadow-[0_20px_70px_rgba(0,0,0,.58)] sm:p-7" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border border-[#2b2b45] bg-[#0d0e20] text-[#aaa8bd] transition hover:border-[#7843ee] hover:text-white" aria-label="Close search"><X size={17} /></button>
             <div className="pr-10">
               <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9a73ff]">Find anything</p>
               <h2 id="search-modal-title" className="mt-1 text-2xl font-black text-white">Search MatchUp</h2>
-              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Choose what you want to search without leaving the homepage.</p>
+              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Live search through the content currently visible on the homepage.</p>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               {searchOptions.map((option) => {
                 const Icon = option.icon;
                 const active = searchType === option.id;
-                return <button key={option.id} type="button" onClick={() => setSearchType(option.id)} className={`flex min-h-[92px] flex-col items-start justify-between rounded-2xl border p-4 text-left transition ${active ? "border-[#7843ee] bg-[#24184b] shadow-[0_0_24px_rgba(112,38,245,.18)]" : "border-[#302b4b] bg-[#17152e] hover:border-[#5f4b95]"}`}><span className={`grid size-10 place-items-center rounded-xl ${active ? "bg-[#6d27ff] text-white" : "bg-[#251e45] text-[#a979ff]"}`}><Icon size={19} /></span><span className={`text-xs font-black ${active ? "text-white" : "text-[#d7d3e4]"}`}>{option.label}</span></button>;
+                return <button key={option.id} type="button" onClick={() => setSearchType(option.id)} className={`flex min-h-[92px] flex-col items-start justify-between rounded-2xl border p-4 text-left transition ${active ? "border-[#6d27ff] bg-[#6d27ff] shadow-[0_0_24px_rgba(112,38,245,.28)]" : "border-[#302b4b] bg-[#17152e] hover:border-[#5f4b95]"}`}><span className={`grid size-10 place-items-center rounded-xl ${active ? "bg-white/15 text-white" : "bg-[#251e45] text-[#a979ff]"}`}><Icon size={19} /></span><span className={`text-xs font-black ${active ? "text-white" : "text-[#d7d3e4]"}`}>{option.label}</span></button>;
               })}
             </div>
             <label className="mt-4 flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${searchType}...`} aria-label={`Search ${searchType}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
-            <div className="mt-4 flex min-h-0 flex-1 items-start justify-center overflow-auto rounded-2xl border border-dashed border-[#292743] bg-[#0b0c19]/60 p-6 text-center"><div className="max-w-sm pt-5"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {searchType}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Your search results will stay inside this popup on the homepage.</p></div></div>
+            <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[#292743] bg-[#0b0c19]/60 p-4">
+              {query.trim() && results.length > 0 ? (
+                <div className="grid gap-2 text-left">{results.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{searchOptions.find((option) => option.id === searchType)?.label}:</span> {result}</div>)}</div>
+              ) : (
+                <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No visible matches" : `Search ${searchType}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category. Results update live as the visible homepage content changes." : "Type to search the content currently visible in the homepage."}</p></div></div>
+              )}
+            </div>
           </div>
         </div>
       ) : null}
@@ -98,7 +154,7 @@ export function BottomNav() {
             <div className="mt-5 grid gap-3">
               <button type="button" onClick={() => { setCreateOpen(false); router.push("/tournaments/new"); }} className="flex items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-4 text-sm font-black text-white shadow-[0_0_24px_rgba(112,38,245,.28)] transition hover:brightness-110"><Trophy size={20} /><span className="flex-1 text-left">Create Tournament</span><Plus size={18} /></button>
               <button type="button" onClick={() => { setCreateOpen(false); router.push("/feeds?create=post"); }} className="flex items-center gap-3 rounded-2xl border border-[#3b315e] bg-[#17152e] px-4 py-4 text-sm font-black text-[#ddd8f0] transition hover:border-[#7843ee] hover:text-white"><FileText size={20} className="text-[#a979ff]" /><span className="flex-1 text-left">Create Post</span><Plus size={18} className="text-[#a979ff]" /></button>
-              <div className="rounded-2xl border border-[#3b315e] bg-[#17152e] p-4"><p className="text-sm font-black text-white">Add New Friends</p><div className="mt-3 grid gap-3"><button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?add=friends"); }} className="flex items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3.5 text-xs font-black text-white shadow-[0_0_24px_rgba(112,38,245,.22)] transition hover:brightness-110"><UserPlus size={17} /><span className="flex-1 text-left">Add New Friends</span><Plus size={18} /></button><button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?message=friends"); }} className="flex items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3.5 text-xs font-black text-white shadow-[0_0_24px_rgba(112,38,245,.22)] transition hover:brightness-110"><MessageSquare size={17} /><span className="flex-1 text-left">Message Friends</span><Plus size={18} /></button></div></div>
+              <div className="rounded-2xl border border-[#3b315e] bg-[#17152e] p-4"><p className="text-sm font-black text-white">Add New Friends</p><div className="mt-3 grid gap-3"><button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?add=friends"); }} className="flex items-center gap-3 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3.5 text-xs font-black text-white shadow-[0_0_24px_rgba(112,38,245,.22)] transition hover:brightness-110"><UserPlus size={17} /><span className="flex-1 text-left">Add New Friends</span><Plus size={18} /></button><button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?message=friends"); }} className="flex items-center gap-3 rounded-2xl border border-[#3b315e] bg-[#17152e] px-4 py-3.5 text-xs font-black text-[#ddd8f0] transition hover:border-[#7843ee] hover:text-white"><MessageSquare size={17} /><span className="flex-1 text-left">Message Friends</span></button></div></div>
               <button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?create=group"); }} className="flex items-center gap-3 rounded-2xl border border-[#3b315e] bg-[#17152e] px-4 py-4 text-sm font-black text-[#ddd8f0] transition hover:border-[#7843ee] hover:text-white"><UsersRound size={20} className="text-[#a979ff]" /><span className="flex-1 text-left">Create Group</span><Plus size={18} className="text-[#a979ff]" /></button>
             </div>
           </div>
