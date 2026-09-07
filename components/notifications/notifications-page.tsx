@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bell, CalendarDays, CheckCheck, Clock3, FileText, Search, Trophy, UserPlus, UsersRound, Zap } from "lucide-react";
+import { ArrowLeft, Bell, CalendarDays, CheckCheck, FileText, Trophy, UserPlus, UsersRound, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
@@ -116,8 +116,9 @@ export function NotificationsPage() {
 
   const markRead = async (notification: ViewNotification) => {
     if (!notification.read_at) {
-      await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", notification.id);
-      setNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, read_at: new Date().toISOString() } : item));
+      const readAt = new Date().toISOString();
+      await supabase.from("notifications").update({ read_at: readAt }).eq("id", notification.id);
+      setNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, read_at: readAt } : item));
     }
     if (notification.href) router.push(notification.href);
   };
@@ -125,8 +126,9 @@ export function NotificationsPage() {
   const markAllRead = async () => {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) return;
-    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("recipient_id", auth.user.id).is("read_at", null);
-    setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
+    const readAt = new Date().toISOString();
+    await supabase.from("notifications").update({ read_at: readAt }).eq("recipient_id", auth.user.id).is("read_at", null);
+    setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || readAt })));
   };
 
   const groups = ["Today", "Yesterday", "This Week", "Earlier"].map((label) => ({ label, items: notifications.filter((item) => dayGroup(item.created_at) === label) })).filter((group) => group.items.length);
@@ -143,7 +145,7 @@ export function NotificationsPage() {
       </div>
 
       {!signedIn ? (
-        <div className="surface-card mt-8 p-8 text-center"><Bell size={28} className="mx-auto text-[#7f57e8]" /><p className="mt-3 font-black text-white">Sign in to see your notifications</p><button type="button" onClick={() => router.push("/auth/sign-in")} className="mt-4 rounded-xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3 text-xs font-black text-white">Sign in</button></div>
+        <div className="surface-card mt-8 p-8 text-center"><Bell size={28} className="mx-auto text-[#7f57e8]" /><p className="mt-3 font-black text-white">Sign in to see your notifications</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#6d27ff] px-4 py-3 text-center text-sm font-bold text-white transition hover:brightness-110">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#6d27ff] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#a979ff] transition hover:bg-[#17132b]">Sign Up</a></div></div>
       ) : loading ? (
         <div className="surface-card mt-8 p-8 text-center text-sm text-[#858196]">Loading notifications…</div>
       ) : notifications.length === 0 ? (
