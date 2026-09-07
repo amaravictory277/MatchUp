@@ -1,3 +1,59 @@
-import { House, Trophy, Plus, Newspaper, UserRound, Bell } from "lucide-react";
-const links = [{label:"Home",icon:House},{label:"Tournaments",icon:Trophy},{label:"Create",icon:Plus,primary:true},{label:"Community",icon:Newspaper},{label:"Profile",icon:UserRound}];
-export function Navigation() { return <><header className="flex items-center justify-between pb-6"><div className="flex items-center gap-2 font-black tracking-tight text-xl"><span className="grid size-8 place-items-center rounded-lg bg-[#c9f950] text-[#07170f]">M</span>MatchUp</div><button aria-label="Notifications" className="grid size-10 place-items-center rounded-full bg-white border border-[#e1e7df]"><Bell size={18}/></button></header><nav className="fixed bottom-0 left-0 z-20 flex w-full justify-around border-t border-[#dce6d8] bg-white/95 px-2 py-2 backdrop-blur md:static md:mb-8 md:w-auto md:justify-start md:gap-2 md:rounded-full md:border"><span className="sr-only">Main navigation</span>{links.map(({label,icon:Icon,primary})=><a key={label} href={label === "Home" ? "/" : `#${label.toLowerCase()}`} className={`flex min-w-14 flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-bold md:flex-row md:text-sm ${primary ? "bg-[#c9f950] text-[#07170f]" : "text-[#5f6d63]"}`}><Icon size={18}/>{label}</a>)}</nav></> }
+"use client";
+
+import { Bell, House, Newspaper, Plus, Search, Trophy, UsersRound } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const links = [
+  { label: "Home", icon: House, href: "/", route: true },
+  { label: "Tournaments", icon: Trophy, href: "/tournaments", route: true },
+  { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
+  { label: "Chat", icon: UsersRound, href: "/leaderboard", route: true },
+] as const;
+
+function getRouteActive(pathname: string) {
+  if (pathname === "/") return "Home";
+  if (pathname.startsWith("/tournaments")) return "Tournaments";
+  if (pathname.startsWith("/feeds")) return "Feeds";
+  if (pathname.startsWith("/leaderboard")) return "Chat";
+  return null;
+}
+
+export function TopBar() {
+  return (
+    <header className="relative z-20 flex items-center justify-between pb-5">
+      <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
+      <div className="flex items-center gap-2">
+        <button aria-label="Search" className="icon-button hidden sm:grid"><Search size={19} /></button>
+        <button aria-label="Notifications" className="icon-button relative"><Bell size={18} /><span className="notification-dot">3</span></button>
+        <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">M<span /></a>
+      </div>
+    </header>
+  );
+}
+
+export function BottomNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const routeActive = getRouteActive(pathname);
+  const [selected, setSelected] = useState<string>(routeActive ?? "Home");
+  useEffect(() => { if (routeActive) setSelected(routeActive); }, [routeActive]);
+
+  return (
+    <nav className="bottom-nav" aria-label="Main navigation">
+      {links.slice(0, 2).map(({ label, icon: Icon, href, route }) => (
+        <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}>
+          <Icon size={20} /><span>{label}</span>
+        </button>
+      ))}
+      <button type="button" onClick={() => router.push("/feeds")} className="create-link" aria-label="Create post"><Plus size={28} /></button>
+      {links.slice(2).map(({ label, icon: Icon, href, route }) => (
+        <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}>
+          <Icon size={20} /><span>{label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+export function Navigation() { return <><TopBar /><BottomNav /></>; }
