@@ -216,7 +216,14 @@ export function TopBar() {
                   <label className="flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${activeSearchOption?.label.replace("Search ", "").toLowerCase()}...`} aria-label={`Search ${activeSearchOption?.label || "content"}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
                   <div className="relative min-w-0 sm:min-w-[240px]">
                     <button type="button" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)} className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 text-sm font-black text-[#d7d3e4] outline-none transition hover:border-[#6f4ad8] focus:border-[#6f4ad8]">
-                      <span className="flex min-w-0 items-center gap-2.5 truncate"><activeSearchOption.icon size={17} className="shrink-0 text-[#a979ff]" />{activeSearchOption?.label}</span>
+                      <span className="flex min-w-0 items-center gap-2.5 truncate">
+                        {activeSearchOption && (
+                          <>
+                            <activeSearchOption.icon size={17} className="shrink-0 text-[#a979ff]" />
+                            {activeSearchOption.label}
+                          </>
+                        )}
+                      </span>
                       <ChevronDown size={17} className={`shrink-0 text-[#9a73ff] transition-transform ${categoryMenuOpen ? "rotate-180" : ""}`} />
                     </button>
                     {categoryMenuOpen ? (
