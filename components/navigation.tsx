@@ -8,13 +8,14 @@ const links = [
   { label: "Home", icon: House, href: "/", route: true },
   { label: "Tournaments", icon: Trophy, href: "/tournaments", route: true },
   { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
-  { label: "Leaderboard", icon: UsersRound, href: "#leaderboard", route: false },
+  { label: "Chat", icon: UsersRound, href: "/leaderboard", route: true },
 ] as const;
 
 function getRouteActive(pathname: string) {
   if (pathname === "/") return "Home";
   if (pathname.startsWith("/tournaments")) return "Tournaments";
   if (pathname.startsWith("/feeds")) return "Feeds";
+  if (pathname.startsWith("/leaderboard")) return "Chat";
   return null;
 }
 
