@@ -1,33 +1,47 @@
 "use client";
 
+import { ArrowRight, Plus, Trophy, Users } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Trophy, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { TournamentCard } from "./tournament-browser";
+
+type TournamentRow = {
+  id: string;
+  tournament_id: string;
+  name: string;
+  description?: string | null;
+  format: string;
+  status: string;
+  starts_at?: string | null;
+  visibility: string;
+  max_players: number;
+  organizer_id: string;
+  banner_path?: string | null;
+  profiles?: { display_name?: string | null; username?: string | null } | Array<{ display_name?: string | null; username?: string | null }> | null;
+  promotion_kind?: string | null;
+  promotion_expires_at?: string | null;
+};
+
+const showcase = ["MatchUp Elite Finals", "Night League Championship", "Lagos Kings Cup", "Weekend Rivals", "Pro Division Clash", "Friday Night Showdown", "MatchUp Champions Cup", "Ultimate eFootball Arena", "Street to Stadium Cup", "Elite Masters League", "Next Gen Challenge", "Golden Boot Tournament", "Super Sunday Knockout", "National Rivalry Cup", "Legends Championship"];
+const fallback = (kind: "boosted" | "featured" | "discover") => showcase.map((name, index) => ({ id: `demo-${kind}-${index + 1}`, tournament_id: `DEMO-${kind.toUpperCase()}-${index + 1}`, name, description: "Open MatchUp competition for competitive eFootball players.", format: ["knockout", "group_stage", "league"][index % 3], status: "open", starts_at: new Date(Date.now() + (index + 1) * 86400000).toISOString(), visibility: "public", max_players: [32, 64, 128][index % 3], organizer_id: "", banner_path: "/images/preview.webp", promotion_kind: kind === "boosted" ? "pin" : kind === "featured" ? "featured" : null } as TournamentRow));
+function pick(rows: TournamentRow[], kind: "boosted" | "featured" | "discover") {
+  const selected = rows.filter((row) => kind === "boosted" ? row.promotion_kind === "boost" || row.promotion_kind === "pin" : kind === "featured" ? row.promotion_kind === "featured" || row.promotion_kind === "promoted" : !row.promotion_kind);
+  return (selected.length ? selected : fallback(kind)).slice(0, 15);
+}
+
+function Section({ title, category, rows }: { title: string; category: "boosted" | "featured" | "discover"; rows: TournamentRow[] }) {
+  const href = category === "boosted" ? "/tournaments/featured-boosted" : category === "featured" ? "/tournaments/featured" : "/tournaments/discover";
+  return <section className="mt-9 first:mt-7"><div className="mb-4 flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[#766f8f]">{category === "boosted" ? "Pinned visibility" : category === "featured" ? "Hand-picked events" : "Open competitions"}</p><h2 className="mt-1 text-xl font-black tracking-tight text-white">{title}</h2></div><Link href={href} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-[#2b2b45] bg-[#111226] px-3 py-2 text-[11px] font-black text-white transition hover:border-[#59418e]">See All<ArrowRight size={14} /></Link></div><div className="grid gap-4 sm:grid-cols-2">{rows.map((row) => <TournamentCard key={row.id} row={row} category={category} />)}</div></section>;
+}
 
 export function TournamentList() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const router = useRouter();
-  const [rows, setRows] = useState<any[]>([]);
-  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<TournamentRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true); setError("");
-      const { data, error: e } = await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,profiles:organizer_id(display_name,username)").eq("visibility", "public").order("created_at", { ascending: false });
-      if (e) setError(e.message); else setRows(data || []);
-      setLoading(false);
-    };
-    void load();
-  }, [supabase]);
-
-  const visible = rows.filter((r) => !query.trim() || `${r.name} ${r.tournament_id} ${r.format}`.toLowerCase().includes(query.trim().toLowerCase()));
-
-  return <main className="app-shell pb-28"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#9a73ff]">Discover</p><h1 className="text-3xl font-black text-white">Tournaments</h1><p className="mt-1 text-sm text-[#9694aa]">Find a competition or build your own.</p></div><button type="button" onClick={() => router.push("/tournaments/new")} className="flex items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3 text-xs font-black text-white"><Plus size={16} />Create</button></div>
-    <div className="mt-5 flex items-center gap-2 rounded-2xl border border-[#26263d] bg-[#0d0e20] px-4 py-3"><Search size={17} className="text-[#6f6d83]" /><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-sm text-white outline-none" placeholder="Search tournaments" /></div>
-    {error ? <div className="mt-5 rounded-2xl border border-[#51253a] bg-[#24111a] p-4 text-sm text-[#ff9bad]">{error}</div> : null}
-    <div className="mt-5 grid gap-3">{loading ? <div className="surface-card p-6 text-sm text-[#9694aa]">Loading tournaments…</div> : visible.length === 0 ? <div className="surface-card p-8 text-center"><Trophy className="mx-auto text-[#7b48ec]"/><p className="mt-3 font-bold text-white">No public tournaments yet</p><p className="mt-1 text-sm text-[#77758b]">Create the first MatchUp competition.</p></div> : visible.map((r) => <button key={r.id} type="button" onClick={() => router.push(`/tournaments/${r.id}`)} className="surface-card w-full p-4 text-left transition hover:border-[#4d3a71]"><div className="flex items-start gap-3"><span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#25134e] text-[#aa7aff]"><Trophy size={22}/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-black text-white">{r.name}</h2><span className="rounded-full border border-[#2f2941] px-2 py-1 text-[9px] font-black uppercase text-[#aaa8bc]">{r.format.replaceAll("_", " ")}</span></div><p className="mt-1 text-xs text-[#77758b]">{r.profiles?.display_name || r.profiles?.username || "Organizer"} · {r.status.replaceAll("_", " ")}</p><div className="mt-3 flex items-center gap-4 text-[11px] text-[#bdb9cc]"><span className="flex items-center gap-1"><Users size={14}/>{r.max_players} teams max</span><span>{r.starts_at ? new Date(r.starts_at).toLocaleDateString() : "Date TBA"}</span></div></div></div></button>)}</div>
-  </main>;
+  useEffect(() => { let mounted = true; const load = async () => { const [tournamentsResult, promotionsResult] = await Promise.all([supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,profiles:organizer_id(display_name,username)").eq("visibility", "public").order("created_at", { ascending: false }), supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true })]); if (!mounted) return; const promotions = promotionsResult.data || []; setRows((tournamentsResult.data || []).map((row: any) => { const active = promotions.find((promotion: any) => promotion.tournament_id === row.id && new Date(promotion.expires_at).getTime() > Date.now()); return { ...row, promotion_kind: active?.kind || null, promotion_expires_at: active?.expires_at || null } as TournamentRow; })); setLoading(false); }; void load(); return () => { mounted = false; }; }, [supabase]);
+  const boosted = pick(rows, "boosted");
+  const featured = pick(rows.filter((row) => !boosted.some((item) => item.id === row.id)), "featured");
+  const discover = pick(rows.filter((row) => !boosted.some((item) => item.id === row.id) && !featured.some((item) => item.id === row.id)), "discover");
+  return <main className="app-shell pb-28"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#9a73ff]">MatchUp Tournaments</p><h1 className="mt-1 text-3xl font-black tracking-tight text-white">Tournaments</h1><p className="mt-1 max-w-xl text-sm leading-6 text-[#8f8ca1]">Find a competition or build your own.</p></div><Link href="/tournaments/new" className="hidden shrink-0 items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3 text-xs font-black text-white sm:flex"><Plus size={15} />Create</Link></div><div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]"><Link href="/tournaments/discover" className="flex items-center gap-3 rounded-2xl border border-[#28293f] bg-[#0d0e20] px-4 py-3 text-sm font-bold text-[#c7c4d4]"><Trophy size={17} className="text-[#9a73ff]" />Search Tournaments</Link><div className="flex gap-2"><Link href="/tournaments/discover" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#2b2b45] bg-[#121327] px-4 py-3 text-xs font-black text-white sm:flex-none"><Users size={15} />Find Competition</Link><Link href="/tournaments/new" className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3 text-xs font-black text-white sm:flex-none"><Plus size={15} />Build Your Own</Link></div></div>{loading ? <div className="surface-card mt-7 p-8 text-center text-sm text-[#89869b]">Loading tournaments…</div> : <><Section title="Featured Boosted Tournaments" category="boosted" rows={boosted} /><Section title="Featured Tournaments" category="featured" rows={featured} /><Section title="Discover Tournaments" category="discover" rows={discover} /></>}</main>;
 }
