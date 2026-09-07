@@ -110,12 +110,29 @@ function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query:
 
 export function TopBar() {
   usePathname();
+  const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchType, setSearchType] = useState<SearchType | null>(null);
   const [query, setQuery] = useState("");
   const [tournamentResults, setTournamentResults] = useState<GlobalTournament[]>([]);
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadUnread = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        if (!cancelled) setUnreadCount(0);
+        return;
+      }
+      const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("recipient_id", auth.user.id).is("read_at", null);
+      if (!cancelled) setUnreadCount(count || 0);
+    };
+    void loadUnread();
+    return () => { cancelled = true; };
+  }, [supabase]);
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -190,7 +207,7 @@ export function TopBar() {
         <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
         <div className="flex items-center gap-2">
           <button type="button" aria-label="Search" onClick={openSearch} className="icon-button"><Search size={19} /></button>
-          <button aria-label="Notifications" className="icon-button relative"><Bell size={18} /><span className="notification-dot">3</span></button>
+          <button type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} onClick={() => router.push("/notifications")} className="icon-button relative"><Bell size={18} />{unreadCount > 0 ? <span className="notification-dot">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</button>
           <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">M<span /></a>
         </div>
       </header>
@@ -213,7 +230,7 @@ export function TopBar() {
             ) : (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <label className="flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${activeSearchOption?.label.replace("Search ", "").toLowerCase()}...`} aria-label={`Search ${activeSearchOption?.label || "content"}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
+                  <label className="flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${activeSearchOption?.label.replace("Search ", "").toLowerCase()}...`} aria-label={`Search ${activeSearchOption?.label || "content"}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77748c] hover:text-white"><X size={16} /></button> : null}</label>
                   <div className="relative min-w-0 sm:min-w-[240px]">
                     <button type="button" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)} className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 text-sm font-black text-[#d7d3e4] outline-none transition hover:border-[#6f4ad8] focus:border-[#6f4ad8]">
                       <span className="flex min-w-0 items-center gap-2.5 truncate">
