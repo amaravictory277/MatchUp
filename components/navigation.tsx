@@ -45,6 +45,36 @@ const searchOptions: { id: SearchType; label: string; icon: typeof Trophy }[] = 
   { id: "groups", label: "Search Groups", icon: UsersRound },
 ];
 
+const builtInTournamentResults: GlobalTournament[] = [
+  "MatchUp Elite Finals",
+  "Night League Championship",
+  "Lagos Kings Cup",
+  "Weekend Rivals",
+  "Pro Division Clash",
+  "Friday Night Showdown",
+  "MatchUp Champions Cup",
+  "Ultimate eFootball Arena",
+  "Street to Stadium Cup",
+  "Elite Masters League",
+  "Next Gen Challenge",
+  "Golden Boot Tournament",
+  "Super Sunday Knockout",
+  "National Rivalry Cup",
+  "Legends Championship",
+].map((name, index) => ({
+  id: `demo-discover-${index + 1}`,
+  tournament_id: `DEMO-DISCOVER-${index + 1}`,
+  name,
+  description: "Open MatchUp competition for competitive eFootball players.",
+  format: ["knockout", "group_stage", "league"][index % 3],
+  status: "open",
+  starts_at: new Date(Date.now() + (index + 1) * 86400000).toISOString(),
+  visibility: "public",
+  max_players: [32, 64, 128][index % 3],
+  organizer_id: "",
+  banner_path: "/1002371685.jpg",
+}));
+
 function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query: string) {
   if (typeof document === "undefined") return [];
   const normalizedQuery = query.trim().toLowerCase();
@@ -79,14 +109,13 @@ function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query:
 }
 
 export function TopBar() {
-  const pathname = usePathname();
+  usePathname();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchType, setSearchType] = useState<SearchType>("tournaments");
   const [query, setQuery] = useState("");
   const [tournamentResults, setTournamentResults] = useState<GlobalTournament[]>([]);
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
-  const isHome = pathname === "/";
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -122,20 +151,29 @@ export function TopBar() {
     return () => observer.disconnect();
   }, [searchOpen, searchType, query]);
 
+  const allTournamentResults = useMemo(() => {
+    const seen = new Set<string>();
+    return [...tournamentResults, ...builtInTournamentResults].filter((row) => {
+      if (seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    });
+  }, [tournamentResults]);
+
   const filteredTournaments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return tournamentResults.slice(0, 30);
-    return tournamentResults
+    if (!normalizedQuery) return allTournamentResults.slice(0, 30);
+    return allTournamentResults
       .filter((row) => `${row.name} ${row.tournament_id} ${row.format} ${row.description || ""}`.toLowerCase().includes(normalizedQuery))
       .slice(0, 30);
-  }, [query, tournamentResults]);
+  }, [query, allTournamentResults]);
 
   return (
     <>
       <header className="relative z-20 flex items-center justify-between pb-5">
         <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
         <div className="flex items-center gap-2">
-          <button type="button" aria-label="Search" onClick={() => isHome && setSearchOpen(true)} className="icon-button"><Search size={19} /></button>
+          <button type="button" aria-label="Search" onClick={() => setSearchOpen(true)} className="icon-button"><Search size={19} /></button>
           <button aria-label="Notifications" className="icon-button relative"><Bell size={18} /><span className="notification-dot">3</span></button>
           <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">M<span /></a>
         </div>
