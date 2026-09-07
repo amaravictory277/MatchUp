@@ -3,6 +3,8 @@
 import { Bell, House, MessageSquare, Newspaper, Plus, Search, Trophy, X, FileText, UserPlus, UsersRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { TournamentCard } from "./tournaments/tournament-browser";
+import { createBrowserSupabaseClient } from "../lib/supabase/client";
 
 const links = [
   { label: "Home", icon: House, href: "/", route: true },
@@ -21,6 +23,21 @@ function getRouteActive(pathname: string) {
 
 type SearchType = "tournaments" | "posts" | "friends" | "groups";
 
+type GlobalTournament = {
+  id: string;
+  tournament_id: string;
+  name: string;
+  description?: string | null;
+  format: string;
+  status: string;
+  starts_at?: string | null;
+  visibility: string;
+  max_players: number;
+  organizer_id: string;
+  banner_path?: string | null;
+  profiles?: { display_name?: string | null; username?: string | null } | Array<{ display_name?: string | null; username?: string | null }> | null;
+};
+
 const searchOptions: { id: SearchType; label: string; icon: typeof Trophy }[] = [
   { id: "tournaments", label: "Search Tournament", icon: Trophy },
   { id: "posts", label: "Search Posts", icon: FileText },
@@ -28,18 +45,17 @@ const searchOptions: { id: SearchType; label: string; icon: typeof Trophy }[] = 
   { id: "groups", label: "Search Groups", icon: UsersRound },
 ];
 
-const searchTerms: Record<SearchType, string[]> = {
-  tournaments: ["tournament", "competition", "cup", "showdown", "clash", "arena", "matchup", "players", "prize", "knockout", "group stage"],
-  posts: ["post", "share", "highlight", "gameplay", "feed", "connect", "community"],
-  friends: ["friend", "friends", "player", "follow", "followers", "network"],
-  groups: ["group", "groups", "community", "team", "teams"],
-};
-
-function readVisibleSearchLines(type: SearchType, query: string) {
+function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query: string) {
   if (typeof document === "undefined") return [];
   const normalizedQuery = query.trim().toLowerCase();
   const root = document.querySelector("main");
   if (!root) return [];
+
+  const typeTerms: Record<Exclude<SearchType, "tournaments">, string[]> = {
+    posts: ["post", "share", "highlight", "gameplay", "feed", "connect", "community"],
+    friends: ["friend", "friends", "player", "follow", "followers", "network"],
+    groups: ["group", "groups", "community", "team", "teams"],
+  };
 
   const lines = Array.from(root.querySelectorAll("h1,h2,h3,h4,p,a,button,span"))
     .filter((node) => {
@@ -53,22 +69,22 @@ function readVisibleSearchLines(type: SearchType, query: string) {
     .filter(Boolean);
 
   const unique = Array.from(new Set(lines));
-  const typeTerms = searchTerms[type];
+  const terms = typeTerms[type];
   return unique
     .filter((line) => {
       const lower = line.toLowerCase();
-      const typeMatches = typeTerms.some((term) => lower.includes(term));
-      const queryMatches = !normalizedQuery || lower.includes(normalizedQuery);
-      return typeMatches && queryMatches;
+      return terms.some((term) => lower.includes(term)) && (!normalizedQuery || lower.includes(normalizedQuery));
     })
     .slice(0, 30);
 }
 
 export function TopBar() {
   const pathname = usePathname();
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchType, setSearchType] = useState<SearchType>("tournaments");
   const [query, setQuery] = useState("");
+  const [tournamentResults, setTournamentResults] = useState<GlobalTournament[]>([]);
   const [visibleLines, setVisibleLines] = useState<string[]>([]);
   const isHome = pathname === "/";
 
@@ -77,18 +93,42 @@ export function TopBar() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    let cancelled = false;
+    const loadTournamentResults = async () => {
+      const { data } = await supabase
+        .from("tournaments")
+        .select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,profiles:organizer_id(display_name,username)")
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false });
+      if (!cancelled) setTournamentResults((data || []) as GlobalTournament[]);
+    };
+
+    void loadTournamentResults();
+    return () => {
+      cancelled = true;
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [searchOpen, supabase]);
+
+  useEffect(() => {
+    if (!searchOpen || searchType === "tournaments") {
+      setVisibleLines([]);
+      return;
+    }
     const refresh = () => setVisibleLines(readVisibleSearchLines(searchType, query));
     refresh();
     const observer = new MutationObserver(refresh);
     observer.observe(document.querySelector("main") ?? document.body, { childList: true, subtree: true, characterData: true });
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [searchOpen, searchType, query]);
 
-  const results = useMemo(() => visibleLines, [visibleLines]);
+  const filteredTournaments = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return tournamentResults.slice(0, 30);
+    return tournamentResults
+      .filter((row) => `${row.name} ${row.tournament_id} ${row.format} ${row.description || ""}`.toLowerCase().includes(normalizedQuery))
+      .slice(0, 30);
+  }, [query, tournamentResults]);
 
   return (
     <>
@@ -108,7 +148,7 @@ export function TopBar() {
             <div className="pr-10">
               <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9a73ff]">Find anything</p>
               <h2 id="search-modal-title" className="mt-1 text-2xl font-black text-white">Search MatchUp</h2>
-              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Search through the content currently visible on the homepage.</p>
+              <p className="mt-1 text-sm leading-5 text-[#9694aa]">Search across the app, including every public tournament currently available on MatchUp.</p>
             </div>
             <label className="mt-5 flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${searchType}...`} aria-label={`Search ${searchType}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77728c] hover:text-white"><X size={16} /></button> : null}</label>
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -119,10 +159,20 @@ export function TopBar() {
               })}
             </div>
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[#292743] bg-[#0b0c19]/60 p-4">
-              {query.trim() && results.length > 0 ? (
-                <div className="grid gap-2 text-left">{results.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{searchOptions.find((option) => option.id === searchType)?.label}:</span> {result}</div>)}</div>
+              {searchType === "tournaments" ? (
+                filteredTournaments.length > 0 ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {filteredTournaments.map((tournament) => (
+                      <TournamentCard key={tournament.id} row={tournament as any} category="discover" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No tournaments found" : "No public tournaments yet"}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try the tournament name, tournament ID, format, or another search term." : "Public tournaments from across MatchUp will appear here."}</p></div></div>
+                )
+              ) : query.trim() && visibleLines.length > 0 ? (
+                <div className="grid gap-2 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{searchOptions.find((option) => option.id === searchType)?.label}:</span> {result}</div>)}</div>
               ) : (
-                <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No visible matches" : `Search ${searchType}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category. Results update live as the visible homepage content changes." : "Type to search the content currently visible on the homepage."}</p></div></div>
+                <div className="flex h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No matches found" : `Search ${searchType}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category." : "Type above to start searching."}</p></div></div>
               )}
             </div>
           </div>
