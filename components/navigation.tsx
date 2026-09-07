@@ -237,23 +237,21 @@ export function TopBar() {
                   </div>
                 </div>
 
-                <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y scroll-smooth pb-2 pr-1 [scrollbar-width:thin]">
-                  {searchType === "tournaments" ? (
-                    query.trim() ? (
-                      filteredTournaments.length > 0 ? (
-                        <div className="grid gap-4 pb-4">
-                          {filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}
-                        </div>
-                      ) : (
-                        <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>
-                      )
+                <div className="mt-5 min-h-0 flex-1 overflow-y-auto pb-2 pr-1 [scrollbar-width:thin]">
+                  {!query.trim() ? (
+                    <div className="flex min-h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {activeSearchOption?.label.replace("Search ", "")}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Start typing to see matching results.</p></div></div>
+                  ) : searchType === "tournaments" ? (
+                    filteredTournaments.length > 0 ? (
+                      <div className="grid gap-4 pb-4">
+                        {filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}
+                      </div>
                     ) : (
-                      <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search tournaments</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Type a tournament name or ID to see matching cards.</p></div></div>
+                      <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>
                     )
-                  ) : query.trim() && visibleLines.length > 0 ? (
+                  ) : visibleLines.length > 0 ? (
                     <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div>
                   ) : (
-                    <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">{query.trim() ? "No matches found" : `Search ${activeSearchOption?.label.replace("Search ", "")}`}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">{query.trim() ? "Try another search term or category." : "Type above to start searching."}</p></div></div>
+                    <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No matches found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try another search term or category.</p></div></div>
                   )}
                 </div>
               </>
