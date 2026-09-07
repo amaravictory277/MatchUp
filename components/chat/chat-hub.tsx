@@ -2,13 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   CheckCheck,
   Copy,
   Forward,
-  Heart,
-  Link2,
   Menu,
   MoreHorizontal,
   Paperclip,
@@ -47,7 +44,7 @@ type MenuState = { message: Message; x: number; y: number } | null;
 
 const STICKERS = ["⚽", "🏆", "🔥", "🎮", "😎", "😂", "🫡", "👑", "💜", "✅", "💯", "🙌"];
 const QUICK_REACTIONS = ["😀", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👍"];
-const EMOJI_ONLY = /^(?:[\u{1F1E6}-\u{1F1FF]{2}|[\p{Extended_Pictographic}\uFE0F\u200D])+(?:\s*)$/u;
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\uFE0F|\u200D|\s)+$/u;
 const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
 
 function normalizeProfile(value: Profile | Profile[] | null | undefined): Profile | null {
@@ -203,9 +200,9 @@ export function ChatHub() {
         if (!row?.message_id) return;
         if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") setReads((prev) => [...prev.filter((r) => !(r.message_id === row.message_id && r.user_id === row.user_id)), row]);
       })
-      .on("presence", { event: "sync" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as Presence[])))
-      .on("presence", { event: "join" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as Presence[])))
-      .on("presence", { event: "leave" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as Presence[])));
+      .on("presence", { event: "sync" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])))
+      .on("presence", { event: "join" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])))
+      .on("presence", { event: "leave" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])));
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") await channel.track({ user_id: user.id, name: user.displayName, typing: false });
     });
@@ -265,7 +262,7 @@ export function ChatHub() {
 
   const deleteMessage = async (message: Message) => {
     if (!activeGroup || (message.sender_id !== user.id && activeGroup.created_by !== user.id)) return;
-    const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString(), body: "", sticker_key: null }).eq("id", message.id);
+    const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString() }).eq("id", message.id);
     if (deleteError) setError(deleteError.message);
     setMenu(null);
   };
