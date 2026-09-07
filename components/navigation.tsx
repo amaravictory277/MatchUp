@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, House, MessageCircle, Newspaper, Plus, Search, Trophy } from "lucide-react";
+import { Bell, House, MessageSquare, Newspaper, Plus, Search, Trophy } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,7 @@ const links = [
   { label: "Home", icon: House, href: "/", route: true },
   { label: "Tournaments", icon: Trophy, href: "/tournaments", route: true },
   { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
-  { label: "Chat", icon: MessageCircle, href: "/leaderboard", route: true },
+  { label: "Chat", icon: MessageSquare, href: "/leaderboard", route: true },
 ] as const;
 
 function getRouteActive(pathname: string) {
