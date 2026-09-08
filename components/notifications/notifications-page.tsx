@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bell, CalendarDays, CheckCheck, FileText, Trophy, UserPlus, UsersRound, Zap } from "lucide-react";
+import { ArrowLeft, AtSign, Bell, CalendarDays, CheckCheck, FileText, Heart, Link2, MessageCircle, Trophy, UserPlus, UsersRound, UserRoundPlus, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { markAllLocalNotificationsRead, markLocalNotificationRead, readLocalNotifications, type LocalNotification } from "../../lib/notifications/local";
 
 type NotificationRow = {
   id: string;
@@ -19,9 +20,14 @@ type Profile = { id: string; display_name: string | null; username: string | nul
 type ViewNotification = NotificationRow & { actor?: Profile | null; message: string; href?: string | null; thumbnail?: string | null; actorName: string };
 
 const iconForKind = (kind: string) => {
+  if (kind.includes("like")) return Heart;
+  if (kind.includes("comment")) return MessageCircle;
+  if (kind.includes("tag")) return AtSign;
+  if (kind.includes("link_copied")) return Link2;
+  if (kind === "post_created" || kind.startsWith("post_")) return FileText;
+  if (kind.includes("follow") || kind.includes("follower")) return UserRoundPlus;
   if (kind.startsWith("friend")) return UserPlus;
   if (kind.startsWith("group")) return UsersRound;
-  if (kind.startsWith("post")) return FileText;
   if (kind.includes("boost")) return Zap;
   return Trophy;
 };
@@ -68,6 +74,10 @@ function dayGroup(value: string) {
   return "Earlier";
 }
 
+function localToRow(item: LocalNotification): NotificationRow {
+  return { id: item.id, recipient_id: "local", kind: item.kind, payload: item.payload, read_at: item.read_at, created_at: item.created_at };
+}
+
 export function NotificationsPage() {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -78,6 +88,7 @@ export function NotificationsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data: auth } = await supabase.auth.getUser();
+    const localRows = readLocalNotifications().map(localToRow);
     if (!auth.user) {
       setSignedIn(false);
       setNotifications([]);
@@ -90,7 +101,8 @@ export function NotificationsPage() {
       .select("id,recipient_id,kind,payload,read_at,created_at")
       .eq("recipient_id", auth.user.id)
       .order("created_at", { ascending: false });
-    const rows = (data || []) as NotificationRow[];
+    const dbRows = (data || []) as NotificationRow[];
+    const rows = [...dbRows, ...localRows].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     const actorIds = Array.from(new Set(rows.map((row) => payloadString(row.payload, "actor_id")).filter((id): id is string => Boolean(id))));
     let profiles: Profile[] = [];
     if (actorIds.length) {
@@ -112,12 +124,25 @@ export function NotificationsPage() {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const onStorageChange = () => void load();
+    window.addEventListener("storage", onStorageChange);
+    window.addEventListener("matchup:notifications-changed", onStorageChange);
+    return () => {
+      window.removeEventListener("storage", onStorageChange);
+      window.removeEventListener("matchup:notifications-changed", onStorageChange);
+    };
+  }, [load]);
 
   const markRead = async (notification: ViewNotification) => {
     if (!notification.read_at) {
       const readAt = new Date().toISOString();
-      await supabase.from("notifications").update({ read_at: readAt }).eq("id", notification.id);
+      if (notification.id.startsWith("local-")) {
+        markLocalNotificationRead(notification.id);
+      } else {
+        await supabase.from("notifications").update({ read_at: readAt }).eq("id", notification.id);
+      }
       setNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, read_at: readAt } : item));
     }
     if (notification.href) router.push(notification.href);
@@ -125,10 +150,15 @@ export function NotificationsPage() {
 
   const markAllRead = async () => {
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return;
-    const readAt = new Date().toISOString();
-    await supabase.from("notifications").update({ read_at: readAt }).eq("recipient_id", auth.user.id).is("read_at", null);
-    setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || readAt })));
+    if (auth.user) {
+      const readAt = new Date().toISOString();
+      await supabase.from("notifications").update({ read_at: readAt }).eq("recipient_id", auth.user.id).is("read_at", null);
+    }
+    markAllLocalNotificationsRead();
+    setNotifications((current) => {
+      const readAt = new Date().toISOString();
+      return current.map((item) => ({ ...item, read_at: item.read_at || readAt }));
+    });
   };
 
   const groups = ["Today", "Yesterday", "This Week", "Earlier"].map((label) => ({ label, items: notifications.filter((item) => dayGroup(item.created_at) === label) })).filter((group) => group.items.length);
@@ -149,7 +179,7 @@ export function NotificationsPage() {
       ) : loading ? (
         <div className="surface-card mt-8 p-8 text-center text-sm text-[#858196]">Loading notifications…</div>
       ) : notifications.length === 0 ? (
-        <div className="surface-card mt-8 p-10 text-center"><Bell size={30} className="mx-auto text-[#7b4de2]" /><p className="mt-4 text-lg font-black text-white">You're all caught up</p><p className="mt-1 text-sm text-[#77758b]">New tournament, friend, group, and post activity will appear here.</p></div>
+        <div className="surface-card mt-8 p-10 text-center"><Bell size={30} className="mx-auto text-[#7b4de2]" /><p className="mt-4 text-lg font-black text-white">You're all caught up</p><p className="mt-1 text-sm text-[#77758b]">Likes, comments, tags, follows, copied links, posts, friends, groups, and tournament activity will appear here.</p></div>
       ) : (
         <div className="mt-7 space-y-7">
           {groups.map((group) => (
