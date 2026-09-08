@@ -55,6 +55,7 @@ export function AccountMenu() {
       if (signOutError) throw signOutError;
       if (serverError) throw serverError;
 
+      document.cookie = 'matchup-guest=; Max-Age=0; Path=/; SameSite=Lax';
       setUser(null);
       setOpen(false);
       router.replace("/");
