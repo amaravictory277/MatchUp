@@ -11,7 +11,7 @@ const cookieOptions = {
 const PRODUCTION_HOME = '/home';
 
 function errorRedirect(request: NextRequest) {
-  return NextResponse.redirect(new URL('/auth?error=email-confirmation', request.url));
+  return NextResponse.redirect(new URL('/auth/confirmation-error', request.url));
 }
 
 export async function GET(request: NextRequest) {
