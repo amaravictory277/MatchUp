@@ -19,7 +19,7 @@ async function getValidAccessToken(request: NextRequest): Promise<ValidSession |
   if (!refreshed.ok) return null;
   const session = await refreshed.json() as { access_token?: string; refresh_token?: string; expires_in?: number };
   if (!session.access_token || !session.refresh_token) return null;
-  return session;
+  return { access_token: session.access_token, refresh_token: session.refresh_token, expires_in: session.expires_in };
 }
 
 export async function middleware(request: NextRequest) {
