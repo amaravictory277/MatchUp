@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '../../../lib/supabase/client';
 import { syncAuthSession } from '../../../lib/auth/session';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const params = useSearchParams();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [error, setError] = useState('');
 
@@ -16,7 +15,9 @@ export default function AuthCallbackPage() {
     let active = true;
     (async () => {
       try {
+        const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
+        const nextPath = params.get('next') || '/';
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
@@ -25,13 +26,13 @@ export default function AuthCallbackPage() {
         if (sessionError) throw sessionError;
         if (!data.session) throw new Error('Your authentication link is invalid or expired.');
         await syncAuthSession(data.session.access_token, data.session.refresh_token);
-        if (active) { router.replace(params.get('next') || '/'); router.refresh(); }
+        if (active) { router.replace(nextPath); router.refresh(); }
       } catch (caught) {
         if (active) setError(caught instanceof Error ? caught.message : 'Authentication failed.');
       }
     })();
     return () => { active = false; };
-  }, [params, router, supabase]);
+  }, [router, supabase]);
 
   return <main className="min-h-screen bg-[#05060f] px-5 py-8 text-white grid place-items-center"><section className="w-full max-w-md rounded-[28px] border border-[#28263f] bg-[#0d0e20] p-8 text-center">{error ? <><div className="text-xl font-black">Authentication failed</div><p className="mt-2 text-sm text-[#918da3]">{error}</p><button type="button" onClick={() => router.replace('/auth')} className="mt-6 w-full rounded-2xl bg-[#7026f5] px-4 py-3.5 text-sm font-black">Return to sign in</button></> : <><Loader2 className="mx-auto animate-spin text-[#9a73ff]" size={30} /><p className="mt-4 font-bold">Securing your MatchUp session…</p></>}</section></main>;
 }
