@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { TournamentCard } from "./tournaments/tournament-browser";
 import { createBrowserSupabaseClient } from "../lib/supabase/client";
+import { getLocalUnreadCount, subscribeToLocalNotificationChanges } from "../lib/notifications/local";
 
 const links = [
   { label: "Home", icon: House, href: "/", route: true },
@@ -17,6 +18,7 @@ function getRouteActive(pathname: string) {
   if (pathname === "/") return "Home";
   if (pathname.startsWith("/tournaments")) return "Tournaments";
   if (pathname.startsWith("/feeds")) return "Feeds";
+  if (pathname.startsWith("/notifications")) return "Feeds";
   if (pathname.startsWith("/leaderboard")) return "Chat";
   return null;
 }
@@ -123,15 +125,17 @@ export function TopBar() {
     let cancelled = false;
     const loadUnread = async () => {
       const { data: auth } = await supabase.auth.getUser();
+      const localCount = getLocalUnreadCount();
       if (!auth.user) {
-        if (!cancelled) setUnreadCount(0);
+        if (!cancelled) setUnreadCount(localCount);
         return;
       }
       const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("recipient_id", auth.user.id).is("read_at", null);
-      if (!cancelled) setUnreadCount(count || 0);
+      if (!cancelled) setUnreadCount((count || 0) + localCount);
     };
     void loadUnread();
-    return () => { cancelled = true; };
+    const unsubscribe = subscribeToLocalNotificationChanges(() => void loadUnread());
+    return () => { cancelled = true; unsubscribe(); };
   }, [supabase]);
 
   useEffect(() => {
@@ -293,7 +297,7 @@ export function BottomNav() {
       <nav className="bottom-nav" aria-label="Main navigation">
         {links.slice(0, 2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
         <button type="button" onClick={() => setCreateOpen(true)} className="create-link" aria-label="Create"><Plus size={28} /></button>
-        {links.slice(2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
+        {links.slice(2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(label === "Feeds" ? "/notifications" : href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
       </nav>
       {createOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#03040c]/75 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="create-sheet-title" onClick={() => setCreateOpen(false)}>
