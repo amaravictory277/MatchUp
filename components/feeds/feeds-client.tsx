@@ -5,6 +5,7 @@ import { Bell, Bookmark, LogOut, Search, Settings, UserRound, X } from "lucide-r
 import { CreateHub } from "./create-hub";
 import { FeedCard } from "./feed-card";
 import { initialPosts, playInteractionSound, type FeedAction, type FeedTab, type Post } from "./data";
+import { recordLocalNotification } from "../../lib/notifications/local";
 
 const tabs: { id: FeedTab; label: string }[] = [
   { id: "for-you", label: "For You" },
@@ -88,19 +89,76 @@ export function FeedsClient() {
     });
   }, [posts, tab, query]);
 
-  const toggleLike = (id: string) => setPosts((prev) => prev.map((p) => p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p));
+  const toggleLike = (id: string) => {
+    setPosts((prev) => {
+      const post = prev.find((item) => item.id === id);
+      if (!post) return prev;
+      const nextLiked = !post.liked;
+      if (nextLiked) {
+        recordLocalNotification({
+          kind: post.isOwn ? "post_like_received" : "post_liked",
+          message: post.isOwn ? "Someone liked your post" : `You liked ${post.author.name}'s post`,
+          actorName: post.isOwn ? "MatchUp player" : "You",
+          entityType: "post",
+          entityId: post.id,
+          href: `/feeds?post=${post.id}`,
+          thumbnail: post.media[0],
+        });
+      }
+      return prev.map((p) => p.id === id ? { ...p, liked: nextLiked, likes: p.likes + (p.liked ? -1 : 1) } : p);
+    });
+  };
 
   const toggleFollow = (id: string) => {
-    setPosts((prev) => prev.map((p) => p.id === id ? { ...p, following: !p.following } : p));
+    setPosts((prev) => {
+      const post = prev.find((item) => item.id === id);
+      if (!post) return prev;
+      if (!post.following) {
+        recordLocalNotification({
+          kind: "person_followed",
+          message: `You followed ${post.author.name}`,
+          actorName: "You",
+          entityType: "profile",
+          entityId: post.id,
+          href: "/feeds#profile",
+        });
+      }
+      return prev.map((p) => p.id === id ? { ...p, following: !p.following } : p);
+    });
     playInteractionSound("follow");
   };
 
   const addComment = (id: string, text: string) => {
-    setPosts((prev) => prev.map((p) => p.id === id ? {
-      ...p,
-      comments: p.comments + 1,
-      commentList: [...p.commentList, { id: `c-${Date.now()}`, author: "You", text, time: "Just now", isOwn: true }],
-    } : p));
+    setPosts((prev) => {
+      const post = prev.find((item) => item.id === id);
+      if (!post) return prev;
+      recordLocalNotification({
+        kind: "post_comment",
+        message: post.isOwn ? "Someone commented on your post" : `You commented on ${post.author.name}'s post`,
+        actorName: post.isOwn ? "MatchUp player" : "You",
+        entityType: "post",
+        entityId: post.id,
+        href: `/feeds?post=${post.id}`,
+        thumbnail: post.media[0],
+        meta: { comment_text: text },
+      });
+      if (/@[a-zA-Z0-9_]{2,24}/.test(text)) {
+        recordLocalNotification({
+          kind: "comment_tagged",
+          message: "You were tagged in a comment",
+          actorName: "You",
+          entityType: "post",
+          entityId: post.id,
+          href: `/feeds?post=${post.id}`,
+          thumbnail: post.media[0],
+        });
+      }
+      return prev.map((p) => p.id === id ? {
+        ...p,
+        comments: p.comments + 1,
+        commentList: [...p.commentList, { id: `c-${Date.now()}`, author: "You", text, time: "Just now", isOwn: true }],
+      } : p);
+    });
     playInteractionSound("comment");
   };
 
@@ -125,7 +183,21 @@ export function FeedsClient() {
   };
 
   const share = (id: string) => {
-    setPosts((prev) => prev.map((p) => p.id === id ? { ...p, shares: p.shares + 1 } : p));
+    setPosts((prev) => {
+      const post = prev.find((item) => item.id === id);
+      if (post) {
+        recordLocalNotification({
+          kind: "post_link_copied",
+          message: "You copied a post link",
+          actorName: "You",
+          entityType: "post",
+          entityId: post.id,
+          href: `/feeds?post=${post.id}`,
+          thumbnail: post.media[0],
+        });
+      }
+      return prev.map((p) => p.id === id ? { ...p, shares: p.shares + 1 } : p);
+    });
     setToast("Link copied — post shared");
   };
 
@@ -156,6 +228,26 @@ export function FeedsClient() {
       likes: 0, comments: 0, commentList: [], shares: 0, liked: false, following: true, isOwn: true, category: "community",
     };
     setPosts((prev) => [newPost, ...prev]);
+    recordLocalNotification({
+      kind: "post_created",
+      message: "You made a new post",
+      actorName: "You",
+      entityType: "post",
+      entityId: newPost.id,
+      href: `/feeds?post=${newPost.id}`,
+      thumbnail: newPost.media[0],
+    });
+    if (/@[a-zA-Z0-9_]{2,24}/.test(text)) {
+      recordLocalNotification({
+        kind: "post_tagged",
+        message: "You tagged someone in your post",
+        actorName: "You",
+        entityType: "post",
+        entityId: newPost.id,
+        href: `/feeds?post=${newPost.id}`,
+        thumbnail: newPost.media[0],
+      });
+    }
     setComposer(null);
     setComposerText("");
     setToast(`${composer.title} shared to your feed`);
@@ -167,9 +259,9 @@ export function FeedsClient() {
       <header className="relative z-20 flex items-start justify-between pb-4">
         <div><h1 className="text-4xl font-black tracking-tight text-white">Feed</h1><p className="mt-1 text-sm text-[#9694aa]">Connect. Compete. Grow.</p></div>
         <div className="relative" ref={menuRef}>
-          <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label="Open menu" aria-expanded={menuOpen} aria-haspopup="menu" className="relative grid size-11 place-items-center rounded-2xl border border-[#26263d] bg-[#0d0e20] text-[#eeeef7] transition hover:border-[#7843ee]"><Bell size={19} /><span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-[#7634ef]" /></button>
+          <button type="button" onClick={() => setMenuOpen((o) => !o)} aria-label="Open notifications" aria-expanded={menuOpen} aria-haspopup="menu" className="relative grid size-11 place-items-center rounded-2xl border border-[#26263d] bg-[#0d0e20] text-[#eeeef7] transition hover:border-[#7843ee]"><Bell size={19} /><span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-[#7634ef]" /></button>
           {menuOpen ? <div role="menu" className="absolute right-0 top-[52px] z-40 w-52 overflow-hidden rounded-2xl border border-[#26263d] bg-[#0d0e20] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,.5)]">
-            {menuItems.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" role="menuitem" onClick={() => { setMenuOpen(false); setToast(`Opened ${item.label}`); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[#181a30] ${item.id === "logout" ? "text-[#ff6b81]" : "text-[#dcdae8]"}`}><Icon size={17} />{item.label}</button>; })}
+            {menuItems.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" role="menuitem" onClick={() => { setMenuOpen(false); if (item.id === "notifications") window.location.href = "/notifications"; else setToast(`Opened ${item.label}`); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[#181a30] ${item.id === "logout" ? "text-[#ff6b81]" : "text-[#dcdae8]"}`}><Icon size={17} />{item.label}</button>; })}
           </div> : null}
         </div>
       </header>
