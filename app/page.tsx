@@ -7,10 +7,10 @@ export const metadata: Metadata = {
 
 export default function LandingPage() {
   return (
-    <main className="h-[100dvh] overflow-hidden bg-[#07142f] text-white">
+    <main className="h-[100dvh] overflow-hidden bg-black text-white">
       <section className="relative mx-auto flex h-full w-full max-w-[520px] flex-col overflow-hidden bg-black shadow-2xl lg:max-w-none">
         <div aria-hidden="true" className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/1002371685.jpg')" }} />
-        <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,transparent_50%,rgba(0,0,0,.10)_64%,rgba(0,0,0,.52)_86%,rgba(0,0,0,.78)_100%)]" />
+        <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,transparent_58%,rgba(0,0,0,.08)_70%,rgba(0,0,0,.42)_88%,rgba(0,0,0,.72)_100%)]" />
 
         <div className="relative z-10 flex h-full min-h-0 flex-col px-6 pb-7 pt-6 sm:px-10 sm:pb-9 sm:pt-8 lg:px-16 lg:pt-10">
           <header className="flex items-center justify-between">
