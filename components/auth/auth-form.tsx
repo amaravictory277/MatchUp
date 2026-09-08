@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '../../lib/supabase/client';
 import { syncAuthSession } from '../../lib/auth/session';
 
@@ -21,9 +21,9 @@ function friendlyAuthError(message: string) {
 
 export function AuthForm() {
   const router = useRouter();
-  const params = useSearchParams();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [mode, setMode] = useState<Mode>(params.get('mode') === 'signup' ? 'signup' : 'signin');
+  const [mode, setMode] = useState<Mode>('signin');
+  const [nextPath, setNextPath] = useState('/');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -32,6 +32,12 @@ export function AuthForm() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setMode(params.get('mode') === 'signup' ? 'signup' : 'signin');
+    setNextPath(params.get('next') || '/');
+  }, []);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -61,19 +67,19 @@ export function AuthForm() {
         }
         if (!data.session) throw new Error('No authenticated session was returned. Please try again.');
         await syncAuthSession(data.session.access_token, data.session.refresh_token);
-        router.replace(params.get('next') || '/'); router.refresh(); return;
+        router.replace(nextPath); router.refresh(); return;
       }
       if (mode === 'signup') {
         if (password.length < 8) throw new Error('Password must be at least 8 characters.');
         if (password !== confirm) throw new Error('Passwords do not match.');
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(), password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback${nextPath !== '/' ? `?next=${encodeURIComponent(nextPath)}` : ''}` },
         });
         if (authError) throw new Error(friendlyAuthError(authError.message));
         if (data.session) {
           await syncAuthSession(data.session.access_token, data.session.refresh_token);
-          router.replace(params.get('next') || '/'); router.refresh(); return;
+          router.replace(nextPath); router.refresh(); return;
         }
         setMode('verify'); setCooldown(RESEND_COOLDOWN_SECONDS); setMessage('Check your email for the secure MatchUp verification link.'); return;
       }
@@ -100,11 +106,12 @@ export function AuthForm() {
 
   const google = async () => {
     setBusy(true); setError('');
-    const { error: authError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback${params.get('next') ? `?next=${encodeURIComponent(params.get('next')!)}` : ''}` } });
+    const redirectTo = `${window.location.origin}/auth/callback${nextPath !== '/' ? `?next=${encodeURIComponent(nextPath)}` : ''}`;
+    const { error: authError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     if (authError) { setError(friendlyAuthError(authError.message)); setBusy(false); }
   };
 
-  const continueAsGuest = () => router.replace(params.get('next') || '/');
+  const continueAsGuest = () => router.replace(nextPath);
 
   return <main className="min-h-screen bg-[#05060f] px-5 py-8 text-white sm:grid sm:place-items-center">
     <section className="mx-auto w-full max-w-md rounded-[28px] border border-[#28263f] bg-[#0d0e20] p-6 shadow-[0_24px_80px_rgba(0,0,0,.45)] sm:p-8">
