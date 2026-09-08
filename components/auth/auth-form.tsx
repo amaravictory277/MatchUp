@@ -8,6 +8,7 @@ import { syncAuthSession } from '../../lib/auth/session';
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'verify';
 const RESEND_COOLDOWN_SECONDS = 60;
+const DEFAULT_NEXT_PATH = '/home';
 
 function friendlyAuthError(message: string) {
   const lower = message.toLowerCase();
@@ -23,7 +24,7 @@ export function AuthForm() {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [mode, setMode] = useState<Mode>('signin');
-  const [nextPath, setNextPath] = useState('/');
+  const [nextPath, setNextPath] = useState(DEFAULT_NEXT_PATH);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -35,14 +36,15 @@ export function AuthForm() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setMode(params.get('mode') === 'signup' ? 'signup' : 'signin');
-    setNextPath(params.get('next') || '/');
+    const requestedMode = params.get('mode');
+    setMode(requestedMode === 'signup' ? 'signup' : 'signin');
+    setNextPath(params.get('next') || DEFAULT_NEXT_PATH);
   }, []);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
-        try { await syncAuthSession(session.access_token, session.refresh_token); } catch { /* The browser session remains authoritative. */ }
+        try { await syncAuthSession(session.access_token, session.refresh_token); } catch { /* The server session is retried by the explicit auth action. */ }
       }
     });
     return () => listener.subscription.unsubscribe();
@@ -53,6 +55,14 @@ export function AuthForm() {
     const timer = window.setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, [cooldown]);
+
+  const switchMode = (nextMode: 'signin' | 'signup') => {
+    setMode(nextMode);
+    setError('');
+    setMessage('');
+    setPassword('');
+    setConfirm('');
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError(''); setMessage('');
@@ -74,7 +84,7 @@ export function AuthForm() {
         if (password !== confirm) throw new Error('Passwords do not match.');
         const { data, error: authError } = await supabase.auth.signUp({
           email: email.trim(), password,
-          options: { emailRedirectTo: `${window.location.origin}/auth/callback${nextPath !== '/' ? `?next=${encodeURIComponent(nextPath)}` : ''}` },
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback${nextPath !== DEFAULT_NEXT_PATH ? `?next=${encodeURIComponent(nextPath)}` : ''}` },
         });
         if (authError) throw new Error(friendlyAuthError(authError.message));
         if (data.session) {
@@ -98,36 +108,43 @@ export function AuthForm() {
     try {
       const { error: authError } = await supabase.auth.resend({ type: 'signup', email: email.trim() });
       if (authError) throw new Error(friendlyAuthError(authError.message));
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      setMessage('A new verification email has been sent.');
+      setCooldown(RESEND_COOLDOWN_SECONDS); setMessage('A new verification email has been sent.');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not resend verification email.'); }
     finally { setBusy(false); }
   };
 
   const google = async () => {
     setBusy(true); setError('');
-    const redirectTo = `${window.location.origin}/auth/callback${nextPath !== '/' ? `?next=${encodeURIComponent(nextPath)}` : ''}`;
+    const redirectTo = `${window.location.origin}/auth/callback${nextPath !== DEFAULT_NEXT_PATH ? `?next=${encodeURIComponent(nextPath)}` : ''}`;
     const { error: authError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     if (authError) { setError(friendlyAuthError(authError.message)); setBusy(false); }
   };
 
   const continueAsGuest = () => router.replace(nextPath);
+  const showChoiceTabs = mode === 'signin' || mode === 'signup';
 
-  return <main className="min-h-screen bg-[#05060f] px-5 py-8 text-white sm:grid sm:place-items-center">
-    <section className="mx-auto w-full max-w-md rounded-[28px] border border-[#28263f] bg-[#0d0e20] p-6 shadow-[0_24px_80px_rgba(0,0,0,.45)] sm:p-8">
+  return <main className="min-h-screen bg-[#05060f] px-4 py-6 text-white sm:grid sm:place-items-center sm:px-5 sm:py-8">
+    <section className="mx-auto w-full max-w-md rounded-[28px] border border-[#28263f] bg-[#0d0e20] p-5 shadow-[0_24px_80px_rgba(0,0,0,.45)] sm:p-8">
       <button type="button" onClick={() => router.push('/')} className="icon-button mb-6" aria-label="Back to MatchUp"><ArrowLeft size={18} /></button>
       <div className="wordmark">Match<span>Up</span></div>
-      <div className="mt-8"><div className="flex size-12 items-center justify-center rounded-2xl bg-[#241545] text-[#aa7aff]"><ShieldCheck size={24} /></div><h1 className="mt-5 text-3xl font-black">{mode === 'signup' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : mode === 'verify' ? 'Verify your email' : 'Welcome back'}</h1><p className="mt-2 text-sm leading-6 text-[#918da3]">{mode === 'verify' ? 'We need to confirm you control this email before your MatchUp account is activated.' : 'Join the home of competitive eFootball tournaments.'}</p></div>
+      <div className="mt-7"><div className="flex size-12 items-center justify-center rounded-2xl bg-[#241545] text-[#aa7aff]"><ShieldCheck size={24} /></div><h1 className="mt-5 text-3xl font-black tracking-tight">{mode === 'signup' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : mode === 'verify' ? 'Verify your email' : 'Welcome to MatchUp'}</h1><p className="mt-2 text-sm leading-6 text-[#918da3]">{mode === 'verify' ? 'We need to confirm you control this email before your MatchUp account is activated.' : mode === 'forgot' ? 'Enter your email and Supabase will send a secure password-reset link.' : 'Choose how you want to enter the home of competitive eFootball tournaments.'}</p></div>
+
+      {showChoiceTabs ? <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl border border-[#302b4b] bg-[#080916] p-1.5" role="tablist" aria-label="Authentication choice">
+        <button type="button" role="tab" aria-selected={mode === 'signup'} onClick={() => switchMode('signup')} className={`min-h-12 rounded-xl px-3 py-3 text-sm font-black transition ${mode === 'signup' ? 'bg-[linear-gradient(100deg,#7026f5,#8e37ff)] text-white shadow-[0_8px_24px_rgba(112,38,245,.28)]' : 'text-[#9d99aa] hover:bg-[#17152e] hover:text-white'}`}>SIGN UP</button>
+        <button type="button" role="tab" aria-selected={mode === 'signin'} onClick={() => switchMode('signin')} className={`min-h-12 rounded-xl px-3 py-3 text-sm font-black transition ${mode === 'signin' ? 'bg-[linear-gradient(100deg,#7026f5,#8e37ff)] text-white shadow-[0_8px_24px_rgba(112,38,245,.28)]' : 'text-[#9d99aa] hover:bg-[#17152e] hover:text-white'}`}>SIGN IN</button>
+      </div> : null}
+
       {mode === 'verify' ? <div className="mt-7 rounded-2xl border border-[#30284a] bg-[#151329] p-5"><CheckCircle2 className="text-[#78d442]" size={25} /><p className="mt-3 text-sm font-bold text-white">Verification email</p><p className="mt-1 text-xs leading-5 text-[#8f8ba0]">Open the secure verification email sent to <strong className="text-white">{email}</strong>. The link expires and is validated by Supabase.</p><button type="button" disabled={busy || cooldown > 0} onClick={resend} className="mt-5 w-full rounded-xl bg-[#7026f5] px-4 py-3 text-xs font-black disabled:opacity-60">{busy ? 'Sending…' : cooldown > 0 ? `Resend available in ${cooldown}s` : 'Resend verification email'}</button></div> : <form onSubmit={submit} className="mt-7 space-y-4">
         <label className="block"><span className="mb-2 block text-xs font-bold text-[#aaa7b9]">Email address</span><span className="flex items-center gap-3 rounded-2xl border border-[#292840] bg-[#080916] px-4 focus-within:border-[#7843ee]"><Mail size={17} className="text-[#77738b]" /><input required type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 flex-1 bg-transparent py-3.5 text-sm outline-none" placeholder="you@example.com" /></span></label>
         {mode !== 'forgot' ? <label className="block"><span className="mb-2 block text-xs font-bold text-[#aaa7b9]">Password</span><span className="flex items-center gap-3 rounded-2xl border border-[#292840] bg-[#080916] px-4 focus-within:border-[#7843ee]"><LockKeyhole size={17} className="text-[#77738b]" /><input required minLength={8} type={showPassword ? 'text' : 'password'} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} className="min-w-0 flex-1 bg-transparent py-3.5 text-sm outline-none" placeholder="At least 8 characters" /><button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="text-[#77738b]">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label> : null}
         {mode === 'signup' ? <label className="block"><span className="mb-2 block text-xs font-bold text-[#aaa7b9]">Confirm password</span><input required minLength={8} type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="w-full rounded-2xl border border-[#292840] bg-[#080916] px-4 py-3.5 text-sm outline-none focus:border-[#7843ee]" placeholder="Repeat your password" /></label> : null}
         {error ? <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-xs text-red-200">{error}</p> : null}{message ? <p role="status" className="rounded-xl border border-[#4b3a73] bg-[#1a1430] px-3 py-2.5 text-xs text-[#d0baff]">{message}</p> : null}
         <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#7026f5,#8e37ff)] px-4 py-3.5 text-sm font-black disabled:opacity-60">{busy ? <Loader2 className="animate-spin" size={17} /> : null}{mode === 'signup' ? 'Create account' : mode === 'forgot' ? 'Send reset email' : 'Sign in'}</button>
-        {mode === 'signin' ? <button type="button" onClick={google} disabled={busy} className="w-full rounded-2xl border border-[#2b2b43] bg-[#121326] px-4 py-3.5 text-sm font-black text-white disabled:opacity-60">Continue with Google</button> : null}
+        <div className="flex items-center gap-3 py-1"><span className="h-px flex-1 bg-[#292743]" /><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#77738b]">OR</span><span className="h-px flex-1 bg-[#292743]" /></div>
+        <button type="button" onClick={google} disabled={busy} className="w-full rounded-2xl border border-[#2b2b43] bg-[#121326] px-4 py-3.5 text-sm font-black text-white transition hover:border-[#5d4a8c] disabled:opacity-60">Continue with Google</button>
       </form>}
       <button type="button" onClick={continueAsGuest} className="mt-4 w-full rounded-2xl border border-[#2b2b43] bg-transparent px-4 py-3 text-sm font-bold text-[#c7c2d3] transition hover:border-[#7843ee] hover:text-white">Continue as Guest</button>
-      <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs text-[#858195]">{mode === 'signin' ? <><span>New to MatchUp?</span><button onClick={() => setMode('signup')} className="font-bold text-[#ad7cff]">Create account</button><span>·</span><button onClick={() => setMode('forgot')} className="font-bold text-[#ad7cff]">Forgot password?</button></> : mode === 'signup' ? <><span>Already have an account?</span><button onClick={() => setMode('signin')} className="font-bold text-[#ad7cff]">Sign in</button></> : <button onClick={() => setMode('signin')} className="font-bold text-[#ad7cff]">Back to sign in</button>}</div>
+      <div className="mt-6 flex flex-wrap justify-center gap-2 text-xs text-[#858195]">{mode === 'signin' ? <><span>New to MatchUp?</span><button onClick={() => switchMode('signup')} className="font-bold text-[#ad7cff]">Create account</button><span>·</span><button onClick={() => setMode('forgot')} className="font-bold text-[#ad7cff]">Forgot password?</button></> : mode === 'signup' ? <><span>Already have an account?</span><button onClick={() => switchMode('signin')} className="font-bold text-[#ad7cff]">Sign in</button></> : <button onClick={() => switchMode('signin')} className="font-bold text-[#ad7cff]">Back to sign in</button>}</div>
     </section>
   </main>;
 }
