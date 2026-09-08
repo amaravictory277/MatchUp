@@ -18,7 +18,6 @@ function getRouteActive(pathname: string) {
   if (pathname === "/") return "Home";
   if (pathname.startsWith("/tournaments")) return "Tournaments";
   if (pathname.startsWith("/feeds")) return "Feeds";
-  if (pathname.startsWith("/notifications")) return "Feeds";
   if (pathname.startsWith("/leaderboard")) return "Chat";
   return null;
 }
@@ -48,21 +47,7 @@ const searchOptions: { id: SearchType; label: string; icon: typeof Trophy }[] = 
 ];
 
 const builtInTournamentResults: GlobalTournament[] = [
-  "MatchUp Elite Finals",
-  "Night League Championship",
-  "Lagos Kings Cup",
-  "Weekend Rivals",
-  "Pro Division Clash",
-  "Friday Night Showdown",
-  "MatchUp Champions Cup",
-  "Ultimate eFootball Arena",
-  "Street to Stadium Cup",
-  "Elite Masters League",
-  "Next Gen Challenge",
-  "Golden Boot Tournament",
-  "Super Sunday Knockout",
-  "National Rivalry Cup",
-  "Legends Championship",
+  "MatchUp Elite Finals", "Night League Championship", "Lagos Kings Cup", "Weekend Rivals", "Pro Division Clash", "Friday Night Showdown", "MatchUp Champions Cup", "Ultimate eFootball Arena", "Street to Stadium Cup", "Elite Masters League", "Next Gen Challenge", "Golden Boot Tournament", "Super Sunday Knockout", "National Rivalry Cup", "Legends Championship",
 ].map((name, index) => ({
   id: `demo-discover-${index + 1}`,
   tournament_id: `DEMO-DISCOVER-${index + 1}`,
@@ -82,13 +67,11 @@ function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query:
   const normalizedQuery = query.trim().toLowerCase();
   const root = document.querySelector("main");
   if (!root) return [];
-
   const typeTerms: Record<Exclude<SearchType, "tournaments">, string[]> = {
     posts: ["post", "share", "highlight", "gameplay", "feed", "connect", "community"],
     friends: ["friend", "friends", "player", "follow", "followers", "network"],
     groups: ["group", "groups", "community", "team", "teams"],
   };
-
   const lines = Array.from(root.querySelectorAll("h1,h2,h3,h4,p,a,button,span"))
     .filter((node) => {
       const element = node as HTMLElement;
@@ -99,15 +82,12 @@ function readVisibleSearchLines(type: Exclude<SearchType, "tournaments">, query:
     })
     .map((node) => (node as HTMLElement).innerText.trim())
     .filter(Boolean);
-
   const unique = Array.from(new Set(lines));
   const terms = typeTerms[type];
-  return unique
-    .filter((line) => {
-      const lower = line.toLowerCase();
-      return terms.some((term) => lower.includes(term)) && (!normalizedQuery || lower.includes(normalizedQuery));
-    })
-    .slice(0, 30);
+  return unique.filter((line) => {
+    const lower = line.toLowerCase();
+    return terms.some((term) => lower.includes(term)) && (!normalizedQuery || lower.includes(normalizedQuery));
+  }).slice(0, 30);
 }
 
 export function TopBar() {
@@ -142,29 +122,17 @@ export function TopBar() {
     if (!searchOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     let cancelled = false;
     const loadTournamentResults = async () => {
-      const { data } = await supabase
-        .from("tournaments")
-        .select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,profiles:organizer_id(display_name,username)")
-        .eq("visibility", "public")
-        .order("created_at", { ascending: false });
+      const { data } = await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,profiles:organizer_id(display_name,username)").eq("visibility", "public").order("created_at", { ascending: false });
       if (!cancelled) setTournamentResults((data || []) as GlobalTournament[]);
     };
-
     void loadTournamentResults();
-    return () => {
-      cancelled = true;
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => { cancelled = true; document.body.style.overflow = previousOverflow; };
   }, [searchOpen, supabase]);
 
   useEffect(() => {
-    if (!searchOpen || !searchType || searchType === "tournaments") {
-      setVisibleLines([]);
-      return;
-    }
+    if (!searchOpen || !searchType || searchType === "tournaments") { setVisibleLines([]); return; }
     const refresh = () => setVisibleLines(readVisibleSearchLines(searchType, query));
     refresh();
     const observer = new MutationObserver(refresh);
@@ -184,26 +152,13 @@ export function TopBar() {
   const filteredTournaments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return [];
-    return allTournamentResults
-      .filter((row) => `${row.name} ${row.tournament_id} ${row.format} ${row.description || ""}`.toLowerCase().includes(normalizedQuery))
-      .slice(0, 30);
+    return allTournamentResults.filter((row) => `${row.name} ${row.tournament_id} ${row.format} ${row.description || ""}`.toLowerCase().includes(normalizedQuery)).slice(0, 30);
   }, [query, allTournamentResults]);
 
   const activeSearchOption = searchOptions.find((option) => option.id === searchType);
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
-
-  const openSearch = () => {
-    setSearchOpen(true);
-    setSearchType(null);
-    setQuery("");
-    setCategoryMenuOpen(false);
-  };
-
-  const chooseSearchType = (type: SearchType) => {
-    setSearchType(type);
-    setQuery("");
-    setCategoryMenuOpen(false);
-  };
+  const openSearch = () => { setSearchOpen(true); setSearchType(null); setQuery(""); setCategoryMenuOpen(false); };
+  const chooseSearchType = (type: SearchType) => { setSearchType(type); setQuery(""); setCategoryMenuOpen(false); };
 
   return (
     <>
@@ -215,65 +170,24 @@ export function TopBar() {
           <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">M<span /></a>
         </div>
       </header>
-
       {searchOpen ? (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-[#03040c]/80 p-1.5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="search-modal-title" onClick={() => setSearchOpen(false)}>
           <div className={`relative flex w-[95vw] flex-col overflow-hidden rounded-[26px] border border-[#302553] bg-[#101024] shadow-[0_20px_70px_rgba(0,0,0,.58)] ${searchType ? "h-[95vh] p-4 sm:p-7" : "p-4 sm:p-7"}`} onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setSearchOpen(false)} className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border border-[#2b2b45] bg-[#0d0e20] text-[#aaa8bd] transition hover:border-[#7843ee] hover:text-white" aria-label="Close search"><X size={17} /></button>
-            <div className="pr-10">
-              <h2 id="search-modal-title" className="text-2xl font-black text-white">Search MatchUp</h2>
-            </div>
-
+            <div className="pr-10"><h2 id="search-modal-title" className="text-2xl font-black text-white">Search MatchUp</h2></div>
             {!searchType ? (
-              <div className="mt-6 grid grid-cols-1 gap-3">
-                {searchOptions.map((option) => {
-                  const Icon = option.icon;
-                  return <button key={option.id} type="button" onClick={() => chooseSearchType(option.id)} className="flex min-h-[92px] w-full items-center gap-4 rounded-2xl border border-[#302b4b] bg-[#17152e] p-4 text-left transition hover:border-[#6f4ad8] hover:bg-[#1a1835]"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#251e45] text-[#a979ff]"><Icon size={19} /></span><span className="text-sm font-black text-[#d7d3e4]">{option.label}</span></button>;
-                })}
-              </div>
+              <div className="mt-6 grid grid-cols-1 gap-3">{searchOptions.map((option) => { const Icon = option.icon; return <button key={option.id} type="button" onClick={() => chooseSearchType(option.id)} className="flex min-h-[92px] w-full items-center gap-4 rounded-2xl border border-[#302b4b] bg-[#17152e] p-4 text-left transition hover:border-[#6f4ad8] hover:bg-[#1a1835]"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#251e45] text-[#a979ff]"><Icon size={19} /></span><span className="text-sm font-black text-[#d7d3e4]">{option.label}</span></button>; })}</div>
             ) : (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <label className="flex items-center gap-3 rounded-2xl border border-[#383252] bg-[#0d0e20] px-4 py-3.5 focus-within:border-[#7843ee]"><Search size={19} className="shrink-0 text-[#77728c]" /><input value={query} onChange={(e) => setQuery(e.target.value)} autoFocus placeholder={`Search ${activeSearchOption?.label.replace("Search ", "").toLowerCase()}...`} aria-label={`Search ${activeSearchOption?.label || "content"}`} className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="text-[#77748c] hover:text-white"><X size={16} /></button> : null}</label>
                   <div className="relative min-w-0 sm:min-w-[240px]">
-                    <button type="button" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)} className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 text-sm font-black text-[#d7d3e4] outline-none transition hover:border-[#6f4ad8] focus:border-[#6f4ad8]">
-                      <span className="flex min-w-0 items-center gap-2.5 truncate">
-                        {activeSearchOption && (
-                          <>
-                            <activeSearchOption.icon size={17} className="shrink-0 text-[#a979ff]" />
-                            {activeSearchOption.label}
-                          </>
-                        )}
-                      </span>
-                      <ChevronDown size={17} className={`shrink-0 text-[#9a73ff] transition-transform ${categoryMenuOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    {categoryMenuOpen ? (
-                      <div role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-[#3b315e] bg-[#17152e] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,.48)]">
-                        {searchOptions.map((option) => {
-                          const Icon = option.icon;
-                          return <button key={option.id} type="button" role="option" aria-selected={searchType === option.id} onClick={() => chooseSearchType(option.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold transition ${searchType === option.id ? "bg-[#251e45] text-white" : "text-[#d7d3e4] hover:bg-[#1f1c3a] hover:text-white"}`}><Icon size={16} className="text-[#a979ff]" />{option.label}</button>;
-                        })}
-                      </div>
-                    ) : null}
+                    <button type="button" aria-haspopup="listbox" aria-expanded={categoryMenuOpen} onClick={() => setCategoryMenuOpen((open) => !open)} className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl border border-[#302b4b] bg-[#17152e] px-4 text-sm font-black text-[#d7d3e4] outline-none transition hover:border-[#6f4ad8] focus:border-[#6f4ad8]"><span className="flex min-w-0 items-center gap-2.5 truncate">{activeSearchOption && (<><activeSearchOption.icon size={17} className="shrink-0 text-[#a979ff]" />{activeSearchOption.label}</>)}</span><ChevronDown size={17} className={`shrink-0 text-[#9a73ff] transition-transform ${categoryMenuOpen ? "rotate-180" : ""}`} /></button>
+                    {categoryMenuOpen ? <div role="listbox" className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-[#3b315e] bg-[#17152e] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,.48)]">{searchOptions.map((option) => { const Icon = option.icon; return <button key={option.id} type="button" role="option" aria-selected={searchType === option.id} onClick={() => chooseSearchType(option.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold transition ${searchType === option.id ? "bg-[#251e45] text-white" : "text-[#d7d3e4] hover:bg-[#1f1c3a] hover:text-white"}`}><Icon size={16} className="text-[#a979ff]" />{option.label}</button>; })}</div> : null}
                   </div>
                 </div>
-
                 <div className="mt-5 min-h-0 flex-1 overflow-y-auto pb-2 pr-1 [scrollbar-width:thin]">
-                  {!query.trim() ? (
-                    <div className="flex min-h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {activeSearchOption?.label.replace("Search ", "")}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Start typing to see matching results.</p></div></div>
-                  ) : searchType === "tournaments" ? (
-                    filteredTournaments.length > 0 ? (
-                      <div className="grid gap-4 pb-4">
-                        {filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}
-                      </div>
-                    ) : (
-                      <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>
-                    )
-                  ) : visibleLines.length > 0 ? (
-                    <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div>
-                  ) : (
-                    <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No matches found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try another search term or category.</p></div></div>
-                  )}
+                  {!query.trim() ? <div className="flex min-h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {activeSearchOption?.label.replace("Search ", "")}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Start typing to see matching results.</p></div></div> : searchType === "tournaments" ? (filteredTournaments.length > 0 ? <div className="grid gap-4 pb-4">{filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>) : visibleLines.length > 0 ? <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No matches found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try another search term or category.</p></div></div>}
                 </div>
               </>
             )}
@@ -291,13 +205,12 @@ export function BottomNav() {
   const [selected, setSelected] = useState<string>(routeActive ?? "Home");
   const [createOpen, setCreateOpen] = useState(false);
   useEffect(() => { if (routeActive) setSelected(routeActive); }, [routeActive]);
-
   return (
     <>
       <nav className="bottom-nav" aria-label="Main navigation">
         {links.slice(0, 2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
         <button type="button" onClick={() => setCreateOpen(true)} className="create-link" aria-label="Create"><Plus size={28} /></button>
-        {links.slice(2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(label === "Feeds" ? "/notifications" : href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
+        {links.slice(2).map(({ label, icon: Icon, href, route }) => <button key={label} type="button" onClick={() => { setSelected(label); if (route) router.push(href); }} aria-current={selected === label ? "page" : undefined} className={`nav-link ${selected === label ? "active" : ""}`}><Icon size={20} /><span>{label}</span></button>)}
       </nav>
       {createOpen && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-[#03040c]/75 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="create-sheet-title" onClick={() => setCreateOpen(false)}>
