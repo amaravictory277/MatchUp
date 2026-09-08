@@ -13,6 +13,12 @@ function getSafeNextPath(value: string | null) {
   return value;
 }
 
+function withSignedInNotice(path: string) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set('notice', 'signed-in');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -38,14 +44,11 @@ export default function AuthCallbackPage() {
         if (sessionError) throw sessionError;
         if (!data.session) throw new Error('Your authentication link is invalid or expired.');
 
-        // Supabase has already verified the code and returned the real session.
-        // The server verifies that access token again before issuing MatchUp's
-        // HTTP-only session cookies used by protected routes.
         await syncAuthSession(data.session.access_token, data.session.refresh_token);
         document.cookie = 'matchup-guest=; Max-Age=0; Path=/; SameSite=Lax';
 
         if (active) {
-          router.replace(nextPath);
+          router.replace(withSignedInNotice(nextPath));
           router.refresh();
         }
       } catch (caught) {
