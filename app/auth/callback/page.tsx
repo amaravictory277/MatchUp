@@ -15,15 +15,20 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const code = params.get('code');
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) { if (active) setError(exchangeError.message); return; }
+      try {
+        const code = params.get('code');
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+        }
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!data.session) throw new Error('Your authentication link is invalid or expired.');
+        await syncAuthSession(data.session.access_token, data.session.refresh_token);
+        if (active) { router.replace(params.get('next') || '/'); router.refresh(); }
+      } catch (caught) {
+        if (active) setError(caught instanceof Error ? caught.message : 'Authentication failed.');
       }
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !data.session) { if (active) setError(sessionError?.message || 'Your authentication link is invalid or expired.'); return; }
-      await syncAuthSession(data.session.access_token, data.session.refresh_token);
-      router.replace(params.get('next') || '/'); router.refresh();
     })();
     return () => { active = false; };
   }, [params, router, supabase]);
