@@ -8,5 +8,6 @@ export async function syncAuthSession(accessToken: string, refreshToken: string)
 }
 
 export async function clearAuthSession() {
-  await fetch('/api/auth/sign-out', { method: 'POST' });
+  const response = await fetch('/api/auth/sign-out', { method: 'POST' });
+  if (!response.ok) throw new Error('Could not clear the secure MatchUp session.');
 }
