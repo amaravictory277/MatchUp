@@ -41,7 +41,16 @@ export function AuthNotice() {
 }
 
 export function AuthSuccessNotice({ message }: { message: string }) {
-  return message ? <NoticeBar message={message} /> : null;
+  const [visible, setVisible] = useState(Boolean(message));
+
+  useEffect(() => {
+    if (!message) return;
+    setVisible(true);
+    const timer = window.setTimeout(() => setVisible(false), 4200);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
+  return visible && message ? <NoticeBar message={message} /> : null;
 }
 
 export function AuthErrorNotice({ message }: { message: string }) {
