@@ -6,6 +6,13 @@ import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '../../../lib/supabase/client';
 import { syncAuthSession } from '../../../lib/auth/session';
 
+const DEFAULT_NEXT_PATH = '/home';
+
+function getSafeNextPath(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return DEFAULT_NEXT_PATH;
+  return value;
+}
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -17,16 +24,30 @@ export default function AuthCallbackPage() {
       try {
         const params = new URLSearchParams(window.location.search);
         const code = params.get('code');
-        const nextPath = params.get('next') || '/';
+        const nextPath = getSafeNextPath(params.get('next'));
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const callbackError = hashParams.get('error_description') || hashParams.get('error');
+        if (callbackError) throw new Error(callbackError);
+
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
         }
+
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         if (!data.session) throw new Error('Your authentication link is invalid or expired.');
+
+        // Supabase has already verified the code and returned the real session.
+        // The server verifies that access token again before issuing MatchUp's
+        // HTTP-only session cookies used by protected routes.
         await syncAuthSession(data.session.access_token, data.session.refresh_token);
-        if (active) { router.replace(nextPath); router.refresh(); }
+        document.cookie = 'matchup-guest=; Max-Age=0; Path=/; SameSite=Lax';
+
+        if (active) {
+          router.replace(nextPath);
+          router.refresh();
+        }
       } catch (caught) {
         if (active) setError(caught instanceof Error ? caught.message : 'Authentication failed.');
       }
