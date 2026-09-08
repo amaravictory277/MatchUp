@@ -4,6 +4,7 @@ import { Bell, House, MessageSquare, Newspaper, Plus, Search, Trophy, X, FileTex
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { TournamentCard } from "./tournaments/tournament-browser";
+import { AccountMenu } from "./auth/account-menu";
 import { createBrowserSupabaseClient } from "../lib/supabase/client";
 import { getLocalUnreadCount, subscribeToLocalNotificationChanges } from "../lib/notifications/local";
 
@@ -167,7 +168,7 @@ export function TopBar() {
         <div className="flex items-center gap-2">
           <button type="button" aria-label="Search" onClick={openSearch} className="icon-button"><Search size={19} /></button>
           <button type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} onClick={() => router.push("/notifications")} className="icon-button relative"><Bell size={18} />{unreadCount > 0 ? <span className="notification-dot">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</button>
-          <a href="/feeds#profile" aria-label="Profile" className="profile-avatar">M<span /></a>
+          <AccountMenu />
         </div>
       </header>
       {searchOpen ? (
@@ -187,7 +188,7 @@ export function TopBar() {
                   </div>
                 </div>
                 <div className="mt-5 min-h-0 flex-1 overflow-y-auto pb-2 pr-1 [scrollbar-width:thin]">
-                  {!query.trim() ? <div className="flex min-h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {activeSearchOption?.label.replace("Search ", "")}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Start typing to see matching results.</p></div></div> : searchType === "tournaments" ? (filteredTournaments.length > 0 ? <div className="grid gap-4 pb-4">{filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>) : visibleLines.length > 0 ? <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No matches found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try another search term or category.</p></div></div>}
+                  {!query.trim() ? <div className="flex min-h-full items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search {activeSearchOption?.label.replace("Search ", "")}</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Start typing to see matching results.</p></div></div> : searchType === "tournaments" ? (filteredTournaments.length > 0 ? <div className="grid gap-4 pb-4">{filteredTournaments.map((tournament) => <TournamentCard key={tournament.id} row={tournament as any} category="discover" />)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try the tournament name, tournament ID, format, or another search term.</p></div></div>) : visibleLines.length > 0 ? <div className="grid gap-2 pb-4 text-left">{visibleLines.map((result, index) => <div key={`${result}-${index}`} className="rounded-xl border border-[#292743] bg-[#111326] px-4 py-3 text-sm text-[#ddd8eb]"><span className="text-[#a979ff]">{activeSearchOption?.label}:</span> {result}</div>)}</div> : <div className="flex min-h-[50vh] items-center justify-center text-center"><div className="max-w-sm"><Search size={26} className="mx-auto text-[#6d4ed2]" /><p className="mt-3 font-bold text-white">Search results will appear here</p><p className="mt-1 text-xs leading-5 text-[#77748a]">Try another search term or category.</p></div></div>}
                 </div>
               </>
             )}
