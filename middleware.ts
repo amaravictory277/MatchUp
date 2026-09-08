@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const protectedPrefixes = ['/tournaments/new', '/notifications', '/leaderboard'];
+const protectedPrefixes = ['/home', '/tournaments/new', '/notifications', '/leaderboard'];
 const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/' };
 
 async function getValidAccessToken(request: NextRequest) {
@@ -22,16 +22,21 @@ async function getValidAccessToken(request: NextRequest) {
 }
 
 export async function middleware(request: NextRequest) {
-  const needsAuth = protectedPrefixes.some((prefix) => request.nextUrl.pathname === prefix || request.nextUrl.pathname.startsWith(`${prefix}/`));
+  const pathname = request.nextUrl.pathname;
+  const needsAuth = protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   if (!needsAuth) return NextResponse.next();
+
   const session = await getValidAccessToken(request);
-  if (!session) return NextResponse.redirect(new URL(`/auth?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url));
+  const isHome = pathname === '/home' || pathname.startsWith('/home/');
+  const guestAllowed = isHome && request.cookies.get('matchup-guest')?.value === '1';
+  if (!session && !guestAllowed) return NextResponse.redirect(new URL(`/auth?next=${encodeURIComponent(pathname)}`, request.url));
+
   const response = NextResponse.next();
-  if ('refresh_token' in session) {
-    response.cookies.set('matchup-access-token', session.access_token!, { ...cookieOptions, maxAge: session.expires_in || 3600 });
-    response.cookies.set('matchup-refresh-token', session.refresh_token!, { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 });
+  if ('refresh_token' in (session || {})) {
+    response.cookies.set('matchup-access-token', session!.access_token!, { ...cookieOptions, maxAge: session!.expires_in || 3600 });
+    response.cookies.set('matchup-refresh-token', session!.refresh_token!, { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 });
   }
   return response;
 }
 
-export const config = { matcher: ['/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*'] };
+export const config = { matcher: ['/home/:path*', '/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*'] };
