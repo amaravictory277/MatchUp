@@ -26,6 +26,9 @@ button { font: inherit; }
 .tournament-card, .surface-card { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(140deg, rgba(18,19,37,.98), rgba(10,11,23,.98)); box-shadow: 0 12px 28px rgba(0,0,0,.14); }
 .tournament-card { transition: border-color .2s, transform .2s; }
 .tournament-card:hover { border-color: #51417b; transform: translateY(-2px); }
+/* MatchUp brand treatment for the supplied football artwork used across tournament cards. */
+.tournament-card .bg-cover { position: relative; }
+.tournament-card .bg-cover::after { position: absolute; left: 50%; top: 24%; transform: translate(-50%, -50%) rotate(-4deg); content: "MatchUp"; white-space: nowrap; color: #fff; font-size: clamp(9px, 1.9vw, 18px); font-weight: 900; font-style: italic; letter-spacing: -.04em; text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 2px 4px rgba(0,0,0,.65); pointer-events: none; }
 .avatar { display: grid; height: 28px; width: 28px; place-items: center; border: 2px solid #111223; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 900; }
 .bottom-nav { position: fixed; bottom: 18px; left: 50%; z-index: 30; display: grid; width: min(calc(100% - 40px), 720px); grid-template-columns: repeat(5, 1fr); align-items: center; transform: translateX(-50%); border: 1px solid #1d1d37; border-radius: 32px; background: rgba(13,13,33,.92); padding: 9px 10px; box-shadow: 0 14px 40px rgba(0,0,0,.45); backdrop-filter: blur(18px); }
 .nav-link { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; padding: 0; margin: 0; color: #aaa8bd; font-size: 9px; font-weight: 700; cursor: pointer; transition: color .2s; }
