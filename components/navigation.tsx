@@ -9,14 +9,14 @@ import { createBrowserSupabaseClient } from "../lib/supabase/client";
 import { getLocalUnreadCount, subscribeToLocalNotificationChanges } from "../lib/notifications/local";
 
 const links = [
-  { label: "Home", icon: House, href: "/", route: true },
+  { label: "Home", icon: House, href: "/home", route: true },
   { label: "Tournaments", icon: Trophy, href: "/tournaments", route: true },
   { label: "Feeds", icon: Newspaper, href: "/feeds", route: true },
   { label: "Chat", icon: MessageSquare, href: "/leaderboard", route: true },
 ] as const;
 
 function getRouteActive(pathname: string) {
-  if (pathname === "/") return "Home";
+  if (pathname === "/home" || pathname.startsWith("/home/")) return "Home";
   if (pathname.startsWith("/tournaments")) return "Tournaments";
   if (pathname.startsWith("/feeds")) return "Feeds";
   if (pathname.startsWith("/leaderboard")) return "Chat";
@@ -164,7 +164,7 @@ export function TopBar() {
   return (
     <>
       <header className="relative z-20 flex items-center justify-between pb-5">
-        <a href="/" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
+        <a href="/home" className="wordmark" aria-label="MatchUp home">Match<span>Up</span></a>
         <div className="flex items-center gap-2">
           <button type="button" aria-label="Search" onClick={openSearch} className="icon-button"><Search size={19} /></button>
           <button type="button" aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} onClick={() => router.push("/notifications")} className="icon-button relative"><Bell size={18} />{unreadCount > 0 ? <span className="notification-dot">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</button>
