@@ -10,6 +10,11 @@ type Mode = 'signin' | 'signup' | 'forgot' | 'verify';
 const RESEND_COOLDOWN_SECONDS = 60;
 const DEFAULT_NEXT_PATH = '/home';
 
+function getSafeNextPath(value: string | null) {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return DEFAULT_NEXT_PATH;
+  return value;
+}
+
 function friendlyAuthError(message: string) {
   const lower = message.toLowerCase();
   if (lower.includes('email not confirmed')) return 'Please verify your email address before signing in.';
@@ -37,7 +42,7 @@ export function AuthForm() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setMode(params.get('mode') === 'signup' ? 'signup' : 'signin');
-    setNextPath(params.get('next') || DEFAULT_NEXT_PATH);
+    setNextPath(getSafeNextPath(params.get('next')));
   }, []);
 
   useEffect(() => {
@@ -100,7 +105,10 @@ export function AuthForm() {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback${nextPath !== DEFAULT_NEXT_PATH ? `?next=${encodeURIComponent(nextPath)}` : ''}`,
+            // Email verification always returns to the canonical MatchUp
+            // callback. The callback establishes the secure server session
+            // and sends the user to /home; it never redirects to Vercel auth.
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
           },
         });
         if (authError) throw new Error(friendlyAuthError(authError.message));
@@ -137,7 +145,11 @@ export function AuthForm() {
     setError('');
     setMessage('');
     try {
-      const { error: authError } = await supabase.auth.resend({ type: 'signup', email: email.trim() });
+      const { error: authError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
       if (authError) throw new Error(friendlyAuthError(authError.message));
       setCooldown(RESEND_COOLDOWN_SECONDS);
       setMessage('A new verification email has been sent.');
