@@ -44,8 +44,17 @@ export function AccountMenu() {
 
     try {
       const { error: signOutError } = await supabase.auth.signOut();
+      let serverError: unknown = null;
+
+      try {
+        await clearAuthSession();
+      } catch (logoutError) {
+        serverError = logoutError;
+      }
+
       if (signOutError) throw signOutError;
-      await clearAuthSession();
+      if (serverError) throw serverError;
+
       setUser(null);
       setOpen(false);
       router.replace("/");
@@ -59,9 +68,12 @@ export function AccountMenu() {
 
   if (!user) {
     return (
-      <button type="button" onClick={() => router.push("/auth")} aria-label="Sign in" className="profile-avatar">
-        <User size={18} />
-      </button>
+      <div className="relative">
+        <button type="button" onClick={() => router.push("/auth")} aria-label="Sign in" className="profile-avatar">
+          <User size={18} />
+        </button>
+        {error ? <div role="alert" className="absolute right-0 top-[calc(100%+10px)] z-[80] w-64 rounded-2xl border border-[#5b2d38] bg-[#21131b] px-3 py-2 text-xs leading-5 text-[#ffb2b2] shadow-[0_18px_50px_rgba(0,0,0,.5)]">{error}</div> : null}
+      </div>
     );
   }
 
