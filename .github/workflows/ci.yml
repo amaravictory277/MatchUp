@@ -34,6 +34,7 @@ jobs:
           s = s.replace(bad_delete, good_delete)
           s = s.replace('  ArrowLeft,\\n', '').replace('  Heart,\\n', '').replace('  Link2,\\n', '')
           s = s.replace('entries as Presence[]', 'entries as unknown as Presence[]')
+          s = s.replace('const {data,e}', 'const {data,error:e}')
           old = 'if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]">Sign in to use MatchUp group chat.</section>;'
           new = 'if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>Sign in to use MatchUp group chat.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#167bd1] px-4 py-3 text-center text-sm font-bold text-white">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#167bd1] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#70c1ff]">Sign Up</a></div></section>;'
           s = s.replace(old, new)
@@ -54,6 +55,6 @@ jobs:
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
             git add components/chat/chat-hub.tsx
-            git commit -m 'feat: add real General chat room'
+            git commit -m 'ci: normalize chat source fixes'
             git push origin main
           fi
