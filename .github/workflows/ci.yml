@@ -22,7 +22,7 @@ jobs:
       - name: Harden chat source before build
         shell: bash
         run: |
-          python3 - <<'PY'
+          python3 - <<'PY2'
           from pathlib import Path
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
@@ -47,7 +47,40 @@ jobs:
           if 'aria-label={muted ? "Unmute chat" : "Mute chat"}' not in s:
               s = s.replace(anchor, mute_button + anchor)
           p.write_text(s)
-          PY
+          PY2
+      - name: Add group limits, tournament launch and warm chat hooks
+        shell: bash
+        run: |
+          python3 - <<'PY2'
+          from pathlib import Path
+          p = Path('components/chat/chat-hub.tsx')
+          s = p.read_text()
+          if 'groupLimit' not in s:
+              s = s.replace('Settings2, Smile, Trash2', 'Settings2, Smile, Trophy, Trash2')
+              s = s.replace('kind:"general"|"private"|"group";locked:boolean;image_path?:string|null', 'kind:"general"|"private"|"group";locked:boolean;member_limit?:number;image_path?:string|null')
+              s = s.replace('const [groupImage,setGroupImage]=useState<File|null>(null);', 'const [groupImage,setGroupImage]=useState<File|null>(null);const [groupLimit,setGroupLimit]=useState(20);const [showLimitPicker,setShowLimitPicker]=useState(false);')
+              s = s.replace('locked,image_path', 'locked,member_limit,image_path')
+              s = s.replace('{p_name:groupName.trim(),p_friend_ids:selectedInvitees}', '{p_name:groupName.trim(),p_friend_ids:selectedInvitees,p_member_limit:groupLimit}')
+              s = s.replace('const toggleLock=async()=>{', 'const setMemberLimit=async(limit:number)=>{if(!active||active.kind!=="group"||active.created_by!==user.id)return;const {error:e}=await supabase.rpc("set_chat_group_member_limit",{p_group_id:active.id,p_member_limit:limit});if(e){setError(e.message);return;}setActive({...active,member_limit:limit});setGroups(v=>v.map(g=>g.id===active.id?{...g,member_limit:limit}:g));setGroupLimit(limit);setShowLimitPicker(false);};\n const toggleLock=async()=>{')
+              s = s.replace('<section className="relative min-h-[72vh]', '<section className="matchup-chat relative min-h-[72vh]')
+              s = s.replace('<header className="border-b', '<header className="matchup-chat-header border-b')
+              s = s.replace('<div className="flex-1 overflow-y-auto bg-[#061221]', '<div className="matchup-chat-body flex-1 overflow-y-auto bg-[#061221]')
+              s = s.replace('<div className="border-t border-[#18365f] bg-[#08182b] p-3 sm:p-4">', '<div className="matchup-chat-composer border-t border-[#18365f] bg-[#08182b] p-3 sm:p-4">')
+              s = s.replace('rounded-br-[7px] bg-[#126bc0]', 'matchup-chat-bubble-own rounded-br-[7px] bg-[#126bc0]')
+              s = s.replace('rounded-bl-[7px] border border-[#173d67] bg-[#0a1b2f]', 'matchup-chat-bubble-other rounded-bl-[7px] border border-[#173d67] bg-[#0a1b2f]')
+              s = s.replace('onClick={()=>{setGroupName(active.name);setInviteSearch("");setInviteCandidates(friends);setShowManage(v=>!v);}}', 'onClick={()=>{setGroupName(active.name);setInviteSearch("");setInviteCandidates(friends);setGroupLimit(active.member_limit||20);setShowManage(v=>!v);}}')
+              create_anchor = '<div className="mt-4"><p className="mb-2 text-xs font-black uppercase tracking-[.14em] text-[#66809a]">Invite people</p>'
+              limit_button = '<button type="button" onClick={()=>setShowLimitPicker(true)} className="mt-4 flex w-full items-center justify-between rounded-2xl border border-[#214a78] bg-[#071426] p-4 text-left"><span><strong className="block text-sm">Group limit</strong><small className="text-[11px] text-[#7892ac]">Choose how many people can be in this group</small></span><span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-black text-[var(--accent)]">{groupLimit} people</span></button>'+create_anchor
+              s = s.replace(create_anchor, limit_button)
+              manage_anchor = '<div className="mt-5"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[.14em] text-[#66809a]">Members · {members.length}</p></div>'
+              manage_limit = '<button type="button" onClick={()=>{setGroupLimit(active.member_limit||20);setShowLimitPicker(true);}} className="mb-4 flex w-full items-center justify-between rounded-2xl border border-[#214a78] bg-[#071426] p-3 text-left"><span><strong className="block text-sm">Group limit</strong><small className="text-[11px] text-[#7892ac]">Members {members.length} · Limit {active.member_limit||20}</small></span><span className="text-xs font-black text-[var(--accent)]">Change</span></button>'+manage_anchor
+              s = s.replace(manage_anchor, manage_limit)
+              manage_tournament = '<button type="button" onClick={()=>{window.location.href=`/tournaments/from-group?groupId=${active.id}`;}} className="flex w-full items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--accent-soft)] p-3 text-left"><Trophy size={18} className="text-[var(--accent)]"/><span><strong className="block text-sm">Create Tournament</strong><small className="text-[11px] text-[var(--muted)]">Invite people from this group before creating</small></span></button>'
+              s = s.replace('<div className="mt-5 grid gap-3">', '<div className="mt-5 grid gap-3">'+manage_tournament)
+              picker = '{showLimitPicker&&<div className="fixed inset-0 z-[95] grid place-items-center bg-black/75 p-4"><div className="w-full max-w-md rounded-[28px] border border-[var(--line)] bg-[#171109] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[var(--accent)]">Group settings</p><h2 className="mt-1 text-xl font-black">Limit group size</h2></div><button type="button" onClick={()=>setShowLimitPicker(false)}><X size={19}/></button></div><p className="mt-2 text-xs text-[var(--muted)]">Once the group reaches this number, new invitations are blocked until the admin raises the limit.</p><div className="mt-5 grid grid-cols-2 gap-3">{[10,20,30,50].map(limit=><button key={limit} type="button" onClick={()=>{setGroupLimit(limit);if(showManage)void setMemberLimit(limit);}} className={`rounded-2xl border p-5 text-left ${groupLimit===limit?"border-[var(--accent)] bg-[var(--accent-soft)]":"border-[var(--line)] bg-[#100d09]"}`}><span className="block text-2xl font-black">{limit}</span><span className="text-xs text-[var(--muted)]">people</span></button>)}</div><button type="button" onClick={()=>{if(showManage)void setMemberLimit(groupLimit);else setShowLimitPicker(false);}} className="mt-5 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-black text-[#241205]">Save limit</button></div></div>}'
+              s = s.replace('</section>;\n}', picker+'</section>;\n}')
+              p.write_text(s)
+          PY2
       - run: npm ci
       - run: NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-placeholder npm run build
       - name: Commit source fixes
