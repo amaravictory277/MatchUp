@@ -14,6 +14,12 @@ type Profile = {
 
 type AuthUser = { id: string };
 
+type AdminProfile = {
+  id: string;
+  display_name: string | null;
+  username: string;
+};
+
 async function authUser(accessToken: string) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -55,22 +61,43 @@ export async function getAdminAccessToken() {
   return refreshedUser ? { accessToken: refreshed, userId: refreshedUser.id } : null;
 }
 
+async function databaseSaysAdmin(accessToken: string) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_matchup_admin`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: '{}',
+    cache: 'no-store',
+  });
+  if (!response.ok) return false;
+  const result = await response.json();
+  return result === true;
+}
+
 export async function requireAdmin() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
   const session = await getAdminAccessToken();
   if (!session) return null;
 
+  // The database function evaluates auth.uid() from the verified Supabase JWT.
+  // No email or browser-supplied user ID is trusted for authorization.
+  if (!await databaseSaysAdmin(session.accessToken)) return null;
+
   const url = new URL(`${SUPABASE_URL}/rest/v1/profiles`);
-  url.searchParams.set('select', 'id,display_name,username,role');
+  url.searchParams.set('select', 'id,display_name,username');
   url.searchParams.set('id', `eq.${session.userId}`);
   const response = await fetch(url, {
     headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${session.accessToken}` },
     cache: 'no-store',
   });
   if (!response.ok) return null;
-  const profiles = await response.json() as Array<{ id: string; display_name: string | null; username: string; role: string }>;
+  const profiles = await response.json() as AdminProfile[];
   const profile = profiles[0];
-  if (!profile || profile.role !== 'admin') return null;
+  if (!profile || profile.id !== session.userId) return null;
   return { ...session, profile };
 }
 
