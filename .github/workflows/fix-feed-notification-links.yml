@@ -1,0 +1,48 @@
+name: Fix feed notification links
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Make downloaded-post notifications open the source post
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          card = Path('components/feeds/feed-card.tsx')
+          s = card.read_text()
+          old = 'return <article className="surface-card overflow-hidden border-[#153c68]"'
+          new = 'return <article id={`post-${post.id}`} className="surface-card overflow-hidden border-[#153c68]"'
+          if old in s and new not in s:
+              s = s.replace(old, new, 1)
+              card.write_text(s)
+          feed = Path('components/feeds/feeds-client.tsx')
+          s = feed.read_text()
+          anchor = ' useEffect(()=>{void load();const channel=supabase.channel("feed-realtime")'
+          effect = ' useEffect(()=>{const postId=new URLSearchParams(window.location.search).get("post");if(!postId)return;const timer=window.setTimeout(()=>document.getElementById(`post-${postId}`)?.scrollIntoView({behavior:"smooth",block:"center"}),250);return()=>window.clearTimeout(timer);},[posts.length]);\n'
+          if anchor in s and 'getElementById(`post-${postId}`)' not in s:
+              s = s.replace(anchor, effect + anchor, 1)
+              feed.write_text(s)
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- components/feeds/feed-card.tsx components/feeds/feeds-client.tsx; then
+            echo "No feed notification changes needed"
+            exit 0
+          fi
+          git config user.name "matchup-ci"
+          git config user.email "matchup-ci@users.noreply.github.com"
+          git add components/feeds/feed-card.tsx components/feeds/feeds-client.tsx
+          git commit -m "Open source post from media download notification"
+          git push
