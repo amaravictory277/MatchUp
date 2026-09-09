@@ -1,0 +1,41 @@
+name: Fix chat relation hints
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Disambiguate chat sender profile relation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('components/chat/chat-hub.tsx')
+          s = p.read_text()
+          old = 'profiles(id,display_name,username)'
+          new = 'profiles!chat_messages_sender_id_fkey(id,display_name,username)'
+          updated = s.replace(old, new)
+          if updated != s:
+              p.write_text(updated)
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- components/chat/chat-hub.tsx; then
+            echo "No chat relation changes needed"
+            exit 0
+          fi
+          git config user.name "matchup-ci"
+          git config user.email "matchup-ci@users.noreply.github.com"
+          git add components/chat/chat-hub.tsx
+          git commit -m "Fix chat sender profile relationship ambiguity"
+          git push
