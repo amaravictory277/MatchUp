@@ -15,7 +15,7 @@ const links = [
 function getRouteActive(pathname:string){if(pathname==="/home"||pathname.startsWith("/home/"))return "Home";if(pathname.startsWith("/tournaments"))return "Tournaments";if(pathname.startsWith("/feeds"))return "Feeds";if(pathname.startsWith("/leaderboard"))return "Chat";return null;}
 type SearchType="tournaments"|"posts"|"friends"|"groups";
 type Result={id:string;title:string;subtitle?:string;href:string};
-const searchOptions:{id:SearchType;label:string;icon:typeof Trophy}[]=[{id:"tournaments",label:"Search Tournament",icon:Trophy},{id:"posts",label:"Search Posts",icon:FileText},{id:"friends",label:"Search Friends",icon:UserPlus},{id:"groups",label:"Search Groups",icon:UsersRound}];
+const searchOptions:{id:SearchType;label:string;icon:typeof Trophy}[]=[{id:"tournaments",label:"Search Tournament",icon:Trophy},{id:"posts",label:"Search Posts",icon:FileText},{id:"friends",label:"Search Users",icon:UserPlus},{id:"groups",label:"Search Groups",icon:UsersRound}];
 
 export function TopBar(){
  const router=useRouter(); const supabase=useMemo(()=>createBrowserSupabaseClient(),[]); const [searchOpen,setSearchOpen]=useState(false); const [searchType,setSearchType]=useState<SearchType|null>(null); const [query,setQuery]=useState(""); const [results,setResults]=useState<Result[]>([]); const [unreadCount,setUnreadCount]=useState(0);
