@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 type ValidSession = { access_token: string; refresh_token?: string; expires_in?: number };
-const protectedPrefixes = ['/home', '/tournaments/new', '/notifications', '/leaderboard', '/friends'];
+const protectedPrefixes = ['/home', '/tournaments/new', '/notifications', '/leaderboard', '/friends', '/admin'];
 const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/' };
 
 async function getValidAccessToken(request: NextRequest): Promise<ValidSession | null> {
@@ -40,4 +40,4 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ['/home/:path*', '/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*', '/friends/:path*'] };
+export const config = { matcher: ['/home/:path*', '/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*', '/friends/:path*', '/admin/:path*'] };
