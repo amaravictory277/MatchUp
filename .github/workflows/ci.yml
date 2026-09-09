@@ -42,6 +42,10 @@ jobs:
           old_groups = 'const groupList = (memberships || []).map((row: { chat_groups?: Group | Group[] | null }) => normalizeGroup(row.chat_groups)).filter(Boolean) as Group[];'
           new_groups = 'const memberGroups = (memberships || []).map((row: { chat_groups?: Group | Group[] | null }) => normalizeGroup(row.chat_groups)).filter(Boolean) as Group[];\n    const { data: generalId } = await supabase.rpc("get_or_create_general_chat");\n    let generalGroup: Group | null = null;\n    if (generalId) { const { data: generalRow } = await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked").eq("id", generalId).maybeSingle(); generalGroup = generalRow as Group | null; }\n    const groupList = generalGroup ? [generalGroup, ...memberGroups.filter((group) => group.id !== generalGroup!.id)] : memberGroups;'
           s = s.replace(old_groups, new_groups)
+          anchor = '<button type="button" onClick={()=>setShowInvites(v=>!v)} className="icon-button relative" aria-label="Group invitations">'
+          mute_button = '<button type="button" onClick={()=>void toggleMute()} className="icon-button" aria-label={muted ? "Unmute chat" : "Mute chat"}>{muted ? "🔔" : "🔕"}</button>'
+          if 'aria-label={muted ? "Unmute chat" : "Mute chat"}' not in s:
+              s = s.replace(anchor, mute_button + anchor)
           p.write_text(s)
           PY
       - run: npm ci
