@@ -13,39 +13,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Harden Reels gesture and back navigation
+      - name: Finalize Reels context and cleanup
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path('components/feeds/feed-card.tsx');s=p.read_text()
-          old='const [soundOn,setSoundOn]=useState(false);const pressTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);const longPressTriggeredRef=useRef(false);const movedRef=useRef(false);const videoRef='
-          new='const [soundOn,setSoundOn]=useState(false);const pressTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);const longPressTriggeredRef=useRef(false);const movedRef=useRef(false);const videoPointerStartRef=useRef<{x:number;y:number}|null>(null);const videoRef='
-          if old not in s: raise SystemExit('gesture state anchor missing')
-          s=s.replace(old,new,1)
-          old='const handleVideoPointerDown=(e:React.PointerEvent<HTMLVideoElement>)=>{movedRef.current=false;longPressTriggeredRef.current=false;const startX=e.clientX,startY=e.clientY;cancelVideoPress();pressTimerRef.current=setTimeout(()=>{if(!movedRef.current){longPressTriggeredRef.current=true;onLongPressVideo(post.id);}},550);};'
-          new='const handleVideoPointerDown=(e:React.PointerEvent<HTMLVideoElement>)=>{movedRef.current=false;longPressTriggeredRef.current=false;videoPointerStartRef.current={x:e.clientX,y:e.clientY};cancelVideoPress();pressTimerRef.current=setTimeout(()=>{if(!movedRef.current){longPressTriggeredRef.current=true;onLongPressVideo(post.id);}},550);};'
-          if old not in s: raise SystemExit('pointer down anchor missing')
-          s=s.replace(old,new,1)
-          old='const handleVideoPointerMove=(e:React.PointerEvent<HTMLVideoElement>)=>{if(dragStartX!==null&&Math.abs(e.clientX-dragStartX)>12)movedRef.current=true;};'
-          new='const handleVideoPointerMove=(e:React.PointerEvent<HTMLVideoElement>)=>{const start=videoPointerStartRef.current;if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>12){movedRef.current=true;cancelVideoPress();}};'
-          if old not in s: raise SystemExit('pointer move anchor missing')
-          s=s.replace(old,new,1)
-          s=s.replace('const handleVideoPointerUp=(e:React.PointerEvent<HTMLVideoElement>)=>{cancelVideoPress();if(!longPressTriggeredRef.current&&!movedRef.current){onOpenVideo(post.id);}longPressTriggeredRef.current=false;};','const handleVideoPointerUp=(e:React.PointerEvent<HTMLVideoElement>)=>{cancelVideoPress();if(!longPressTriggeredRef.current&&!movedRef.current){onOpenVideo(post.id);}longPressTriggeredRef.current=false;videoPointerStartRef.current=null;};')
-          s=s.replace('const handleVideoPointerCancel=()=>{cancelVideoPress();longPressTriggeredRef.current=false;movedRef.current=true;};','const handleVideoPointerCancel=()=>{cancelVideoPress();longPressTriggeredRef.current=false;movedRef.current=true;videoPointerStartRef.current=null;};')
-          p.write_text(s)
           p=Path('components/feeds/reels-viewer.tsx');s=p.read_text()
-          s=s.replace('const leave=useCallback(()=>{router.push(`/feeds?tab=${encodeURIComponent(originTab)}&q=${encodeURIComponent(originQuery)}&post=${encodeURIComponent(selectedId)}&scroll=${encodeURIComponent(originScroll)}`);},[router,originTab,originQuery,selectedId,originScroll]);','const feedUrl=`/feeds?tab=${encodeURIComponent(originTab)}&q=${encodeURIComponent(originQuery)}&post=${encodeURIComponent(selectedId)}&scroll=${encodeURIComponent(originScroll)}`;const leave=useCallback(()=>{router.replace(feedUrl);},[router,feedUrl]);')
-          anchor='useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key!=="Escape")return;if(commentsOpen){setCommentsOpen(false);return;}leave();};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[commentsOpen,leave]);'
-          replacement='''useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key!=="Escape")return;if(commentsOpen){setCommentsOpen(false);return;}leave();};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[commentsOpen,leave]);
-          useEffect(()=>{const onPopState=()=>{if(!commentsOpen)return;window.history.pushState(null,"",window.location.href);setCommentsOpen(false);};if(commentsOpen)window.history.pushState(null,"",window.location.href);window.addEventListener("popstate",onPopState);return()=>window.removeEventListener("popstate",onPopState);},[commentsOpen]);'''
-          if anchor not in s: raise SystemExit('reels back anchor missing')
-          s=s.replace(anchor,replacement,1)
+          old='const {data:rows}=await supabase.from("posts").select("id,author_id,body,created_at").eq("media_kind","video").order("created_at",{ascending:false}).limit(100);if(!alive)return;'
+          new='const {data:rows}=await supabase.from("posts").select("id,author_id,body,created_at").eq("media_kind","video").order("created_at",{ascending:false}).limit(100);if(!alive)return;const {data:followRows}=uid?await supabase.from("user_follows").select("following_id").eq("follower_id",uid):{data:[]};const followingIds=new Set((followRows||[]).map((f:any)=>f.following_id));'
+          if old not in s: raise SystemExit('reels query anchor missing')
+          s=s.replace(old,new,1)
+          old='setReels(originTab==="following"&&uid?built.filter(r=>r.authorId===uid):built);'
+          new='setReels(originTab==="following"&&uid?built.filter(r=>followingIds.has(r.authorId)||r.authorId===uid):built);'
+          if old not in s: raise SystemExit('following filter anchor missing')
+          s=s.replace(old,new,1)
           p.write_text(s)
           PY
-          git rm .github/workflows/add-feed-longpress-reels.yml
+          git rm .github/workflows/fix-feed-reels-gesture.yml
           git config user.name "matchup-bot"
           git config user.email "actions@github.com"
-          git add components/feeds/feed-card.tsx components/feeds/reels-viewer.tsx
-          git commit -m "fix: harden feed reels gesture and back navigation"
+          git add components/feeds/reels-viewer.tsx
+          git commit -m "fix: preserve following reels context and clean up workflow"
           git push
