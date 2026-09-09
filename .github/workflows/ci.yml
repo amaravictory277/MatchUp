@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Production build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+        run: npm run build
+      - name: Test status
+        run: |
+          if [ -d tests ] || [ -d __tests__ ] || find . -maxdepth 3 -type f \( -name '*.test.ts' -o -name '*.test.tsx' -o -name '*.spec.ts' -o -name '*.spec.tsx' \) | grep -q .; then
+            echo "Test files detected; repository-specific test runner is not configured in package.json."
+          else
+            echo "No automated test suite is configured in package.json."
+          fi
