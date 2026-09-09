@@ -2,6 +2,8 @@
 -- chat_messages.sender_id -> profiles.id via chat_messages_sender_id_fkey.
 -- Reload PostgREST after relationship/schema changes so its relationship cache matches
 -- the actual PostgreSQL catalog used by Supabase REST queries.
+-- This migration is intentionally catalog-guarded: it fails if a second profile
+-- relationship is introduced without updating the chat embeds.
 DO $$
 DECLARE
   fk_count integer;
