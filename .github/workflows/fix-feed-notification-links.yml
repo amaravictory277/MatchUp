@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply feed and notification UI fixes
+      - name: Apply feed, notification and CI fixes
         shell: bash
         run: |
           python3 - <<'PY'
@@ -38,10 +38,13 @@ jobs:
           hook = ' const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2500);};\n useEffect(()=>{const previews=files.map(file=>({file,url:URL.createObjectURL(file)}));setFilePreviews(previews);return()=>previews.forEach(preview=>URL.revokeObjectURL(preview.url));},[files]);'
           if hook_anchor in s and 'URL.revokeObjectURL(preview.url)' not in s:
               s = s.replace(hook_anchor, hook, 1)
-          old_preview = '<div className="mt-3 flex flex-wrap gap-2">{files.map((f,i)=><span key={`${f.name}-${i}`} className="max-w-full rounded-full border border-[#18365f] bg-[#0a1b2f] px-3 py-1.5 text-xs text-[#b7c9da]">{f.name}</span>)}</div>'
-          new_preview = '<div className="mt-3 flex flex-wrap gap-2.5">{files.map((f,i)=>{const preview=filePreviews.find(x=>x.file===f);return <div key={`${f.name}-${i}`} className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-[#244d76] bg-[#071426]">{preview?(f.type.startsWith("image/")?<img src={preview.url} alt={f.name} className="size-full object-cover"/>:<video src={preview.url} muted playsInline preload="metadata" className="size-full object-cover"/>):null}<span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-1 text-[9px] font-semibold text-white">{f.name}</span></div>})}</div>'
-          if old_preview in s:
-              s = s.replace(old_preview, new_preview, 1)
+          anchor = '<div className="mt-3 flex flex-wrap gap-2">{files.map((f,i)=>'
+          if anchor in s:
+              start = s.index(anchor)
+              end_marker = '</div>:null}'
+              end = s.index(end_marker, start) + len(end_marker)
+              replacement = '<div className="mt-3 flex flex-wrap gap-2.5">{files.map((f,i)=>{const preview=filePreviews.find(x=>x.file===f);return <div key={`${f.name}-${i}`} className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-[#244d76] bg-[#071426]">{preview?(f.type.startsWith("image/")?<img src={preview.url} alt={f.name} className="size-full object-cover"/>:<video src={preview.url} muted playsInline preload="metadata" className="size-full object-cover"/>):null}<span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-1 text-[9px] font-semibold text-white">{f.name}</span></div>})}</div>:null}'
+              s = s[:start] + replacement + s[end:]
           feed.write_text(s)
 
           notifications = Path('components/notifications/notifications-page.tsx')
@@ -56,16 +59,25 @@ jobs:
           s = s.replace('mt-2 inline-flex text-xs font-black', 'mt-1 inline-flex text-[10px] font-black')
           s = s.replace('className="size-16 shrink-0 rounded-xl object-cover sm:size-20"', 'className="size-12 shrink-0 rounded-lg object-cover"')
           notifications.write_text(s)
+
+          ci = Path('.github/workflows/ci.yml')
+          s = ci.read_text()
+          start = s.find('      - name: Add guest live feed and General chat browsing')
+          end = s.find('      - name: Run npm ci', start)
+          if start >= 0 and end > start:
+              replacement = '''      - name: Validate guest feed and General chat source\n        shell: bash\n        run: |\n          python3 - <<'PY3'\n          from pathlib import Path\n          feed = Path('components/feeds/feeds-client.tsx').read_text()\n          chat = Path('components/chat/chat-hub.tsx').read_text()\n          if 'from("posts")' not in feed or 'from("post_comments")' not in feed:\n              raise SystemExit('Guest feed source validation failed')\n          if 'chat_groups' not in chat or 'chat_messages' not in chat:\n              raise SystemExit('General chat source validation failed')\n          PY3\n'''
+              s = s[:start] + replacement + s[end:]
+              ci.write_text(s)
           PY
       - name: Commit fix
         shell: bash
         run: |
-          if git diff --quiet -- components/feeds/feed-card.tsx components/feeds/feeds-client.tsx components/notifications/notifications-page.tsx; then
-            echo "No feed/notification UI changes needed"
+          if git diff --quiet -- components/feeds/feed-card.tsx components/feeds/feeds-client.tsx components/notifications/notifications-page.tsx .github/workflows/ci.yml; then
+            echo "No feed/notification/CI changes needed"
             exit 0
           fi
           git config user.name "matchup-ci"
           git config user.email "matchup-ci@users.noreply.github.com"
-          git add components/feeds/feed-card.tsx components/feeds/feeds-client.tsx components/notifications/notifications-page.tsx
-          git commit -m "Compact notification cards and post media previews"
+          git add components/feeds/feed-card.tsx components/feeds/feeds-client.tsx components/notifications/notifications-page.tsx .github/workflows/ci.yml
+          git commit -m "Fix feed preview patching and harden CI"
           git push
