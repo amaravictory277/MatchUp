@@ -30,12 +30,13 @@ export function GroupTournamentCreator() {
     void (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user || !groupId) { if (!cancelled) setError("Open Create Tournament from a group chat while signed in."); return; }
-      const [{ data: g }, { data: rows }] = await Promise.all([
+      const [{ data: g }, { data: rows }, { data: mine }] = await Promise.all([
         supabase.from("chat_groups").select("id,name,created_by,member_limit").eq("id", groupId).eq("kind", "group").maybeSingle(),
         supabase.from("chat_group_members").select("user_id,profiles(id,display_name,username)").eq("group_id", groupId).limit(200),
+        supabase.from("chat_group_members").select("user_id").eq("group_id", groupId).eq("user_id", auth.user.id).maybeSingle(),
       ]);
       if (cancelled) return;
-      if (!g || g.created_by !== auth.user.id) { setError("Only the group admin can create a tournament from this group."); return; }
+      if (!g || !mine) { setError("You must be a member of this group to create a tournament from it."); return; }
       setGroup(g as Group);
       setMembers((rows || []).map((r: any) => r.profiles as Profile).filter((p: Profile | null) => Boolean(p && p.id !== auth.user.id)));
     })();
