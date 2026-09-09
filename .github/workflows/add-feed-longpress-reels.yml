@@ -1,0 +1,97 @@
+name: Add feed long press reels
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'matchup-bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply long press Reels implementation
+        shell: bash
+        run: |
+          cat /tmp/patch_reels_workflow.yml >/dev/null 2>&1 || true
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          card=Path('components/feeds/feed-card.tsx');s=card.read_text()
+          s=s.replace('type FeedCardProps={post:Post;onToggleLike:(id:string)=>void;onToggleFollow:(id:string)=>void;onComment:(id:string,text:string)=>void;onEditComment:(postId:string,commentId:string,text:string)=>void;onDeleteComment:(postId:string,commentId:string)=>void;onShare:(id:string)=>void;onDelete:(id:string)=>void;onEdit:(id:string,caption:string)=>void;onToggleSave:(id:string)=>void;onDownload:(id:string,type:"image"|"video")=>void};','type FeedCardProps={post:Post;onToggleLike:(id:string)=>void;onToggleFollow:(id:string)=>void;onComment:(id:string,text:string)=>void;onEditComment:(postId:string,commentId:string,text:string)=>void;onDeleteComment:(postId:string,commentId:string)=>void;onShare:(id:string)=>void;onDelete:(id:string)=>void;onEdit:(id:string,caption:string)=>void;onToggleSave:(id:string)=>void;onDownload:(id:string,type:"image"|"video")=>void;onOpenVideo:(id:string)=>void;onLongPressVideo:(id:string)=>void};')
+          s=s.replace('export function FeedCard({post,onToggleLike,onToggleFollow,onComment,onEditComment,onDeleteComment,onShare,onDelete,onEdit,onToggleSave,onDownload}:FeedCardProps){','export function FeedCard({post,onToggleLike,onToggleFollow,onComment,onEditComment,onDeleteComment,onShare,onDelete,onEdit,onToggleSave,onDownload,onOpenVideo,onLongPressVideo}:FeedCardProps){')
+          s=s.replace('const [soundOn,setSoundOn]=useState(false);const [pressTimer,setPressTimer]=useState<ReturnType<typeof setTimeout>|null>(null);const videoRef=','const [soundOn,setSoundOn]=useState(false);const pressTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);const longPressTriggeredRef=useRef(false);const movedRef=useRef(false);const videoRef=')
+          old='const goTo=(next:number)=>setIndex((next+total)%Math.max(total,1));const handlePointerDown=(e:React.PointerEvent)=>{setDragStartX(e.clientX);const timer=setTimeout(()=>setMenuOpen(true),550);setPressTimer(timer);};const handlePointerUp=(e:React.PointerEvent)=>{if(pressTimer)clearTimeout(pressTimer);if(dragStartX!==null){const delta=e.clientX-dragStartX;if(Math.abs(delta)>40)goTo(delta<0?index+1:index-1);}setDragStartX(null);setPressTimer(null);};'
+          new='''const goTo=(next:number)=>setIndex((next+total)%Math.max(total,1));
+          const cancelVideoPress=()=>{if(pressTimerRef.current){clearTimeout(pressTimerRef.current);pressTimerRef.current=null;}};
+          const handleVideoPointerDown=(e:React.PointerEvent<HTMLVideoElement>)=>{movedRef.current=false;longPressTriggeredRef.current=false;const startX=e.clientX,startY=e.clientY;cancelVideoPress();pressTimerRef.current=setTimeout(()=>{if(!movedRef.current){longPressTriggeredRef.current=true;onLongPressVideo(post.id);}},550);};
+          const handleVideoPointerUp=(e:React.PointerEvent<HTMLVideoElement>)=>{cancelVideoPress();if(!longPressTriggeredRef.current&&!movedRef.current){onOpenVideo(post.id);}longPressTriggeredRef.current=false;};
+          const handleVideoPointerMove=(e:React.PointerEvent<HTMLVideoElement>)=>{if(dragStartX!==null&&Math.abs(e.clientX-dragStartX)>12)movedRef.current=true;};
+          const handleVideoPointerCancel=()=>{cancelVideoPress();longPressTriggeredRef.current=false;movedRef.current=true;};'''
+          if old not in s: raise SystemExit('old pointer block not found')
+          s=s.replace(old,new,1)
+          s=s.replace('onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerCancel={()=>{if(pressTimer)clearTimeout(pressTimer);setPressTimer(null);}}','')
+          oldv='<video ref={videoRef} src={post.videoUrl} poster={post.media[index]} muted playsInline loop autoPlay preload="metadata" className="absolute inset-0 size-full cursor-pointer object-cover" onClick={toggleVideoMute} aria-label={`${post.author.name} video`}/>'
+          newv='<video ref={videoRef} src={post.videoUrl} poster={post.media[index]} muted playsInline loop autoPlay preload="metadata" className="absolute inset-0 size-full cursor-pointer object-cover" onPointerDown={handleVideoPointerDown} onPointerUp={handleVideoPointerUp} onPointerMove={handleVideoPointerMove} onPointerCancel={handleVideoPointerCancel} aria-label={`${post.author.name} video`}/>'
+          if oldv not in s: raise SystemExit('video anchor not found')
+          s=s.replace(oldv,newv,1)
+          card.write_text(s)
+
+          client=Path('components/feeds/feeds-client.tsx');s=client.read_text()
+          s=s.replace('import { useCallback, useEffect, useMemo, useState } from "react";','import { useCallback, useEffect, useMemo, useState } from "react";\nimport { useRouter } from "next/navigation";')
+          s=s.replace('export function FeedsClient(){\n const supabase=','export function FeedsClient(){\n const router=useRouter();\n const supabase=')
+          s=s.replace('const [uploading,setUploading]=useState(false);const [toast=', 'const [uploading,setUploading]=useState(false);const [selectedVideoId,setSelectedVideoId]=useState<string|null>(null);const [toast=')
+          anchor='useEffect(()=>{const postId=new URLSearchParams(window.location.search).get("post");if(!postId)return;const timer=window.setTimeout(()=>document.getElementById(`post-${postId}`)?.scrollIntoView({behavior:"smooth",block:"center"}),250);return()=>window.clearTimeout(timer);},[posts.length]);'
+          replacement='''useEffect(()=>{const params=new URLSearchParams(window.location.search);const urlTab=params.get("tab");const urlQuery=params.get("q");const scroll=params.get("scroll");const postId=params.get("post");if(urlTab==="for-you"||urlTab==="following")setTab(urlTab);if(urlQuery!==null)setQuery(urlQuery);if(scroll!==null&&Number.isFinite(Number(scroll)))setRestoreScroll(Number(scroll));if(postId){const timer=window.setTimeout(()=>document.getElementById(`post-${postId}`)?.scrollIntoView({behavior:"smooth",block:"center"}),300);return()=>window.clearTimeout(timer);}},[]);
+          useEffect(()=>{if(restoreScroll===null||!posts.length)return;const timer=window.setTimeout(()=>{window.scrollTo({top:restoreScroll,behavior:"auto"});setRestoreScroll(null);},350);return()=>window.clearTimeout(timer);},[posts.length,restoreScroll]);'''
+          if anchor not in s:
+              oldanchor='useEffect(()=>{const postId=new URLSearchParams(window.location.search).get("post");if(!postId)return;const timer=window.setTimeout(()=>document.getElementById(`post-${postId}`)?.scrollIntoView({behavior:"smooth",block:"center"}),250);return()=>window.clearTimeout(timer);},[posts.length]);'
+              if oldanchor not in s: raise SystemExit('restore anchor not found')
+              s=s.replace(oldanchor,replacement,1)
+          else:s=s.replace(anchor,replacement,1)
+          # restoreScroll state
+          if 'const [restoreScroll,setRestoreScroll]' not in s:
+              s=s.replace('const [tab,setTab]=useState<FeedTab>("for-you");const [query,setQuery]=useState("");','const [tab,setTab]=useState<FeedTab>("for-you");const [query,setQuery]=useState("");const [restoreScroll,setRestoreScroll]=useState<number|null>(null);')
+          oldmap='<FeedCard key={post.id} post={post} onToggleLike={toggleLike} onToggleFollow={toggleFollow} onComment={addComment} onEditComment={editComment} onDeleteComment={deleteComment} onShare={share} onDelete={deletePost} onEdit={editPost} onToggleSave={toggleSave} onDownload={download}/>'
+          newmap='<FeedCard key={post.id} post={post} onToggleLike={toggleLike} onToggleFollow={toggleFollow} onComment={addComment} onEditComment={editComment} onDeleteComment={deleteComment} onShare={share} onDelete={deletePost} onEdit={editPost} onToggleSave={toggleSave} onDownload={download} onOpenVideo={id=>setSelectedVideoId(id)} onLongPressVideo={id=>{const params=new URLSearchParams({tab,q:query,post:id,scroll:String(Math.round(window.scrollY))});router.push(`/reels?${params.toString()}`);}}/>'
+          if oldmap not in s: raise SystemExit('FeedCard map not found')
+          s=s.replace(oldmap,newmap,1)
+          marker='{toast?<div className="fixed bottom-28 left-1/2 z-50 -translate-x-1/2'
+          viewer='''{selectedVideoId?<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/90 p-4" onClick={()=>setSelectedVideoId(null)}><div className="relative h-[min(82vh,760px)] w-full max-w-[430px] overflow-hidden rounded-3xl bg-black" onClick={e=>e.stopPropagation()}><button type="button" onClick={()=>setSelectedVideoId(null)} aria-label="Close video viewer" className="absolute right-3 top-3 z-20 grid size-10 place-items-center rounded-full bg-black/55 text-white"><X size={20}/></button><video src={posts.find(p=>p.id===selectedVideoId)?.videoUrl||""} controls autoPlay playsInline className="size-full object-contain"/></div></div>:null}'''
+          if marker in s and 'selectedVideoId?' not in s:s=s.replace(marker,viewer+marker,1)
+          client.write_text(s)
+          PY
+          mkdir -p app/reels components/feeds
+          cat > app/reels/page.tsx <<'EOF'
+          import type { Metadata } from "next";
+          import { ReelsViewer } from "../../components/feeds/reels-viewer";
+          export const metadata: Metadata={title:"Reels | MatchUp",description:"Watch MatchUp football videos."};
+          export default function ReelsPage(){return <ReelsViewer/>;}
+          EOF
+          cat > components/feeds/reels-viewer.tsx <<'EOF'
+          "use client";
+          import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+          import { ArrowLeft, Heart, MessageCircle, Send, Volume2, VolumeX, X } from "lucide-react";
+          import { useRouter,useSearchParams } from "next/navigation";
+          import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+          type Reel={id:string;authorId:string;author:string;body:string;videoUrl:string;likes:number;liked:boolean;comments:{id:string;author:string;body:string}[]};
+          export function ReelsViewer(){
+            const router=useRouter();const params=useSearchParams();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const selectedId=params.get("post")||"";const originTab=params.get("tab")==="following"?"following":"for-you";const originQuery=params.get("q")||"";const originScroll=params.get("scroll")||"0";const [reels,setReels]=useState<Reel[]>([]);const [active,setActive]=useState(0);const [userId,setUserId]=useState("");const [commentsOpen,setCommentsOpen]=useState(false);const [commentText,setCommentText]=useState("");const [muted,setMuted]=useState(true);const videoRefs=useRef<Record<string,HTMLVideoElement|null>>({});
+            const leave=useCallback(()=>{router.push(`/feeds?tab=${encodeURIComponent(originTab)}&q=${encodeURIComponent(originQuery)}&post=${encodeURIComponent(selectedId)}&scroll=${encodeURIComponent(originScroll)}`);},[router,originTab,originQuery,selectedId,originScroll]);
+            useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key!=="Escape")return;if(commentsOpen){setCommentsOpen(false);return;}leave();};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[commentsOpen,leave]);
+            useEffect(()=>{let alive=true;(async()=>{const {data:auth}=await supabase.auth.getUser();const uid=auth.user?.id||"";if(alive)setUserId(uid);const {data:rows}=await supabase.from("posts").select("id,author_id,body,created_at").eq("media_kind","video").order("created_at",{ascending:false}).limit(100);if(!alive)return;const ids=(rows||[]).map((r:any)=>r.id);if(!ids.length){setReels([]);return;}const {data:media}=await supabase.from("post_media").select("post_id,storage_path,media_type").in("post_id",ids).eq("media_type","video");const {data:likes}=await supabase.from("post_likes").select("post_id,user_id").in("post_id",ids);const {data:comments}=await supabase.from("post_comments").select("id,post_id,author_id,body").in("post_id",ids).order("created_at",{ascending:true});const authorIds=Array.from(new Set([...(rows||[]).map((r:any)=>r.author_id),...(comments||[]).map((c:any)=>c.author_id)]));const {data:profiles}=await supabase.from("profiles").select("id,display_name,username").in("id",authorIds);const pmap=new Map((profiles||[]).map((p:any)=>[p.id,p]));const cmap=new Map<string,any[]>();(comments||[]).forEach((c:any)=>{const a=pmap.get(c.author_id);const list=cmap.get(c.post_id)||[];list.push({id:c.id,author:a?.display_name||a?.username||"MatchUp Player",body:c.body});cmap.set(c.post_id,list);});const built=(rows||[]).map((r:any)=>{const m=(media||[]).find((x:any)=>x.post_id===r.id);if(!m)return null;const {data:url}=supabase.storage.from("feed-media").getPublicUrl(m.storage_path);const a=pmap.get(r.author_id);return {id:r.id,authorId:r.author_id,author:a?.display_name||a?.username||"MatchUp Player",body:r.body,videoUrl:url.publicUrl,likes:(likes||[]).filter((l:any)=>l.post_id===r.id).length,liked:uid?Boolean((likes||[]).find((l:any)=>l.post_id===r.id&&l.user_id===uid)):false,comments:cmap.get(r.id)||[]};}).filter(Boolean) as Reel[];setReels(originTab==="following"&&uid?built.filter(r=>r.authorId===uid):built);})();return()=>{alive=false;};},[supabase,selectedId,originTab]);
+            useEffect(()=>{reels.forEach((r,i)=>{const v=videoRefs.current[r.id];if(!v)return;if(i===active){v.muted=muted;void v.play().catch(()=>{});}else{v.pause();v.currentTime=0;}});},[active,reels,muted]);
+            const toggleLike=async()=>{const r=reels[active];if(!r||!userId)return;const result=r.liked?await supabase.from("post_likes").delete().eq("post_id",r.id).eq("user_id",userId):await supabase.from("post_likes").insert({post_id:r.id,user_id:userId});if(!result.error)setReels(x=>x.map((a,i)=>i===active?{...a,liked:!a.liked,likes:a.likes+(a.liked?-1:1)}:a));};
+            const addComment=async()=>{const text=commentText.trim();const r=reels[active];if(!text||!r||!userId)return;const {data,error}=await supabase.from("post_comments").insert({post_id:r.id,author_id:userId,body:text}).select("id,body").single();if(!error&&data){setReels(x=>x.map((a,i)=>i===active?{...a,comments:[...a.comments,{id:data.id,author:"You",body:data.body}]}:a));setCommentText("");}};
+            if(!reels.length)return <main className="fixed inset-0 grid place-items-center bg-black text-white"><p>Loading Reels…</p></main>;
+            return <main className="fixed inset-0 z-[100] bg-black text-white"><div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between p-4"><button type="button" onClick={commentsOpen?()=>setCommentsOpen(false):leave} aria-label={commentsOpen?"Close comments":"Back to feed"} className="grid size-10 place-items-center rounded-full bg-black/45">{commentsOpen?<X size={21}/>:<ArrowLeft size={21}/>}</button><span className="font-black">Reels</span><button type="button" onClick={()=>setMuted(x=>!x)} aria-label={muted?"Turn sound on":"Mute"} className="grid size-10 place-items-center rounded-full bg-black/45">{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button></div><div className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain" onScroll={e=>{const el=e.currentTarget;const i=Math.round(el.scrollTop/el.clientHeight);if(i!==active)setActive(Math.max(0,Math.min(i,reels.length-1)));}}>{reels.map((r,i)=><section key={r.id} className="relative flex h-full min-h-full snap-start items-center justify-center bg-black"><video ref={v=>{videoRefs.current[r.id]=v}} src={r.videoUrl} playsInline loop muted={muted} preload={i===active?"auto":"metadata"} className="h-full w-full object-contain"/><div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 pb-8"><div className="max-w-[520px] pr-20"><p className="font-black">{r.author}</p><p className="mt-1 text-sm text-white/90">{r.body}</p></div><div className="absolute bottom-8 right-5 flex flex-col gap-3"><button type="button" onClick={toggleLike} className="grid size-12 place-items-center rounded-full bg-black/45"><Heart size={22} fill={r.liked?"currentColor":"none"}/><span className="absolute mt-16 text-xs">{r.likes}</span></button><button type="button" onClick={()=>setCommentsOpen(true)} className="grid size-12 place-items-center rounded-full bg-black/45"><MessageCircle size={22}/><span className="absolute mt-16 text-xs">{r.comments.length}</span></button></div></div></section>)}</div>{commentsOpen?<div className="absolute inset-x-0 bottom-0 z-40 max-h-[65vh] rounded-t-3xl bg-[#08182b] p-4 shadow-2xl"><div className="mb-3 flex items-center justify-between"><h2 className="font-black">Comments</h2><button type="button" onClick={()=>setCommentsOpen(false)} aria-label="Close comments"><X size={19}/></button></div><div className="max-h-[42vh] space-y-3 overflow-y-auto">{reels[active]?.comments.length?reels[active].comments.map(c=><div key={c.id} className="rounded-2xl bg-[#0d2743] p-3"><p className="text-xs font-bold">{c.author}</p><p className="mt-1 text-sm text-white/85">{c.body}</p></div>):<p className="text-sm text-white/55">No comments yet.</p>}</div><div className="mt-3 flex gap-2"><input value={commentText} onChange={e=>setCommentText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void addComment()}} placeholder={userId?"Add a comment…":"Sign in to comment"} disabled={!userId} className="min-w-0 flex-1 rounded-full bg-[#071426] px-4 py-3 text-sm outline-none"/><button type="button" onClick={()=>void addComment()} disabled={!userId} className="grid size-11 place-items-center rounded-full bg-[#167bd1] disabled:opacity-40"><Send size={17}/></button></div></div>:null}</main>;
+          }
+          EOF
+          git config user.name "matchup-bot"
+          git config user.email "actions@github.com"
+          git add components/feeds/feed-card.tsx components/feeds/feeds-client.tsx app/reels/page.tsx components/feeds/reels-viewer.tsx
+          git commit -m "feat: enter reels from long-pressed feed video"
+          git push
