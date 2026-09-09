@@ -34,6 +34,9 @@ jobs:
           state_new = 'const [files,setFiles]=useState<File[]>([]);const [filePreviews,setFilePreviews]=useState<{file:File;url:string}[]>([]);'
           if state in s and 'filePreviews' not in s:
               s = s.replace(state, state_new, 1)
+          if 'const [selectedVideoId,setSelectedVideoId]' not in s:
+              marker = 'const [userId,setUserId]=useState("");'
+              s = s.replace(marker, marker+'const [selectedVideoId,setSelectedVideoId]=useState<string|null>(null);', 1)
           hook_anchor = ' const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2500);};'
           hook = ' const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2500);};\n useEffect(()=>{const previews=files.map(file=>({file,url:URL.createObjectURL(file)}));setFilePreviews(previews);return()=>previews.forEach(preview=>URL.revokeObjectURL(preview.url));},[files]);'
           if hook_anchor in s and 'URL.revokeObjectURL(preview.url)' not in s:
@@ -79,5 +82,5 @@ jobs:
           git config user.name "matchup-ci"
           git config user.email "matchup-ci@users.noreply.github.com"
           git add components/feeds/feed-card.tsx components/feeds/feeds-client.tsx components/notifications/notifications-page.tsx .github/workflows/ci.yml
-          git commit -m "Fix feed preview patching and harden CI"
+          git commit -m "Restore video viewer state and compact media previews"
           git push
