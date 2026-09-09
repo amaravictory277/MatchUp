@@ -1,266 +1,34 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, Search, X } from "lucide-react";
 import { CreateHub } from "./create-hub";
 import { FeedCard } from "./feed-card";
-import { initialPosts, playInteractionSound, type FeedAction, type FeedTab, type Post } from "./data";
-import { recordLocalNotification } from "../../lib/notifications/local";
+import { feedActions, playInteractionSound, type FeedAction, type FeedTab, type Post, type Author, type Comment } from "./data";
+import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
-const tabs: { id: FeedTab; label: string }[] = [
-  { id: "for-you", label: "For You" },
-  { id: "following", label: "Following" },
-];
+const tabs:{id:FeedTab;label:string}[]=[{id:"for-you",label:"For You"},{id:"following",label:"Following"}];
+function relativeTime(value:string){const minutes=Math.max(0,Math.floor((Date.now()-new Date(value).getTime())/60000));if(minutes<1)return "Just now";if(minutes<60)return `${minutes} min ago`;const hours=Math.floor(minutes/60);if(hours<24)return `${hours} hour${hours===1?"":"s"} ago`;const days=Math.floor(hours/24);if(days===1)return "Yesterday";if(days<7)return `${days} days ago`;return new Date(value).toLocaleDateString();}
+function profileName(p:any){return p?.display_name||p?.username||"MatchUp Player";}
 
-const FEED_STORAGE_KEY = "matchup.feed.state.v1";
-
-function readPersistedPosts(): Post[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(FEED_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    return parsed as Post[];
-  } catch {
-    return null;
-  }
-}
-
-function persistPosts(posts: Post[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(FEED_STORAGE_KEY, JSON.stringify(posts));
-  } catch {
-    // Storage may be unavailable; the feed still works for the current session.
-  }
-}
-
-export function FeedsClient() {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [hydrated, setHydrated] = useState(false);
-  const [tab, setTab] = useState<FeedTab>("for-you");
-  const [query, setQuery] = useState("");
-  const [composer, setComposer] = useState<FeedAction | null>(null);
-  const [composerText, setComposerText] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    const saved = readPersistedPosts();
-    if (saved) setPosts(saved);
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) persistPosts(posts);
-  }, [posts, hydrated]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  const visiblePosts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return posts.filter((post) => {
-      if (tab === "following" && !post.following) return false;
-      if (!q) return true;
-      return post.author.name.toLowerCase().includes(q) || post.author.handle.toLowerCase().includes(q) || post.caption.toLowerCase().includes(q);
-    });
-  }, [posts, tab, query]);
-
-  const toggleLike = (id: string) => {
-    setPosts((prev) => {
-      const post = prev.find((item) => item.id === id);
-      if (!post) return prev;
-      const nextLiked = !post.liked;
-      if (nextLiked) {
-        recordLocalNotification({
-          kind: post.isOwn ? "post_like_received" : "post_liked",
-          message: post.isOwn ? "Someone liked your post" : `You liked ${post.author.name}'s post`,
-          actorName: post.isOwn ? "MatchUp player" : "You",
-          entityType: "post",
-          entityId: post.id,
-          href: `/feeds?post=${post.id}`,
-          thumbnail: post.media[0],
-        });
-      }
-      return prev.map((p) => p.id === id ? { ...p, liked: nextLiked, likes: p.likes + (p.liked ? -1 : 1) } : p);
-    });
-  };
-
-  const toggleFollow = (id: string) => {
-    setPosts((prev) => {
-      const post = prev.find((item) => item.id === id);
-      if (!post) return prev;
-      if (!post.following) {
-        recordLocalNotification({
-          kind: "person_followed",
-          message: `You followed ${post.author.name}`,
-          actorName: "You",
-          entityType: "profile",
-          entityId: post.id,
-          href: "/feeds#profile",
-        });
-      }
-      return prev.map((p) => p.id === id ? { ...p, following: !p.following } : p);
-    });
-    playInteractionSound("follow");
-  };
-
-  const addComment = (id: string, text: string) => {
-    setPosts((prev) => {
-      const post = prev.find((item) => item.id === id);
-      if (!post) return prev;
-      recordLocalNotification({
-        kind: "post_comment",
-        message: post.isOwn ? "Someone commented on your post" : `You commented on ${post.author.name}'s post`,
-        actorName: post.isOwn ? "MatchUp player" : "You",
-        entityType: "post",
-        entityId: post.id,
-        href: `/feeds?post=${post.id}`,
-        thumbnail: post.media[0],
-        meta: { comment_text: text },
-      });
-      if (/@[a-zA-Z0-9_]{2,24}/.test(text)) {
-        recordLocalNotification({
-          kind: "comment_tagged",
-          message: "You were tagged in a comment",
-          actorName: "You",
-          entityType: "post",
-          entityId: post.id,
-          href: `/feeds?post=${post.id}`,
-          thumbnail: post.media[0],
-        });
-      }
-      return prev.map((p) => p.id === id ? {
-        ...p,
-        comments: p.comments + 1,
-        commentList: [...p.commentList, { id: `c-${Date.now()}`, author: "You", text, time: "Just now", isOwn: true }],
-      } : p);
-    });
-    playInteractionSound("comment");
-  };
-
-  const editComment = (postId: string, commentId: string, text: string) => {
-    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, commentList: p.commentList.map((c) => c.id === commentId ? { ...c, text } : c) } : p));
-    setToast("Comment updated");
-  };
-
-  const deleteComment = (postId: string, commentId: string) => {
-    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, comments: Math.max(0, p.comments - 1), commentList: p.commentList.filter((c) => c.id !== commentId) } : p));
-    setToast("Comment deleted");
-  };
-
-  const deletePost = (id: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== id));
-    setToast("Post deleted");
-  };
-
-  const editPost = (id: string, caption: string) => {
-    setPosts((prev) => prev.map((p) => p.id === id ? { ...p, caption } : p));
-    setToast("Post updated");
-  };
-
-  const share = (id: string) => {
-    setPosts((prev) => {
-      const post = prev.find((item) => item.id === id);
-      if (post) {
-        recordLocalNotification({
-          kind: "post_link_copied",
-          message: "You copied a post link",
-          actorName: "You",
-          entityType: "post",
-          entityId: post.id,
-          href: `/feeds?post=${post.id}`,
-          thumbnail: post.media[0],
-        });
-      }
-      return prev.map((p) => p.id === id ? { ...p, shares: p.shares + 1 } : p);
-    });
-    setToast("Link copied — post shared");
-  };
-
-  const openComposer = (action: FeedAction) => {
-    if (action.id === "follow-players") {
-      setTab("following");
-      setToast("Discover players to follow below");
-      return;
-    }
-    setComposer(action);
-    setComposerText("");
-  };
-
-  const submitComposer = () => {
-    if (!composer) return;
-    const text = composerText.trim();
-    if (!text) {
-      setComposer(null);
-      return;
-    }
-    const newPost: Post = {
-      id: `p-${Date.now()}`,
-      author: { name: "You", handle: "@you", gradient: ["#8e3cff", "#5e1be4"], initials: "ME" },
-      time: "Just now",
-      caption: text,
-      media: ["https://images.pexels.com/photos/36247048/pexels-photo-36247048.jpeg?auto=compress&cs=tinysrgb&w=1000"],
-      hasVideo: composer.id === "upload-gameplay" || composer.id === "goal-highlight",
-      likes: 0, comments: 0, commentList: [], shares: 0, liked: false, following: true, isOwn: true, category: "community",
-    };
-    setPosts((prev) => [newPost, ...prev]);
-    recordLocalNotification({
-      kind: "post_created",
-      message: "You made a new post",
-      actorName: "You",
-      entityType: "post",
-      entityId: newPost.id,
-      href: `/feeds?post=${newPost.id}`,
-      thumbnail: newPost.media[0],
-    });
-    if (/@[a-zA-Z0-9_]{2,24}/.test(text)) {
-      recordLocalNotification({
-        kind: "post_tagged",
-        message: "You tagged someone in your post",
-        actorName: "You",
-        entityType: "post",
-        entityId: newPost.id,
-        href: `/feeds?post=${newPost.id}`,
-        thumbnail: newPost.media[0],
-      });
-    }
-    setComposer(null);
-    setComposerText("");
-    setToast(`${composer.title} shared to your feed`);
-    playInteractionSound("post");
-  };
-
-  return (
-    <>
-      <header className="relative z-20 flex items-start justify-between pb-4">
-        <div><h1 className="text-4xl font-black tracking-tight text-white">Feed</h1><p className="mt-1 text-sm text-[#9694aa]">Connect. Compete. Grow.</p></div>
-        <button type="button" onClick={() => { window.location.href = "/notifications"; }} aria-label="Open notifications" className="relative grid size-11 place-items-center rounded-2xl border border-[#26263d] bg-[#0d0e20] text-[#eeeef7] transition hover:border-[#7843ee]"><Bell size={19} /><span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-[#7634ef]" /></button>
-      </header>
-
-      <div className="flex items-center gap-2">
-        {tabs.map((t) => <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-pressed={tab === t.id} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold transition ${tab === t.id ? "bg-white text-[#0b0c18]" : "border border-[#26263d] bg-[#0d0e20] text-[#c5c3d4] hover:border-[#7843ee]"}`}>{t.label}</button>)}
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#26263d] bg-[#0d0e20] px-3.5 py-2 focus-within:border-[#7843ee]"><Search size={17} className="shrink-0 text-[#6f6d83]" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search posts or players" aria-label="Search feed" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#6f6d83]" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search"><X size={16} className="text-[#6f6d83] hover:text-white" /></button> : null}</label>
-      </div>
-
-      <CreateHub onAction={openComposer} />
-
-      <section className="mt-5 space-y-4">
-        {visiblePosts.length === 0 ? <div className="surface-card p-8 text-center"><p className="font-bold text-white">No posts found</p><p className="mt-1 text-sm text-[#9694aa]">{tab === "following" ? "Follow players to see their posts here." : "Try a different search."}</p></div> : visiblePosts.map((post) => <FeedCard key={post.id} post={post} onToggleLike={toggleLike} onToggleFollow={toggleFollow} onComment={addComment} onEditComment={editComment} onDeleteComment={deleteComment} onShare={share} onDelete={deletePost} onEdit={editPost} />)}
-      </section>
-
-      {composer ? <div className="install-overlay" onClick={(e) => { if (e.target === e.currentTarget) setComposer(null); }}><div className="install-sheet">
-        <button type="button" onClick={() => setComposer(null)} aria-label="Close" className="install-close"><X size={18} /></button>
-        <div className="flex items-center gap-3"><span className={`grid size-11 place-items-center rounded-2xl ${composer.tile}`}><composer.icon size={22} /></span><div><h3 className="text-lg font-black text-white">{composer.title}</h3><p className="text-xs text-[#9694aa]">{composer.subtitle}</p></div></div>
-        <textarea value={composerText} onChange={(e) => setComposerText(e.target.value)} autoFocus rows={4} placeholder="What do you want to share?" className="mt-4 w-full resize-none rounded-2xl border border-[#26263d] bg-[#0d0e20] p-3.5 text-sm text-white outline-none placeholder:text-[#6f6d83]" />
-        <div className="install-actions"><button type="button" onClick={submitComposer} className="install-btn-primary">Share to feed</button><button type="button" onClick={() => setComposer(null)} className="install-btn-secondary">Cancel</button></div>
-      </div></div> : null}
-
-      {toast ? <div className="fixed bottom-28 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[#35334e] bg-[#14152a] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,.5)]">{toast}</div> : null}
-    </>
-  );
+export function FeedsClient(){
+ const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [posts,setPosts]=useState<Post[]>([]);const [tab,setTab]=useState<FeedTab>("for-you");const [query,setQuery]=useState("");const [composer,setComposer]=useState<FeedAction|null>(null);const [composerText,setComposerText]=useState("");const [files,setFiles]=useState<File[]>([]);const [uploading,setUploading]=useState(false);const [toast,setToast]=useState<string|null>(null);const [userId,setUserId]=useState("");
+ const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2500);};
+ const load=useCallback(async()=>{const {data:auth}=await supabase.auth.getUser();if(!auth.user){setUserId("");setPosts([]);return;}setUserId(auth.user.id);const {data:rows}=await supabase.from("posts").select("id,author_id,body,media_kind,video_duration_seconds,created_at").order("created_at",{ascending:false}).limit(100);const postRows=rows||[];const ids=postRows.map((r:any)=>r.id);if(!ids.length){setPosts([]);return;}const [{data:media},{data:likes},{data:saves},{data:comments},{data:follows}]=await Promise.all([supabase.from("post_media").select("post_id,storage_path,media_type,position").in("post_id",ids).order("position"),supabase.from("post_likes").select("post_id,user_id").in("post_id",ids),supabase.from("saved_posts").select("post_id,user_id").eq("user_id",auth.user.id).in("post_id",ids),supabase.from("post_comments").select("id,post_id,author_id,body,created_at").in("post_id",ids).order("created_at",{ascending:true}),supabase.from("user_follows").select("following_id").eq("follower_id",auth.user.id)]);const authorIds=Array.from(new Set(postRows.map((r:any)=>r.author_id)));const commentAuthorIds=Array.from(new Set((comments||[]).map((r:any)=>r.author_id)));const allIds=Array.from(new Set([...authorIds,...commentAuthorIds]));const {data:profiles}=await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id",allIds);const pMap=new Map((profiles||[]).map((p:any)=>[p.id,p]));const mMap=new Map<string,any[]>();(media||[]).forEach((m:any)=>{const list=mMap.get(m.post_id)||[];const {data:url}=supabase.storage.from("feed-media").getPublicUrl(m.storage_path);list.push({...m,url:url.publicUrl});mMap.set(m.post_id,list);});const liked=new Set((likes||[]).filter((l:any)=>l.user_id===auth.user.id).map((l:any)=>l.post_id));const saved=new Set((saves||[]).map((s:any)=>s.post_id));const following=new Set((follows||[]).map((f:any)=>f.following_id));const cMap=new Map<string,Comment[]>();(comments||[]).forEach((c:any)=>{const list=cMap.get(c.post_id)||[];const p=pMap.get(c.author_id);list.push({id:c.id,author:profileName(p),authorId:c.author_id,text:c.body,time:relativeTime(c.created_at),isOwn:c.author_id===auth.user.id});cMap.set(c.post_id,list);});setPosts(postRows.map((r:any)=>{const p=pMap.get(r.author_id);const author:Author={id:r.author_id,name:profileName(p),handle:`@${p?.username||"player"}`,avatar:p?.avatar_path||null,initials:profileName(p).split(" ").map((x:string)=>x[0]).join("").slice(0,2).toUpperCase()};const mediaList=mMap.get(r.id)||[];const images=mediaList.filter(m=>m.media_type==="image").map(m=>m.url);const video=mediaList.find(m=>m.media_type==="video")?.url;return {id:r.id,author,time:relativeTime(r.created_at),caption:r.body,media:images.length?images:video?[video]:[],videoUrl:video,hasVideo:Boolean(video),likes:(likes||[]).filter((l:any)=>l.post_id===r.id).length,comments:(comments||[]).filter((c:any)=>c.post_id===r.id).length,commentList:cMap.get(r.id)||[],shares:0,liked:liked.has(r.id),saved:saved.has(r.id),following:following.has(r.author_id),isOwn:r.author_id===auth.user.id,category:"community"};}));},[supabase]);
+ useEffect(()=>{void load();const channel=supabase.channel("feed-realtime").on("postgres_changes",{event:"*",schema:"public",table:"posts"},()=>void load()).on("postgres_changes",{event:"*",schema:"public",table:"post_media"},()=>void load()).on("postgres_changes",{event:"*",schema:"public",table:"post_likes"},()=>void load()).on("postgres_changes",{event:"*",schema:"public",table:"post_comments"},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[load,supabase]);
+ const visible=useMemo(()=>{const q=query.trim().toLowerCase();return posts.filter(p=>(tab!=="following"||p.following||p.isOwn)&&(!q||`${p.author.name} ${p.author.handle} ${p.caption}`.toLowerCase().includes(q)));},[posts,query,tab]);
+ const toggleLike=async(id:string)=>{if(!userId){notify("Sign in required");return;}const p=posts.find(x=>x.id===id);if(!p)return;const result=p.liked?await supabase.from("post_likes").delete().eq("post_id",id).eq("user_id",userId):await supabase.from("post_likes").insert({post_id:id,user_id:userId});if(result.error){notify("Could not update like");return;}setPosts(c=>c.map(x=>x.id===id?{...x,liked:!p.liked,likes:x.likes+(p.liked?-1:1)}:x));};
+ const toggleFollow=async(id:string)=>{if(!userId){notify("Sign in required");return;}const p=posts.find(x=>x.id===id);if(!p||p.author.id===userId)return;const result=p.following?await supabase.from("user_follows").delete().eq("follower_id",userId).eq("following_id",p.author.id):await supabase.from("user_follows").insert({follower_id:userId,following_id:p.author.id});if(result.error){notify("Could not update follow");return;}setPosts(c=>c.map(x=>x.author.id===p.author.id?{...x,following:!p.following}:x));playInteractionSound("follow");};
+ const addComment=async(id:string,text:string)=>{if(!userId){notify("Sign in required");return;}const {error}=await supabase.from("post_comments").insert({post_id:id,author_id:userId,body:text.trim()});if(error){notify("Could not post comment");return;}playInteractionSound("comment");};
+ const editComment=async(postId:string,commentId:string,text:string)=>{const {error}=await supabase.from("post_comments").update({body:text.trim(),updated_at:new Date().toISOString()}).eq("id",commentId).eq("author_id",userId);if(error)notify("Could not update comment");else notify("Comment updated");};
+ const deleteComment=async(postId:string,commentId:string)=>{const {error}=await supabase.from("post_comments").delete().eq("id",commentId).eq("author_id",userId);if(error)notify("Could not delete comment");};
+ const toggleSave=async(id:string)=>{if(!userId){notify("Sign in required");return;}const p=posts.find(x=>x.id===id);if(!p)return;const result=p.saved?await supabase.from("saved_posts").delete().eq("post_id",id).eq("user_id",userId):await supabase.from("saved_posts").insert({post_id:id,user_id:userId});if(result.error){notify("Could not update saved post");return;}setPosts(c=>c.map(x=>x.id===id?{...x,saved:!p.saved}:x));notify(p.saved?"Removed from saved posts":"Post saved");};
+ const download=async(id:string,type:"image"|"video")=>{if(!userId){notify("Sign in required");return;}const p=posts.find(x=>x.id===id);if(!p)return;const src=type==="video"?p.videoUrl:p.media[0];if(!src){notify("Media is unavailable");return;}try{const response=await fetch(src);if(!response.ok)throw new Error("download failed");const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`matchup-${id}.${type==="video"?"mp4":"jpg"}`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);await supabase.rpc("record_media_download",{p_post_id:id,p_media_type:type});notify(`Download started`);}catch{notify("Download could not be started");}};
+ const deletePost=async(id:string)=>{const {error}=await supabase.from("posts").delete().eq("id",id).eq("author_id",userId);if(error)notify("Could not delete post");};
+ const editPost=async(id:string,caption:string)=>{const {error}=await supabase.from("posts").update({body:caption.trim()}).eq("id",id).eq("author_id",userId);if(error)notify("Could not update post");};
+ const share=async(id:string)=>{const url=`${window.location.origin}/feeds?post=${id}`;try{await navigator.clipboard.writeText(url);notify("Post link copied");}catch{notify("Could not copy link");}};
+ const openComposer=(action:FeedAction)=>{if(!userId){notify("Sign in required");return;}if(action.id==="follow-players"){setTab("following");return;}setComposer(action);setComposerText("");setFiles([]);};
+ const chooseFiles=(selected:FileList|null)=>{if(!selected)return;const list=Array.from(selected);if(list.length>10){notify("You can upload a maximum of 10 photos.");return;}const videos=list.filter(f=>f.type.startsWith("video/"));if(videos.length>1||videos.length&&list.length>1){notify("A video post cannot be combined with other media.");return;}if(videos.length){const video=videos[0];const element=document.createElement("video");element.preload="metadata";element.onloadedmetadata=()=>{URL.revokeObjectURL(element.src);if(element.duration>60){notify("Videos must be 60 seconds or less.");return;}setFiles([video]);};element.onerror=()=>notify("The video duration could not be verified.");element.src=URL.createObjectURL(video);return;}const invalid=list.find(f=>!f.type.startsWith("image/"));if(invalid){notify("Only images or one video can be uploaded.");return;}setFiles(list);};
+ const submitComposer=async()=>{if(!composer||!userId)return;const text=composerText.trim();if(!text&&!files.length){notify("Add text or media before posting");return;}setUploading(true);try{if(files.length>10)throw new Error("You can upload a maximum of 10 photos.");const video=files.find(f=>f.type.startsWith("video/"));let duration:number|undefined;if(video){const element=document.createElement("video");element.preload="metadata";duration=await new Promise<number>((resolve,reject)=>{element.onloadedmetadata=()=>{URL.revokeObjectURL(element.src);resolve(element.duration);};element.onerror=()=>reject(new Error("The video duration could not be verified."));element.src=URL.createObjectURL(video);});if(duration>60)throw new Error("Videos must be 60 seconds or less.");}const {data:post,error:postError}=await supabase.from("posts").insert({author_id:userId,body:text||"",media_kind:video?"video":files.length?"image":"text",video_duration_seconds:duration??null,media_count:files.length}).select("id").single();if(postError||!post)throw postError||new Error("Could not create post");for(let i=0;i<files.length;i++){const file=files[i];const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path=`${userId}/${post.id}/${i}-${safe}`;const upload=await supabase.storage.from("feed-media").upload(path,file,{upsert:false,contentType:file.type});if(upload.error)throw upload.error;const {error:mediaError}=await supabase.from("post_media").insert({post_id:post.id,storage_path:path,media_type:file.type.startsWith("video/")?"video":"image",position:i});if(mediaError)throw mediaError;}setComposer(null);setComposerText("");setFiles([]);notify("Post published");playInteractionSound("post");await load();}catch(e){notify(e instanceof Error?e.message:"Could not create post. Nothing was published.");}finally{setUploading(false);}};
+ return <><header className="relative z-20 flex items-start justify-between pb-4"><div><h1 className="text-4xl font-black tracking-tight text-white">Feed</h1><p className="mt-1 text-sm text-[#86a1bb]">Connect. Compete. Grow.</p></div><button type="button" onClick={()=>window.location.href="/notifications"} aria-label="Open notifications" className="icon-button"><Bell size={19}/></button></header><div className="flex items-center gap-2"><div className="flex gap-2">{tabs.map(t=><button key={t.id} type="button" onClick={()=>setTab(t.id)} aria-pressed={tab===t.id} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${tab===t.id?"bg-white text-[#061120]":"border border-[#18365f] bg-[#071426] text-[#b7c9da]"}`}>{t.label}</button>)}</div><label className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#18365f] bg-[#071426] px-3.5 py-2"><Search size={17} className="text-[#7194b9]"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search posts or players" aria-label="Search feed" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none"/>{query?<button type="button" onClick={()=>setQuery("")} aria-label="Clear search"><X size={16}/></button>:null}</label></div><CreateHub onAction={openComposer}/><section className="mt-5 space-y-4">{visible.length?visible.map(post=><FeedCard key={post.id} post={post} onToggleLike={toggleLike} onToggleFollow={toggleFollow} onComment={addComment} onEditComment={editComment} onDeleteComment={deleteComment} onShare={share} onDelete={deletePost} onEdit={editPost} onToggleSave={toggleSave} onDownload={download}/>):<div className="surface-card border-[#153c68] p-8 text-center"><p className="font-bold text-white">No posts found</p><p className="mt-1 text-sm text-[#7892ac]">Real MatchUp posts will appear here.</p></div>}</section>{composer?<div className="install-overlay" onClick={e=>{if(e.target===e.currentTarget&&!uploading)setComposer(null);}}><div className="install-sheet"><button type="button" onClick={()=>!uploading&&setComposer(null)} aria-label="Close" className="install-close"><X size={18}/></button><div><h3 className="text-lg font-black text-white">{composer.title}</h3><p className="text-xs text-[#86a1bb]">{composer.subtitle}</p></div><textarea value={composerText} onChange={e=>setComposerText(e.target.value)} autoFocus rows={4} placeholder="What do you want to share?" className="mt-4 w-full resize-none rounded-2xl border border-[#18365f] bg-[#071426] p-3.5 text-sm text-white outline-none"/><label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#245b91] bg-[#071426] p-4 text-sm text-[#a9bdd5]"><span className="flex-1">Add photos or a video</span><span className="text-xs font-bold text-[#70c1ff]">{files.length?`${files.length} selected`:"Choose"}</span><input type="file" accept="image/*,video/*" multiple className="hidden" onChange={e=>chooseFiles(e.target.files)}/></label>{files.length?<div className="mt-3 flex flex-wrap gap-2">{files.map((f,i)=><span key={`${f.name}-${i}`} className="max-w-full rounded-full border border-[#18365f] bg-[#0a1b2f] px-3 py-1.5 text-xs text-[#b7c9da]">{f.name}</span>)}</div>:null}<p className="mt-2 text-[11px] text-[#66809a]">Up to 10 photos, or one video up to 60 seconds.</p><div className="install-actions"><button type="button" onClick={()=>void submitComposer()} disabled={uploading} className="install-btn-primary disabled:opacity-60">{uploading?"Uploading…":"Publish post"}</button><button type="button" onClick={()=>setComposer(null)} disabled={uploading} className="install-btn-secondary">Cancel</button></div></div></div>:null}{toast?<div className="fixed bottom-28 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[#1e6095] bg-[#0a2139] px-5 py-2.5 text-sm font-semibold text-white shadow-lg">{toast}</div>:null}</>;
 }
