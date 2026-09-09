@@ -19,6 +19,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      # Verify the committed source directly; do not mutate chat/feed code before build.
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Lint
