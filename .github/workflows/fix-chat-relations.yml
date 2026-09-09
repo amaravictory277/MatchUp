@@ -19,11 +19,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
-          old = 'profiles(id,display_name,username)'
-          new = 'profiles!chat_messages_sender_id_fkey(id,display_name,username)'
-          updated = s.replace(old, new)
+          updated = re.sub(r'(from\("chat_messages"\)\.select\("[^\n]*?)profiles\(id,display_name,username\)', r'\1profiles!chat_messages_sender_id_fkey(id,display_name,username)', s)
           if updated != s:
               p.write_text(updated)
           PY
