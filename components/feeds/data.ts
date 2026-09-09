@@ -9,7 +9,7 @@ export const feedActions:FeedAction[]=[
  {id:"upload-gameplay",title:"Upload gameplay",subtitle:"Share your matches.",icon:Video,tile:"bg-[#0b3154] text-[#70c1ff]"},
  {id:"tournament-win",title:"Share a tournament win",subtitle:"Celebrate your victory.",icon:Trophy,tile:"bg-[#0b3154] text-[#70c1ff]"},
  {id:"goal-highlight",title:"Share a goal/highlight",subtitle:"Show the best moments.",icon:Trophy,tile:"bg-[#0b3154] text-[#70c1ff]"},
- {id:"normal-post",title:"Make a normal post",subtitle:"Talk. Share. Connect.",icon:MessageSquareText,tile:"bg-[#0b3154] text-[#70c1ff]"},
+ {id:"normal-post",title:"Make a normal post",subtitle:"Share a quick text update with the community.",icon:MessageSquareText,tile:"bg-[#0b3154] text-[#70c1ff]"},
  {id:"follow-players",title:"Find other players",subtitle:"Grow your network.",icon:UserPlus,tile:"bg-[#0b3154] text-[#70c1ff]"},
 ];
 let interactionAudioContext:AudioContext|null=null;

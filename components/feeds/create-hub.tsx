@@ -19,7 +19,7 @@ export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void
         <div className="mt-4 space-y-3">
           <button type="button" onClick={() => onAction(feedActions[1])} className="hero-button flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/15 text-white"><Video size={20} /></span>
-            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-white">Post squad / gameplay</span><span className="block truncate text-xs text-white/75">Get noticed and earn.</span></span>
+            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-white">Post squad / gameplay</span><span className="block truncate text-xs text-white/75">Share your squad or gameplay with the community.</span></span>
             <ChevronRight size={18} className="shrink-0 text-white/80" />
           </button>
 
