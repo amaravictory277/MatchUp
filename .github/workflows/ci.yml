@@ -81,18 +81,50 @@ jobs:
               s = s.replace('</section>;\n}', picker+'</section>;\n}')
               p.write_text(s)
           PY2
+      - name: Add guest live feed and General chat browsing
+        shell: bash
+        run: |
+          python3 - <<'PY3'
+          from pathlib import Path
+          import re
+
+          feed = Path('components/feeds/feeds-client.tsx')
+          s = feed.read_text()
+          start = s.find(' const load=useCallback(async()=>{')
+          marker = '},[supabase]);'
+          end = s.find(marker, start)
+          if start >= 0 and end >= 0:
+              end += len(marker)
+              new_load = ''' const load=useCallback(async()=>{const {data:auth}=await supabase.auth.getUser();const currentUser=auth.user;setUserId(currentUser?.id||"");const {data:rows}=await supabase.from("posts").select("id,author_id,body,media_kind,video_duration_seconds,created_at").order("created_at",{ascending:false}).limit(100);const postRows=rows||[];const ids=postRows.map((r:any)=>r.id);if(!ids.length){setPosts([]);return;}const {data:media}=await supabase.from("post_media").select("post_id,storage_path,media_type,position").in("post_id",ids).order("position");const {data:likes}=await supabase.from("post_likes").select("post_id,user_id").in("post_id",ids);const {data:comments}=await supabase.from("post_comments").select("id,post_id,author_id,body,created_at").in("post_id",ids).order("created_at",{ascending:true});const {data:saves}=currentUser?await supabase.from("saved_posts").select("post_id,user_id").eq("user_id",currentUser.id).in("post_id",ids):{data:[]};const {data:follows}=await supabase.from("user_follows").select("following_id").eq("follower_id",currentUser?.id||"00000000-0000-0000-0000-000000000000");const authorIds=Array.from(new Set(postRows.map((r:any)=>r.author_id)));const commentAuthorIds=Array.from(new Set((comments||[]).map((r:any)=>r.author_id)));const allIds=Array.from(new Set([...authorIds,...commentAuthorIds]));const {data:profiles}=await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id",allIds);const pMap=new Map((profiles||[]).map((p:any)=>[p.id,p]));const mMap=new Map<string,any[]>();(media||[]).forEach((m:any)=>{const list=mMap.get(m.post_id)||[];const {data:url}=supabase.storage.from("feed-media").getPublicUrl(m.storage_path);list.push({...m,url:url.publicUrl});mMap.set(m.post_id,list);});const liked=new Set(currentUser?(likes||[]).filter((l:any)=>l.user_id===currentUser.id).map((l:any)=>l.post_id):[]);const saved=new Set((saves||[]).map((x:any)=>x.post_id));const following=new Set(currentUser?(follows||[]).map((f:any)=>f.following_id):[]);const cMap=new Map<string,Comment[]>();(comments||[]).forEach((c:any)=>{const list=cMap.get(c.post_id)||[];const p=pMap.get(c.author_id);list.push({id:c.id,author:profileName(p),authorId:c.author_id,text:c.body,time:relativeTime(c.created_at),isOwn:currentUser?c.author_id===currentUser.id:false});cMap.set(c.post_id,list);});setPosts(postRows.map((r:any)=>{const p=pMap.get(r.author_id);const author:Author={id:r.author_id,name:profileName(p),handle:`@${p?.username||"player"}`,avatar:p?.avatar_path||null,initials:profileName(p).split(" ").map((x:string)=>x[0]).join("").slice(0,2).toUpperCase()};const mediaList=mMap.get(r.id)||[];const images=mediaList.filter(m=>m.media_type==="image").map(m=>m.url);const video=mediaList.find(m=>m.media_type==="video")?.url;return {id:r.id,author,time:relativeTime(r.created_at),caption:r.body,media:images.length?images:video?[video]:[],videoUrl:video,hasVideo:Boolean(video),likes:(likes||[]).filter((l:any)=>l.post_id===r.id).length,comments:(comments||[]).filter((c:any)=>c.post_id===r.id).length,commentList:cMap.get(r.id)||[],shares:0,liked:liked.has(r.id),saved:saved.has(r.id),following:following.has(r.author_id),isOwn:currentUser?r.author_id===currentUser.id:false,category:"community"};}));},[supabase]);'''
+              s = s[:start] + new_load + s[end:]
+          feed.write_text(s)
+
+          chat = Path('components/chat/chat-hub.tsx')
+          s = chat.read_text()
+          old_guest_workspace = 'const loadWorkspace=useCallback(async()=>{const {data:auth}=await supabase.auth.getUser();if(!auth.user){setLoading(false);setError("Sign in to use MatchUp chat.");return;}'
+          new_guest_workspace = 'const loadWorkspace=useCallback(async()=>{const {data:auth}=await supabase.auth.getUser();if(!auth.user){setUser({id:"",displayName:"Guest"});const {data:g}=await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked,member_limit,image_path").eq("kind","general").maybeSingle();setGeneral(g as Group|null);setGroups([]);setPrivateChats([]);setFriends([]);setInvites([]);setInviteCandidates([]);setLoading(false);setError(g?"Sign in to send messages or interact in chat.":"General chat is not available yet.");if(g)setActive(g as Group);return;}'
+          s = s.replace(old_guest_workspace, new_guest_workspace)
+          s = s.replace('if(!active||!user.id)return;void loadGroup(active);', 'if(!active)return;void loadGroup(active);')
+          s = s.replace('if(unread.length)await supabase.from("chat_message_reads").upsert', 'if(user.id&&unread.length)await supabase.from("chat_message_reads").upsert')
+          s = s.replace('if(row.sender_id!==user.id)await supabase.from("chat_message_reads").upsert', 'if(user.id&&row.sender_id!==user.id)await supabase.from("chat_message_reads").upsert')
+          s = s.replace('channel.subscribe(async status=>{if(status==="SUBSCRIBED")await channel.track({user_id:user.id,name:user.displayName,typing:false});});', 'channel.subscribe(async status=>{if(status==="SUBSCRIBED"&&user.id)await channel.track({user_id:user.id,name:user.displayName,typing:false});});')
+          s = s.replace('const toggleReaction=useCallback(async(id:string,emoji:string)=>{const own=', 'const toggleReaction=useCallback(async(id:string,emoji:string)=>{if(!user.id)return;const own=')
+          old_guest_return = 'if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>Sign in to use MatchUp group chat.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#167bd1] px-4 py-3 text-center text-sm font-bold text-white">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#167bd1] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#70c1ff]">Sign Up</a></div></section>;'
+          s = s.replace(old_guest_return, 'if (!user.id && !general) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>General chat is not available yet.</p><div className="mt-4 flex gap-3"><a href="/auth" className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-3 text-center text-sm font-bold text-[#241205]">Sign In</a></div></section>;')
+          chat.write_text(s)
+          PY3
       - run: npm ci
       - run: NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=ci-placeholder npm run build
       - name: Commit source fixes
         shell: bash
         run: |
-          if git diff --quiet -- components/chat/chat-hub.tsx; then
+          if git diff --quiet -- components/chat/chat-hub.tsx components/feeds/feeds-client.tsx; then
             echo 'No automated source fix was needed.'
           else
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add components/chat/chat-hub.tsx
-            git commit -m 'ci: normalize chat source fixes'
+            git add components/chat/chat-hub.tsx components/feeds/feeds-client.tsx
+            git commit -m 'ci: enable guest live browsing for feeds and general chat'
             git push origin main
           fi
-          echo 'Final MatchUp chat/group source verification build.'
+          echo 'Final MatchUp guest browsing and production verification build.'
