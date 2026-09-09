@@ -20,7 +20,7 @@ import {
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 type Profile = { id: string; display_name?: string | null; username?: string | null };
-type Group = { id: string; name: string; created_by: string; created_at: string };
+type Group = { id: string; name: string; created_by: string; created_at: string; kind?: "general" | "private" | "group"; locked?: boolean };
 type Friend = Profile;
 type Invite = { id: string; group_id: string; invited_by: string; invited_user_id: string; status: string; created_at: string; chat_groups?: Group | Group[] | null; inviter?: Profile | Profile[] | null };
 type Message = {
@@ -126,7 +126,11 @@ export function ChatHub() {
       supabase.from("friendships").select("user_id,friend_id").eq("status", "accepted").or(`user_id.eq.${auth.user.id},friend_id.eq.${auth.user.id}`),
       supabase.from("chat_group_invites").select("id,group_id,invited_by,invited_user_id,status,created_at,chat_groups(id,name,created_by,created_at)").eq("invited_user_id", auth.user.id).eq("status", "pending").order("created_at", { ascending: false }),
     ]);
-    const groupList = (memberships || []).map((row: { chat_groups?: Group | Group[] | null }) => normalizeGroup(row.chat_groups)).filter(Boolean) as Group[];
+    const memberGroups = (memberships || []).map((row: { chat_groups?: Group | Group[] | null }) => normalizeGroup(row.chat_groups)).filter(Boolean) as Group[];
+    const { data: generalId } = await supabase.rpc("get_or_create_general_chat");
+    let generalGroup: Group | null = null;
+    if (generalId) { const { data: generalRow } = await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked").eq("id", generalId).maybeSingle(); generalGroup = generalRow as Group | null; }
+    const groupList = generalGroup ? [generalGroup, ...memberGroups.filter((group) => group.id !== generalGroup!.id)] : memberGroups;
     setGroups(groupList);
     setInvites((inviteRows || []) as Invite[]);
 
