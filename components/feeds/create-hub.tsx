@@ -10,9 +10,9 @@ export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void
   return (
     <section className="surface-card mt-5 p-4">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-4 text-left">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl border-2 border-[#13132b] bg-[linear-gradient(145deg,#8e3cff,#5e1be4)] text-white shadow-[0_0_18px_rgba(122,43,255,.55)]"><Plus size={26} /></span>
-        <span className="flex-1"><span className="block text-lg font-bold text-white">Create something</span><span className="block text-xs leading-5 text-[#9694aa]">Share, compete, and be part of the community.</span></span>
-        {open ? <ChevronUp size={20} className="text-[#9694aa]" /> : <ChevronDown size={20} className="text-[#9694aa]" />}
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-[#194b7c] bg-[linear-gradient(145deg,#126bc0,#2497ff)] text-white shadow-[0_0_18px_rgba(36,151,255,.35)]"><Plus size={26} /></span>
+        <span className="flex-1"><span className="block text-lg font-bold text-white">Create something</span><span className="block text-xs leading-5 text-[#86a1bb]">Share, compete, and be part of the community.</span></span>
+        {open ? <ChevronUp size={20} className="text-[#86a1bb]" /> : <ChevronDown size={20} className="text-[#86a1bb]" />}
       </button>
 
       {open ? (
@@ -27,10 +27,10 @@ export function CreateHub({ onAction }: { onAction: (action: FeedAction) => void
             {feedActions.map((action) => {
               const Icon = action.icon;
               return (
-                <button key={action.id} type="button" onClick={() => onAction(action)} className="tournament-card flex w-full items-center gap-3 p-4 text-left transition hover:border-[#7040dc] hover:bg-[#111326]">
-                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl ${action.tile}`}><Icon size={21} /></span>
-                  <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-white">{action.title}</span><span className="block text-xs text-[#9694aa]">{action.subtitle}</span></span>
-                  <ChevronRight size={18} className="shrink-0 text-[#6f6d83]" />
+                <button key={action.id} type="button" onClick={() => onAction(action)} className="tournament-card flex w-full items-center gap-3 p-4 text-left transition hover:border-[#2497ff] hover:bg-[#0a2139]">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#194b7c] bg-[#0b3154] text-[#70c1ff]"><Icon size={21} /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-white">{action.title}</span><span className="block text-xs text-[#86a1bb]">{action.subtitle}</span></span>
+                  <ChevronRight size={18} className="shrink-0 text-[#7892ac]" />
                 </button>
               );
             })}
