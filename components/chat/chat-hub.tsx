@@ -1,420 +1,144 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Check,
-  CheckCheck,
-  Copy,
-  Forward,
-  Menu,
-  MoreHorizontal,
-  Paperclip,
-  Plus,
-  Reply,
-  Send,
-  Smile,
-  Trash2,
-  Users,
-  X,
-} from "lucide-react";
+import { Check, CheckCheck, Copy, Lock, Menu, MoreHorizontal, Paperclip, Plus, Reply, Search, Send, Settings2, Smile, Trash2, Unlock, Users, UserPlus, X } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
-type Profile = { id: string; display_name?: string | null; username?: string | null };
-type Group = { id: string; name: string; created_by: string; created_at: string; kind?: "general" | "private" | "group"; locked?: boolean };
-type Friend = Profile;
-type Invite = { id: string; group_id: string; invited_by: string; invited_user_id: string; status: string; created_at: string; chat_groups?: Group | Group[] | null; inviter?: Profile | Profile[] | null };
-type Message = {
-  id: string;
-  group_id: string;
-  sender_id: string;
-  body: string;
-  sticker_key?: string | null;
-  reply_to_id?: string | null;
-  created_at: string;
-  deleted_at?: string | null;
-  profiles?: Profile | Profile[] | null;
-  reactions?: Reaction[];
-  pending?: boolean;
-};
-type Reaction = { message_id: string; user_id: string; emoji: string };
-type ReadState = { message_id: string; user_id: string; read_at: string };
-type Presence = { user_id: string; name?: string; typing?: boolean };
+type Profile={id:string;display_name?:string|null;username?:string|null};
+type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group";locked:boolean;image_path?:string|null};
+type Invite={id:string;group_id:string;invited_by:string;invited_user_id:string;status:string;created_at:string;chat_groups?:Group|Group[]|null};
+type Message={id:string;group_id:string;sender_id:string;body:string;sticker_key?:string|null;reply_to_id?:string|null;created_at:string;deleted_at?:string|null;profiles?:Profile|Profile[]|null;pending?:boolean};
+type Reaction={message_id:string;user_id:string;emoji:string};
+type ReadState={message_id:string;user_id:string;read_at:string};
+type Presence={user_id:string;name?:string;typing?:boolean};
+type PrivateChat={group:Group;friend:Profile};
 
-type MenuState = { message: Message; x: number; y: number } | null;
+const STICKERS=["⚽","🏆","🔥","🎮","😎","😂","🫡","👑","❤️","✅","💯","🙌"];
+const QUICK_REACTIONS=["😀","❤️","🔥","😂","😮","😢","🙏","👍"];
+const URL_RE=/(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+const EMOJI_ONLY=/^(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\uFE0F|\u200D|\s)+$/u;
 
-const STICKERS = ["⚽", "🏆", "🔥", "🎮", "😎", "😂", "🫡", "👑", "💜", "✅", "💯", "🙌"];
-const QUICK_REACTIONS = ["😀", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👍"];
-const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|\uFE0F|\u200D|\s)+$/u;
-const URL_RE = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+function profile(v:Profile|Profile[]|null|undefined){return Array.isArray(v)?v[0]||null:v||null;}
+function nameOf(v:Profile|Profile[]|null|undefined,fallback="Member"){const p=profile(v);return p?.display_name||p?.username||fallback;}
+function timeOf(v:string){const d=new Date(v);const now=Date.now();const mins=Math.max(0,Math.floor((now-d.getTime())/60000));if(mins<1)return "Just now";if(mins<60)return `${mins}m`;const hrs=Math.floor(mins/60);if(hrs<24)return `${hrs}h`;const days=Math.floor(hrs/24);if(days===1)return "Yesterday";return `${days}d`;}
+function exactTime(v:string){return new Date(v).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});}
+function chatBodyError(body:string){for(const raw of body.match(URL_RE)||[]){const url=raw.startsWith("www.")?`https://${raw}`:raw;try{const u=new URL(url,window.location.origin);if(!u.pathname.startsWith("/feeds"))return "Only links copied from MatchUp Feeds can be shared in chat.";if(u.origin!==window.location.origin&&u.hostname!=="match-up-ten.vercel.app")return "Only MatchUp Feeds links are allowed in chat.";}catch{return "That link could not be validated.";}}if(/(data:image|javascript:|blob:|\.(png|jpe?g|gif|webp|mp4|mov|webm|m4a|mp3)(\?|$|\s))/i.test(body))return "Images, videos, audio and file links are not allowed in chat.";return null;}
 
-function normalizeProfile(value: Profile | Profile[] | null | undefined): Profile | null {
-  return Array.isArray(value) ? value[0] ?? null : value ?? null;
-}
-function normalizeGroup(value: Group | Group[] | null | undefined): Group | null {
-  return Array.isArray(value) ? value[0] ?? null : value ?? null;
-}
-function displayName(profile?: Profile | Profile[] | null, fallback = "Member") {
-  const p = normalizeProfile(profile);
-  return p?.display_name || p?.username || fallback;
-}
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-function validateChatClient(body: string) {
-  const urls = body.match(URL_RE) || [];
-  for (const raw of urls) {
-    const url = raw.startsWith("www.") ? `https://${raw}` : raw;
-    try {
-      const parsed = new URL(url, window.location.origin);
-      if (parsed.pathname !== "/feeds" && !parsed.pathname.startsWith("/feeds/")) return "Only links copied from MatchUp Feeds can be shared in groups.";
-      if (parsed.origin !== window.location.origin && parsed.hostname !== "match-up-ten.vercel.app") return "Only MatchUp Feeds links are allowed in group chat.";
-    } catch {
-      return "That link could not be validated.";
-    }
-  }
-  if (/(data:image|javascript:|blob:|\.(png|jpe?g|gif|webp|mp4|mov|webm|m4a|mp3)(\?|$|\s))/i.test(body)) {
-    return "Images, videos, audio and file links are not allowed in group chat.";
-  }
-  return null;
-}
+export function ChatHub(){
+ const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);
+ const [user,setUser]=useState<{id:string;displayName:string}>({id:"",displayName:"You"});
+ const [general,setGeneral]=useState<Group|null>(null); const [privateChats,setPrivateChats]=useState<PrivateChat[]>([]); const [groups,setGroups]=useState<Group[]>([]); const [friends,setFriends]=useState<Profile[]>([]); const [invites,setInvites]=useState<Invite[]>([]);
+ const [active,setActive]=useState<Group|null>(null); const [messages,setMessages]=useState<Message[]>([]); const [reactions,setReactions]=useState<Reaction[]>([]); const [reads,setReads]=useState<ReadState[]>([]); const [members,setMembers]=useState<Profile[]>([]); const [presence,setPresence]=useState<Presence[]>([]); const [muted,setMuted]=useState(false);
+ const [input,setInput]=useState(""); const [replyTo,setReplyTo]=useState<Message|null>(null); const [error,setError]=useState(""); const [loading,setLoading]=useState(true); const [sending,setSending]=useState<string[]>([]); const [typingNotice,setTypingNotice]=useState("");
+ const [showRooms,setShowRooms]=useState(false); const [showCreate,setShowCreate]=useState(false); const [showManage,setShowManage]=useState(false); const [showInvites,setShowInvites]=useState(false); const [showStickers,setShowStickers]=useState(false);
+ const [groupName,setGroupName]=useState(""); const [groupImage,setGroupImage]=useState<File|null>(null); const [inviteSearch,setInviteSearch]=useState(""); const [inviteCandidates,setInviteCandidates]=useState<Profile[]>([]); const [selectedInvitees,setSelectedInvitees]=useState<string[]>([]);
+ const [messageSearch,setMessageSearch]=useState(""); const [searchResults,setSearchResults]=useState<Message[]>([]); const [searchOpen,setSearchOpen]=useState(false); const [highlighted,setHighlighted]=useState(""); const [loadingOlder,setLoadingOlder]=useState(false);
+ const channelRef=useRef<ReturnType<typeof supabase.channel>|null>(null); const typingTimer=useRef<ReturnType<typeof setTimeout>|null>(null); const bottomRef=useRef<HTMLDivElement|null>(null); const inputRef=useRef<HTMLInputElement|null>(null);
 
-export function ChatHub() {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [user, setUser] = useState<{ id: string; displayName: string }>({ id: "", displayName: "You" });
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [activeGroup, setActiveGroup] = useState<Group | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [reactions, setReactions] = useState<Reaction[]>([]);
-  const [reads, setReads] = useState<ReadState[]>([]);
-  const [members, setMembers] = useState<Profile[]>([]);
-  const [presence, setPresence] = useState<Presence[]>([]);
-  const [input, setInput] = useState("");
-  const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [menu, setMenu] = useState<MenuState>(null);
-  const [error, setError] = useState("");
-  const [sendingIds, setSendingIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showGroups, setShowGroups] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
-  const [showStickers, setShowStickers] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [selectedFriends, setSelectedFriends] = useState<string[]>([]);
-  const [showInvitePane, setShowInvitePane] = useState(false);
-  const [typingNotice, setTypingNotice] = useState("");
+ const loadWorkspace=useCallback(async()=>{
+  const {data:auth}=await supabase.auth.getUser(); if(!auth.user){setLoading(false);setError("Sign in to use MatchUp chat.");return;}
+  const me=(await supabase.from("profiles").select("id,display_name,username").eq("id",auth.user.id).maybeSingle()).data as Profile|null; setUser({id:auth.user.id,displayName:nameOf(me,"You")});
+  const {data:generalId,error:generalError}=await supabase.rpc("get_or_create_general_chat"); if(generalError){setError(generalError.message);setLoading(false);return;}
+  const [{data:generalRow},{data:membershipRows},{data:friendRows},{data:inviteRows},{data:muteRows}]=await Promise.all([
+   supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked,image_path").eq("id",generalId).maybeSingle(),
+   supabase.from("chat_group_members").select("group_id,chat_groups(id,name,created_by,created_at,kind,locked,image_path)").eq("user_id",auth.user.id),
+   supabase.from("friendships").select("user_id,friend_id").eq("status","accepted").or(`user_id.eq.${auth.user.id},friend_id.eq.${auth.user.id}`),
+   supabase.from("chat_group_invites").select("id,group_id,invited_by,invited_user_id,status,created_at,chat_groups(id,name,created_by,created_at,kind,locked,image_path)").eq("invited_user_id",auth.user.id).eq("status","pending").order("created_at",{ascending:false}),
+   supabase.from("muted_conversations").select("conversation_id").eq("user_id",auth.user.id),
+  ]);
+  const g=generalRow as Group|null; setGeneral(g); const rawGroups=(membershipRows||[]).map((r:any)=>profile(r.chat_groups)).filter(Boolean) as Group[]; const unique=rawGroups.filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i);
+  const privateGroups=unique.filter(x=>x.kind==="private"); const groupRows=unique.filter(x=>x.kind==="group"); setGroups(groupRows); setInvites((inviteRows||[]) as Invite[]); setMuted(Boolean((muteRows||[]).some((r:any)=>r.conversation_id===generalId)));
+  const ids=unique.map(x=>x.id); let allMembers:any[]=[]; if(ids.length){allMembers=(await supabase.from("chat_group_members").select("group_id,user_id,profiles(id,display_name,username)").in("group_id",ids).limit(5000)).data||[];}
+  const privateList=privateGroups.map(pg=>{const other=allMembers.find(r=>r.group_id===pg.id&&r.user_id!==auth.user.id);return other?.profiles?{group:pg,friend:profile(other.profiles)!}:null;}).filter(Boolean) as PrivateChat[]; setPrivateChats(privateList);
+  const friendIds=(friendRows||[]).map((r:any)=>r.user_id===auth.user.id?r.friend_id:r.user_id); const friendProfiles=friendIds.length?(await supabase.from("profiles").select("id,display_name,username").in("id",friendIds)).data||[]:[]; setFriends(friendProfiles as Profile[]);
+  setLoading(false); if(!active&&g)setActive(g);
+ },[active,supabase]);
+ useEffect(()=>{void loadWorkspace();},[loadWorkspace]);
 
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const swipeRef = useRef<{ id: string; x: number; y: number } | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+ const loadGroup=useCallback(async(group:Group,olderThan?:string)=>{
+  const q=supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("group_id",group.id).order("created_at",{ascending:false}).limit(50); if(olderThan)q.lt("created_at",olderThan);
+  const {data,error:e}=await q; if(e){setError(e.message);return;} const rows=((data||[]) as Message[]).map(m=>({...m,profiles:profile(m.profiles)})).reverse(); const ids=rows.map(m=>m.id);
+  const [rr,rd,mm,mute]=await Promise.all([ids.length?supabase.from("chat_message_reactions").select("message_id,user_id,emoji").in("message_id",ids):Promise.resolve({data:[] as any[]}),ids.length?supabase.from("chat_message_reads").select("message_id,user_id,read_at").in("message_id",ids):Promise.resolve({data:[] as any[]}),supabase.from("chat_group_members").select("user_id,profiles(id,display_name,username)").eq("group_id",group.id).limit(200),supabase.from("muted_conversations").select("conversation_id").eq("user_id",user.id).eq("conversation_id",group.id).maybeSingle()]);
+  if(olderThan)setMessages(prev=>[...rows,...prev.filter(m=>!rows.some(x=>x.id===m.id))]); else setMessages(rows); setReactions((rr.data||[]) as Reaction[]); setReads((rd.data||[]) as ReadState[]); setMembers((mm.data||[]).map((r:any)=>profile(r.profiles)).filter(Boolean) as Profile[]); setMuted(Boolean(mute.data));
+  if(!olderThan)await supabase.from("chat_message_reads").upsert(rows.filter(m=>m.sender_id!==user.id&&!m.deleted_at).map(m=>({message_id:m.id,user_id:user.id})),{onConflict:"message_id,user_id"});
+  if(!olderThan)window.setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),30);
+ },[supabase,user.id]);
 
-  const loadUserAndGroups = useCallback(async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      setLoading(false);
-      setError("Sign in to use group chat.");
-      return;
-    }
-    const { data: me } = await supabase.from("profiles").select("id,display_name,username").eq("id", auth.user.id).maybeSingle();
-    setUser({ id: auth.user.id, displayName: displayName(me, "You") });
+ useEffect(()=>{
+  if(!active||!user.id)return; void loadGroup(active); setHighlighted("");
+  if(channelRef.current)void supabase.removeChannel(channelRef.current);
+  const channel=supabase.channel(`matchup-chat-${active.id}`,{config:{presence:{key:user.id}}});
+  channel.on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages",filter:`group_id=eq.${active.id}`},async(payload)=>{const row=payload.new as Message;const sender=(await supabase.from("profiles").select("id,display_name,username").eq("id",row.sender_id).maybeSingle()).data;setMessages(prev=>prev.some(m=>m.id===row.id)?prev:[...prev,{...row,profiles:sender}]);if(row.sender_id!==user.id)await supabase.from("chat_message_reads").upsert({message_id:row.id,user_id:user.id},{onConflict:"message_id,user_id"});window.setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),10);})
+   .on("postgres_changes",{event:"UPDATE",schema:"public",table:"chat_messages",filter:`group_id=eq.${active.id}`},p=>setMessages(prev=>prev.map(m=>m.id===(p.new as Message).id?{...m,...(p.new as Message)}:m)))
+   .on("postgres_changes",{event:"DELETE",schema:"public",table:"chat_messages",filter:`group_id=eq.${active.id}`},p=>setMessages(prev=>prev.filter(m=>m.id!==(p.old as Message).id)))
+   .on("postgres_changes",{event:"*",schema:"public",table:"chat_message_reactions"},p=>{const r=(p.new||p.old) as Reaction;if(!r?.message_id)return;if(p.eventType==="INSERT")setReactions(v=>v.some(x=>x.message_id===r.message_id&&x.user_id===r.user_id&&x.emoji===r.emoji)?v:[...v,r]);if(p.eventType==="DELETE")setReactions(v=>v.filter(x=>!(x.message_id===r.message_id&&x.user_id===r.user_id&&x.emoji===r.emoji)));})
+   .on("postgres_changes",{event:"*",schema:"public",table:"chat_message_reads"},p=>{const r=(p.new||p.old) as ReadState;if(!r?.message_id)return;if(p.eventType==="INSERT"||p.eventType==="UPDATE")setReads(v=>[...v.filter(x=>!(x.message_id===r.message_id&&x.user_id===r.user_id)),r]);})
+   .on("presence",{event:"sync"},()=>setPresence(Object.values(channel.presenceState()).flatMap(v=>v as unknown as Presence[])))
+   .on("presence",{event:"join"},()=>setPresence(Object.values(channel.presenceState()).flatMap(v=>v as unknown as Presence[])))
+   .on("presence",{event:"leave"},()=>setPresence(Object.values(channel.presenceState()).flatMap(v=>v as unknown as Presence[])));
+  channel.subscribe(async status=>{if(status==="SUBSCRIBED")await channel.track({user_id:user.id,name:user.displayName,typing:false});}); channelRef.current=channel;
+  return()=>{void supabase.removeChannel(channel);channelRef.current=null;};
+ },[active,loadGroup,supabase,user.displayName,user.id]);
 
-    const [{ data: memberships }, { data: friendRows }, { data: inviteRows }] = await Promise.all([
-      supabase.from("chat_group_members").select("group_id,chat_groups(id,name,created_by,created_at)").eq("user_id", auth.user.id),
-      supabase.from("friendships").select("user_id,friend_id").eq("status", "accepted").or(`user_id.eq.${auth.user.id},friend_id.eq.${auth.user.id}`),
-      supabase.from("chat_group_invites").select("id,group_id,invited_by,invited_user_id,status,created_at,chat_groups(id,name,created_by,created_at)").eq("invited_user_id", auth.user.id).eq("status", "pending").order("created_at", { ascending: false }),
-    ]);
-    const memberGroups = (memberships || []).map((row: { chat_groups?: Group | Group[] | null }) => normalizeGroup(row.chat_groups)).filter(Boolean) as Group[];
-    const { data: generalId } = await supabase.rpc("get_or_create_general_chat");
-    let generalGroup: Group | null = null;
-    if (generalId) { const { data: generalRow } = await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked").eq("id", generalId).maybeSingle(); generalGroup = generalRow as Group | null; }
-    const groupList = generalGroup ? [generalGroup, ...memberGroups.filter((group) => group.id !== generalGroup!.id)] : memberGroups;
-    setGroups(groupList);
-    setInvites((inviteRows || []) as Invite[]);
+ const sendMessage=useCallback(async(value=input,sticker?:string)=>{if(!active||!user.id)return;const body=value.trim();if(!body&&!sticker)return;const validation=chatBodyError(body);if(validation){setError(validation);return;}setError("");
+  if(!sticker&&EMOJI_ONLY.test(body)){const target=[...messages].reverse().find(m=>m.sender_id!==user.id&&!m.deleted_at);if(target)await toggleReaction(target.id,body.trim());setInput("");return;}
+  const temp=`pending-${crypto.randomUUID()}`;const optimistic:Message={id:temp,group_id:active.id,sender_id:user.id,body,sticker_key:sticker||null,reply_to_id:replyTo?.id||null,created_at:new Date().toISOString(),profiles:{id:user.id,display_name:user.displayName},pending:true};setMessages(v=>[...v,optimistic]);setSending(v=>[...v,temp]);setInput("");const reply=replyTo;setReplyTo(null);setShowStickers(false);
+  const {data,e}=await supabase.from("chat_messages").insert({group_id:active.id,sender_id:user.id,body,sticker_key:sticker||null,reply_to_id:reply?.id||null}).select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").single();
+  if(e){setMessages(v=>v.filter(m=>m.id!==temp));setError(e.message);setSending(v=>v.filter(x=>x!==temp));return;}setMessages(v=>v.map(m=>m.id===temp?{...(data as Message),profiles:profile((data as Message).profiles)}:m));setSending(v=>v.filter(x=>x!==temp));
+ },[active,input,messages,replyTo,supabase,user.displayName,user.id]);
 
-    const friendIds = (friendRows || []).map((row: { user_id: string; friend_id: string }) => row.user_id === auth.user.id ? row.friend_id : row.user_id);
-    if (friendIds.length) {
-      const { data: friendProfiles } = await supabase.from("profiles").select("id,display_name,username").in("id", friendIds);
-      setFriends(friendProfiles || []);
-    } else {
-      setFriends([]);
-    }
-    setLoading(false);
-    if (!activeGroup && groupList[0]) setActiveGroup(groupList[0]);
-  }, [supabase, activeGroup]);
+ const toggleTyping=async(v:string)=>{setInput(v);if(!channelRef.current)return;await channelRef.current.track({user_id:user.id,name:user.displayName,typing:Boolean(v.trim())});if(typingTimer.current)clearTimeout(typingTimer.current);if(v.trim())typingTimer.current=setTimeout(()=>void channelRef.current?.track({user_id:user.id,name:user.displayName,typing:false}),1200);};
+ const toggleReaction=useCallback(async(id:string,emoji:string)=>{const own=reactions.find(r=>r.message_id===id&&r.user_id===user.id&&r.emoji===emoji);if(own)await supabase.from("chat_message_reactions").delete().match({message_id:id,user_id:user.id,emoji});else await supabase.from("chat_message_reactions").insert({message_id:id,user_id:user.id,emoji});},[reactions,supabase,user.id]);
+ const deleteMessage=async(m:Message)=>{if(!active)return;if(m.sender_id!==user.id&&active.created_by!==user.id)return;const {error:e}=await supabase.from("chat_messages").update({deleted_at:new Date().toISOString()}).eq("id",m.id);if(e)setError(e.message);};
+ const openPrivate=async(friend:Profile)=>{setError("");const {data,e}=await supabase.rpc("get_or_create_private_chat",{p_friend:friend.id});if(e){setError(e.message);return;}const g=(await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked,image_path").eq("id",data).maybeSingle()).data as Group|null;if(g){setPrivateChats(v=>v.some(x=>x.group.id===g.id)?v:[...v,{group:g,friend}]);setActive(g);setShowRooms(false);}};
+ const createGroup=async()=>{if(groupName.trim().length<2){setError("Group name must be at least 2 characters.");return;}setError("");const {data,e}=await supabase.rpc("create_chat_group",{p_name:groupName.trim(),p_friend_ids:selectedInvitees});if(e){setError(e.message);return;}const g=(await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked,image_path").eq("id",data).maybeSingle()).data as Group|null;if(g){if(groupImage){const ext=(groupImage.name.split(".").pop()||"jpg").toLowerCase();const path=`${g.id}/${crypto.randomUUID()}.${ext}`;const up=await supabase.storage.from("chat-media").upload(path,groupImage,{upsert:false,contentType:groupImage.type});if(up.error){setError(`Group created, but the photo could not be uploaded: ${up.error.message}`);}else{await supabase.from("chat_groups").update({image_path:path}).eq("id",g.id);g.image_path=path;}}setGroups(v=>[g,...v]);setActive(g);}setShowCreate(false);setGroupName("");setGroupImage(null);setInviteSearch("");setSelectedInvitees([]);};
+ const searchPeople=async(q:string)=>{setInviteSearch(q);if(!q.trim()){setInviteCandidates(friends);return;}const {data}=await supabase.from("profiles").select("id,display_name,username").neq("id",user.id).or(`username.ilike.%${q.trim()}%,display_name.ilike.%${q.trim()}%`).limit(20);setInviteCandidates((data||[]) as Profile[]);};
+ useEffect(()=>{if(showCreate||showManage)void searchPeople(inviteSearch);},[showCreate,showManage]);
+ const inviteMember=async(id:string)=>{if(!active)return;const {error:e}=await supabase.rpc("invite_chat_group_member",{p_group_id:active.id,p_user_id:id});if(e)setError(e.message);else setError("Invitation sent.");};
+ const acceptInvite=async(i:Invite)=>{const {data,e}=await supabase.rpc("respond_chat_group_invite",{p_invite_id:i.id,p_accept:true});if(e){setError(e.message);return;}setInvites(v=>v.filter(x=>x.id!==i.id));await loadWorkspace();const g=(await supabase.from("chat_groups").select("id,name,created_by,created_at,kind,locked,image_path").eq("id",data).maybeSingle()).data as Group|null;if(g)setActive(g);};
+ const declineInvite=async(i:Invite)=>{const {error:e}=await supabase.rpc("respond_chat_group_invite",{p_invite_id:i.id,p_accept:false});if(e)setError(e.message);else setInvites(v=>v.filter(x=>x.id!==i.id));};
+ const renameGroup=async()=>{if(!active||active.kind!=="group")return;const n=groupName.trim();if(n.length<2)return;const {error:e}=await supabase.from("chat_groups").update({name:n}).eq("id",active.id).eq("created_by",user.id);if(e)setError(e.message);else{setActive({...active,name:n});setGroups(v=>v.map(g=>g.id===active.id?{...g,name:n}:g));}};
+ const toggleLock=async()=>{if(!active||active.created_by!==user.id||active.kind!=="group")return;const next=!active.locked;const {error:e}=await supabase.from("chat_groups").update({locked:next}).eq("id",active.id).eq("created_by",user.id);if(e)setError(e.message);else setActive({...active,locked:next});};
+ const deleteGroup=async()=>{if(!active||active.created_by!==user.id||active.kind!=="group")return;if(!window.confirm(`Delete ${active.name}? This permanently removes its messages and memberships.`))return;const {error:e}=await supabase.from("chat_groups").delete().eq("id",active.id).eq("created_by",user.id);if(e){setError(e.message);return;}setGroups(v=>v.filter(g=>g.id!==active.id));setActive(general);setShowManage(false);};
+ const removeMember=async(id:string)=>{if(!active||active.created_by!==user.id)return;const {error:e}=await supabase.from("chat_group_members").delete().eq("group_id",active.id).eq("user_id",id);if(e)setError(e.message);else setMembers(v=>v.filter(m=>m.id!==id));};
+ const changeGroupImage=async(file:File)=>{if(!active||active.created_by!==user.id||!file.type.startsWith("image/")){setError("Only the group owner can change the group photo.");return;}if(file.size>5*1024*1024){setError("Group photo must be 5 MB or smaller.");return;}const ext=(file.name.split(".").pop()||"jpg").toLowerCase();const path=`${active.id}/${crypto.randomUUID()}.${ext}`;const up=await supabase.storage.from("chat-media").upload(path,file,{upsert:false,contentType:file.type});if(up.error){setError(up.error.message);return;}const {error:e}=await supabase.from("chat_groups").update({image_path:path}).eq("id",active.id).eq("created_by",user.id);if(e){setError(e.message);return;}setActive({...active,image_path:path});setGroups(v=>v.map(g=>g.id===active.id?{...g,image_path:path}:g));};
+ const toggleMute=async()=>{if(!active)return;const next=!muted;if(next){const {error:e}=await supabase.from("muted_conversations").upsert({user_id:user.id,conversation_id:active.id},{onConflict:"user_id,conversation_id"});if(e){setError(e.message);return;}}else{const {error:e}=await supabase.from("muted_conversations").delete().eq("user_id",user.id).eq("conversation_id",active.id);if(e){setError(e.message);return;}}setMuted(next);};
+ const searchMessages=async()=>{const q=messageSearch.trim();if(!active||!q){setSearchResults([]);return;}const {data,e}=await supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("group_id",active.id).ilike("body",`%${q}%`).order("created_at",{ascending:false}).limit(30);if(e)setError(e.message);else setSearchResults((data||[]) as Message[]);};
+ const jumpTo=async(id:string)=>{if(!active)return;const target=(await supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("id",id).maybeSingle()).data as Message|null;if(!target)return;const [before,after]=await Promise.all([(await supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("group_id",active.id).lt("created_at",target.created_at).order("created_at",{ascending:false}).limit(25)).data||[],(await supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("group_id",active.id).gt("created_at",target.created_at).order("created_at",{ascending:true}).limit(25)).data||[]]);setMessages([...before.reverse(),target,...after] as Message[]);setHighlighted(id);setSearchOpen(false);window.setTimeout(()=>document.querySelector(`[data-message-id="${id}"]`)?.scrollIntoView({behavior:"smooth",block:"center"}),80);window.setTimeout(()=>setHighlighted(""),2600);};
+ const loadOlder=async()=>{if(!active||!messages.length||loadingOlder)return;setLoadingOlder(true);await loadGroup(active,messages[0].created_at);setLoadingOlder(false);};
+ const leaveGroup=async()=>{if(!active||active.kind!=="group")return;if(!window.confirm(`Leave ${active.name}?`))return;const {error:e}=await supabase.from("chat_group_members").delete().eq("group_id",active.id).eq("user_id",user.id);if(e){setError(e.message);return;}setGroups(v=>v.filter(g=>g.id!==active.id));setActive(general);};
 
-  useEffect(() => { void loadUserAndGroups(); }, [loadUserAndGroups]);
+ const reactionCounts=useMemo(()=>{const map=new Map<string,Map<string,number>>();for(const r of reactions){if(!map.has(r.message_id))map.set(r.message_id,new Map());const m=map.get(r.message_id)!;m.set(r.emoji,(m.get(r.emoji)||0)+1);}return map;},[reactions]);
+ const readSet=useMemo(()=>new Set(reads.filter(r=>r.user_id!==user.id).map(r=>r.message_id)),[reads,user.id]);
+ const typingMembers=useMemo(()=>presence.filter(p=>p.user_id&&p.user_id!==user.id&&p.typing),[presence,user.id]);
+ useEffect(()=>{if(typingMembers.length===1)setTypingNotice(`${typingMembers[0].name||"Someone"} is typing…`);else if(typingMembers.length>1)setTypingNotice(`${typingMembers.length} people are typing…`);else setTypingNotice("");},[typingMembers]);
+ const activeLabel=active?.kind==="private"?(privateChats.find(p=>p.group.id===active.id)?.friend.display_name||privateChats.find(p=>p.group.id===active.id)?.friend.username||"Private chat"):active?.name||"General";
+ const activeImage=active?.image_path?supabase.storage.from("chat-media").getPublicUrl(active.image_path).data.publicUrl:null;
+ const owner=Boolean(active&&active.kind==="group"&&active.created_by===user.id);
 
-  const markVisibleRead = useCallback(async (list: Message[], uid: string) => {
-    const ids = list.filter((m) => m.sender_id !== uid && !m.deleted_at).map((m) => m.id);
-    if (!ids.length) return;
-    const rows = ids.map((message_id) => ({ message_id, user_id: uid }));
-    await supabase.from("chat_message_reads").upsert(rows, { onConflict: "message_id,user_id" });
-  }, [supabase]);
+ if(loading)return <section className="surface-card p-6 text-sm text-[#7892ac]">Loading MatchUp chat…</section>;
+ if(!user.id)return <section className="surface-card p-6 text-sm text-[#a9bdd5]"><p>Sign in to use private messages and groups.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#1674cf] px-4 py-3 text-center text-sm font-bold text-white">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#1674cf] px-4 py-3 text-center text-sm font-bold text-[#70c1ff]">Sign Up</a></div></section>;
 
-  const refreshGroup = useCallback(async (group: Group) => {
-    const [{ data: messageRows, error: messageError }, { data: reactionRows }, { data: readRows }, { data: memberRows }] = await Promise.all([
-      supabase.from("chat_messages").select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").eq("group_id", group.id).order("created_at", { ascending: true }).limit(500),
-      supabase.from("chat_message_reactions").select("message_id,user_id,emoji").in("message_id", (await supabase.from("chat_messages").select("id").eq("group_id", group.id).limit(500)).data?.map((m) => m.id) || []),
-      supabase.from("chat_message_reads").select("message_id,user_id,read_at").in("message_id", (await supabase.from("chat_messages").select("id").eq("group_id", group.id).limit(500)).data?.map((m) => m.id) || []),
-      supabase.from("chat_group_members").select("user_id,profiles(id,display_name,username)").eq("group_id", group.id),
-    ]);
-    if (messageError) { setError(messageError.message); return; }
-    const normalized = (messageRows || []).map((row: Message) => ({ ...row, profiles: normalizeProfile(row.profiles) }));
-    setMessages(normalized);
-    setReactions((reactionRows || []) as Reaction[]);
-    setReads((readRows || []) as ReadState[]);
-    setMembers((memberRows || []).map((row: { profiles?: Profile | Profile[] | null }) => normalizeProfile(row.profiles)).filter(Boolean) as Profile[]);
-    await markVisibleRead(normalized, user.id);
-    window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 20);
-  }, [markVisibleRead, supabase, user.id]);
+ return <section className="relative min-h-[72vh] overflow-hidden rounded-[28px] border border-[#173d67] bg-[#071426] text-white shadow-[0_24px_70px_rgba(0,35,75,.3)]">
+  <div className="flex min-h-[72vh] flex-col">
+   <header className="border-b border-[#18365f] bg-[#08182b] px-3 py-3 sm:px-5"><div className="flex items-center gap-2"><button type="button" onClick={()=>setShowRooms(v=>!v)} className="icon-button" aria-label="Open chats and groups"><Menu size={19}/></button><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#0b3154]">{activeImage?<img src={activeImage} alt="" className="size-full object-cover"/>:<Users size={17} className="text-[#70c1ff]"/>}</div><div className="min-w-0"><h1 className="truncate text-base font-black">{activeLabel}</h1><p className="text-[11px] text-[#7892ac]">{active?.kind==="general"?`${presence.length} online`:active?.kind==="group"?`${members.length} members`:"Private message"}</p></div></div></div><button type="button" onClick={()=>setSearchOpen(v=>!v)} className="icon-button" aria-label="Search messages"><Search size={18}/></button><button type="button" onClick={()=>setShowInvites(v=>!v)} className="icon-button relative" aria-label="Group invitations"><UserPlus size={18}/>{invites.length?<span className="notification-dot">{invites.length}</span>:null}</button>{active?.kind==="group"?<button type="button" onClick={()=>setShowManage(v=>!v)} className="icon-button" aria-label="Group settings"><Settings2 size={18}/></button>:null}</div>
+   {searchOpen?<div className="mt-3 flex gap-2"><div className="flex flex-1 items-center gap-2 rounded-2xl border border-[#214a78] bg-[#071426] px-3"><Search size={15} className="text-[#47a8ff]"/><input value={messageSearch} onChange={e=>setMessageSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchMessages();}} placeholder="Search this chat" className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none"/><button type="button" onClick={()=>{setMessageSearch("");setSearchResults([]);}} aria-label="Clear search"><X size={15}/></button></div><button type="button" onClick={()=>void searchMessages()} className="rounded-2xl bg-[#126bc0] px-4 text-xs font-black">Search</button></div>:null}
+   {searchOpen&&searchResults.length?<div className="mt-2 max-h-48 overflow-y-auto rounded-2xl border border-[#18365f] bg-[#071426] p-2">{searchResults.map(r=><button key={r.id} type="button" onClick={()=>void jumpTo(r.id)} className="block w-full rounded-xl p-2 text-left hover:bg-[#0b223c]"><p className="truncate text-xs font-bold">{r.body||r.sticker_key||"Sticker"}</p><p className="mt-0.5 text-[10px] text-[#7892ac]">{nameOf(r.profiles)} · {exactTime(r.created_at)}</p></button>)}</div>:null}
+  </header>
 
-  useEffect(() => {
-    if (!activeGroup || !user.id) return;
-    void refreshGroup(activeGroup);
-    if (channelRef.current) void supabase.removeChannel(channelRef.current);
-    const channel = supabase.channel(`chat-group-${activeGroup.id}`, { config: { presence: { key: user.id } } })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `group_id=eq.${activeGroup.id}` }, async (payload) => {
-        const row = payload.new as Message;
-        const { data: sender } = await supabase.from("profiles").select("id,display_name,username").eq("id", row.sender_id).maybeSingle();
-        setMessages((prev) => prev.some((m) => m.id === row.id) ? prev : [...prev, { ...row, profiles: sender }]);
-        if (row.sender_id !== user.id) {
-          await supabase.from("chat_message_reads").upsert({ message_id: row.id, user_id: user.id }, { onConflict: "message_id,user_id" });
-        }
-        window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 10);
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_messages", filter: `group_id=eq.${activeGroup.id}` }, (payload) => {
-        const row = payload.new as Message;
-        setMessages((prev) => prev.map((m) => m.id === row.id ? { ...m, ...row } : m));
-      })
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_messages", filter: `group_id=eq.${activeGroup.id}` }, (payload) => {
-        const row = payload.old as Message;
-        setMessages((prev) => prev.filter((m) => m.id !== row.id));
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_message_reactions" }, (payload) => {
-        const row = (payload.new || payload.old) as Reaction;
-        if (!row?.message_id) return;
-        if (payload.eventType === "INSERT") setReactions((prev) => prev.some((r) => r.message_id === row.message_id && r.user_id === row.user_id && r.emoji === row.emoji) ? prev : [...prev, row]);
-        if (payload.eventType === "DELETE") setReactions((prev) => prev.filter((r) => !(r.message_id === row.message_id && r.user_id === row.user_id && r.emoji === row.emoji)));
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_message_reads" }, (payload) => {
-        const row = (payload.new || payload.old) as ReadState;
-        if (!row?.message_id) return;
-        if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") setReads((prev) => [...prev.filter((r) => !(r.message_id === row.message_id && r.user_id === row.user_id)), row]);
-      })
-      .on("presence", { event: "sync" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])))
-      .on("presence", { event: "join" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])))
-      .on("presence", { event: "leave" }, () => setPresence(Object.values(channel.presenceState()).flatMap((entries) => entries as unknown as Presence[])));
-    channel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") await channel.track({ user_id: user.id, name: user.displayName, typing: false });
-    });
-    channelRef.current = channel;
-    return () => { void supabase.removeChannel(channel); channelRef.current = null; };
-  }, [activeGroup, refreshGroup, supabase, user.displayName, user.id]);
+  {showRooms?<aside className="absolute inset-x-0 top-[73px] z-30 max-h-[calc(72vh-73px)] overflow-y-auto border-b border-[#18365f] bg-[#08182b] p-4 shadow-2xl"><div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[.14em] text-[#47a8ff]">Chats & Groups</p><button type="button" onClick={()=>setShowRooms(false)}><X size={17}/></button></div><button type="button" onClick={()=>{if(general){setActive(general);setShowRooms(false);}}} className={`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left ${active?.kind==="general"?"bg-[#0b3154]":"hover:bg-[#0a1d32]"}`}><span className="grid size-10 place-items-center rounded-xl bg-[#126bc0]"><Users size={18}/></span><span className="min-w-0 flex-1"><strong className="block text-sm">General</strong><small className="text-[11px] text-[#7892ac]">Global MatchUp chat</small></span>{muted&&active?.id===general?.id?<span className="text-[10px] text-[#7892ac]">Muted</span>:null}</button><p className="mb-2 mt-5 text-[10px] font-black uppercase tracking-[.14em] text-[#66809a]">Message Friends</p>{friends.length?friends.map(f=><button key={f.id} type="button" onClick={()=>void openPrivate(f)} className="flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-[#0a1d32]"><span className="grid size-10 place-items-center rounded-full bg-[#103a60] text-xs font-black text-[#9bd3ff]">{nameOf(f).slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{nameOf(f)}</strong><small className="text-[11px] text-[#7892ac]">@{f.username||"friend"}</small></span><Send size={14} className="text-[#47a8ff]"/></button>):<p className="rounded-2xl bg-[#071426] p-3 text-xs text-[#7892ac]">Accepted friends will appear here.</p>}<p className="mb-2 mt-5 text-[10px] font-black uppercase tracking-[.14em] text-[#66809a]">Private Chats</p>{privateChats.length?privateChats.map(p=><button key={p.group.id} type="button" onClick={()=>{setActive(p.group);setShowRooms(false);}} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ${active?.id===p.group.id?"bg-[#0b3154]":"hover:bg-[#0a1d32]"}`}><span className="grid size-10 place-items-center rounded-full bg-[#0b3154] text-xs font-black">{nameOf(p.friend).slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1 truncate text-sm font-bold">{nameOf(p.friend)}</span></button>):<p className="text-xs text-[#7892ac]">No private chats yet.</p>}<div className="mb-2 mt-5 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#66809a]">My Groups</p><button type="button" onClick={()=>{setShowCreate(true);setShowRooms(false);}} className="rounded-full bg-[#126bc0] px-3 py-1 text-[10px] font-black">New Group</button></div>{groups.length?groups.map(g=><button key={g.id} type="button" onClick={()=>{setActive(g);setShowRooms(false);}} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ${active?.id===g.id?"bg-[#0b3154]":"hover:bg-[#0a1d32]"}`}><span className="grid size-10 place-items-center overflow-hidden rounded-xl bg-[#103a60]">{g.image_path?<img src={supabase.storage.from("chat-media").getPublicUrl(g.image_path).data.publicUrl} alt="" className="size-full object-cover"/>:<Users size={17} className="text-[#70c1ff]"/>}</span><span className="min-w-0 flex-1 truncate text-sm font-bold">{g.name}</span>{g.locked?<Lock size={14} className="text-[#7892ac]"/>:null}</button>):<p className="text-xs text-[#7892ac]">No groups yet.</p>}</aside>:null}
 
-  const sendMessage = useCallback(async (value = input, stickerKey?: string) => {
-    if (!activeGroup || !user.id) return;
-    const body = value.trim();
-    if (!body && !stickerKey) return;
-    const validation = validateChatClient(body);
-    if (validation) { setError(validation); return; }
-    setError("");
-    if (!stickerKey && EMOJI_ONLY.test(body)) {
-      const target = [...messages].reverse().find((m) => m.sender_id !== user.id && !m.deleted_at);
-      if (target) await toggleReaction(target.id, body.trim());
-      setInput("");
-      setShowStickers(false);
-      return;
-    }
-    const tempId = `pending-${crypto.randomUUID()}`;
-    const optimistic: Message = { id: tempId, group_id: activeGroup.id, sender_id: user.id, body, sticker_key: stickerKey || null, reply_to_id: replyTo?.id || null, created_at: new Date().toISOString(), profiles: { id: user.id, display_name: user.displayName }, pending: true };
-    setMessages((prev) => [...prev, optimistic]);
-    setSendingIds((prev) => [...prev, tempId]);
-    setInput(""); setReplyTo(null); setShowStickers(false);
-    if (channelRef.current) await channelRef.current.track({ user_id: user.id, name: user.displayName, typing: false });
-    const { data, error: insertError } = await supabase.from("chat_messages").insert({ group_id: activeGroup.id, sender_id: user.id, body, sticker_key: stickerKey || null, reply_to_id: replyTo?.id || null }).select("id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles(id,display_name,username)").single();
-    if (insertError) {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
-      setError(insertError.message);
-      setSendingIds((prev) => prev.filter((id) => id !== tempId));
-      return;
-    }
-    setMessages((prev) => prev.map((m) => m.id === tempId ? { ...data, profiles: normalizeProfile(data.profiles) } : m));
-    setSendingIds((prev) => prev.filter((id) => id !== tempId));
-    window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 10);
-  }, [activeGroup, input, messages, replyTo, supabase, user.displayName, user.id]);
+  {showInvites&&<div className="border-b border-[#18365f] bg-[#08182b] p-4">{invites.length?invites.map(i=><div key={i.id} className="mb-2 rounded-2xl border border-[#214a78] bg-[#071426] p-3"><p className="font-bold">{(profile(i.chat_groups)?.name)||"New group"}</p><p className="mt-1 text-xs text-[#7892ac]">You were invited to join this group.</p><div className="mt-3 flex gap-2"><button type="button" onClick={()=>void acceptInvite(i)} className="rounded-xl bg-[#126bc0] px-4 py-2 text-xs font-black">Accept</button><button type="button" onClick={()=>void declineInvite(i)} className="rounded-xl border border-[#214a78] px-4 py-2 text-xs font-black">Decline</button></div></div>):<p className="text-sm text-[#7892ac]">No pending group invitations.</p>}</div>}
 
-  const toggleTyping = async (value: string) => {
-    setInput(value);
-    if (!channelRef.current) return;
-    await channelRef.current.track({ user_id: user.id, name: user.displayName, typing: Boolean(value.trim()) });
-    if (typingTimer.current) clearTimeout(typingTimer.current);
-    if (value.trim()) {
-      typingTimer.current = setTimeout(() => { void channelRef.current?.track({ user_id: user.id, name: user.displayName, typing: false }); }, 1200);
-    }
-  };
+  <div className="flex-1 overflow-y-auto bg-[#061221] px-3 py-4 sm:px-5"><div className="mx-auto max-w-3xl"><button type="button" onClick={()=>void loadOlder()} disabled={!messages.length||loadingOlder} className="mx-auto mb-4 block rounded-full border border-[#18365f] px-4 py-2 text-[10px] font-black text-[#7892ac] disabled:opacity-40">{loadingOlder?"Loading…":"Load older messages"}</button>{messages.length?messages.map(m=>{const own=m.sender_id===user.id;const counts=reactionCounts.get(m.id);const parent=m.reply_to_id?messages.find(x=>x.id===m.reply_to_id):null;const read=readSet.has(m.id);return <div key={m.id} data-message-id={m.id} className={`mb-3 flex ${own?"justify-end":"justify-start"}`}><div className={`max-w-[84%] sm:max-w-[72%] rounded-[22px] px-4 py-3 transition ${own?"rounded-br-[7px] bg-[#126bc0]":"rounded-bl-[7px] border border-[#173d67] bg-[#0a1b2f]"} ${highlighted===m.id?"ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]":""} ${m.deleted_at?"opacity-60":""}`}><div className="mb-1 flex items-center gap-2">{!own?<span className="text-[10px] font-black text-[#70c1ff]">{nameOf(m.profiles)}</span>:null}<span className="ml-auto text-[9px] text-white/50" title={new Date(m.created_at).toLocaleString()}>{timeOf(m.created_at)}</span></div>{parent?<div className="mb-2 rounded-xl border-l-2 border-[#70c1ff] bg-black/10 px-3 py-2 text-[10px]"><strong>Replying to {nameOf(parent.profiles,parent.sender_id===user.id?"You":"Member")}</strong><p className="truncate text-white/60">{parent.body||parent.sticker_key}</p></div>:null}{m.deleted_at?<i className="text-sm">Message deleted</i>:m.sticker_key?<span className="text-5xl">{m.sticker_key}</span>:<p className="whitespace-pre-wrap break-words text-sm leading-6">{m.body}</p>}<div className="mt-1 flex items-center justify-end gap-2 text-[9px] text-white/50"><span>{exactTime(m.created_at)}</span>{own&&!m.pending?(read?<CheckCheck size={14} className="text-[#8df17d]"/>:<Check size={14}/>):null}</div>{counts?.size?<div className="mt-2 flex flex-wrap gap-1">{Array.from(counts.entries()).map(([emoji,count])=><button key={emoji} type="button" onClick={()=>void toggleReaction(m.id,emoji)} className="rounded-full border border-white/15 bg-black/10 px-2 py-1 text-[10px]">{emoji} {count}</button>)}</div>:null}</div><button type="button" className="ml-1 mt-5 grid size-7 place-items-center rounded-full text-[#4e6b88] hover:bg-[#0b223c]" aria-label="Message actions" onClick={()=>{setReplyTo(m);inputRef.current?.focus();}}><Reply size={14}/></button></div>;}):<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}<div ref={bottomRef}/></div>{typingNotice?<p className="mx-auto mt-2 max-w-3xl text-xs text-[#7892ac]">{typingNotice}</p>:null}</div>
 
-  const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
-    if (!user.id) return;
-    const existing = reactions.find((r) => r.message_id === messageId && r.user_id === user.id && r.emoji === emoji);
-    if (existing) await supabase.from("chat_message_reactions").delete().match({ message_id: messageId, user_id: user.id, emoji });
-    else await supabase.from("chat_message_reactions").insert({ message_id: messageId, user_id: user.id, emoji });
-    setMenu(null);
-  }, [reactions, supabase, user.id]);
+  {error?<div className="border-t border-[#6c2736] bg-[#2a1018] px-4 py-3 text-xs text-[#ff9eaa]">{error}<button type="button" onClick={()=>setError("")} className="ml-3 underline">Dismiss</button></div>:null}
+  {active?.locked?<div className="border-t border-[#6c2736] bg-[#24151a] px-4 py-3 text-xs text-[#ffb2bc]"><Lock size={13} className="mr-1 inline"/>This group is locked. Existing messages are still readable.</div>:null}
+  <div className="border-t border-[#18365f] bg-[#08182b] p-3 sm:p-4">{replyTo?<div className="mb-2 flex items-center gap-2 rounded-2xl border border-[#214a78] bg-[#071426] px-3 py-2 text-xs"><Reply size={14} className="text-[#70c1ff]"/><span className="min-w-0 flex-1 truncate">Replying to <strong>{nameOf(replyTo.profiles)}</strong>: {replyTo.body||replyTo.sticker_key}</span><button type="button" onClick={()=>setReplyTo(null)}><X size={15}/></button></div>:null}{showStickers?<div className="mb-2 grid grid-cols-6 gap-1 rounded-2xl border border-[#18365f] bg-[#071426] p-2">{STICKERS.map(s=><button key={s} type="button" onClick={()=>void sendMessage("",s)} className="rounded-xl p-2 text-2xl hover:bg-[#0b223c]">{s}</button>)}</div>:null}<div className="flex items-center gap-2 rounded-[24px] border border-[#214a78] bg-[#071426] p-2"><button type="button" onClick={()=>setShowStickers(v=>!v)} className="grid size-10 shrink-0 place-items-center rounded-full text-[#7892ac]" aria-label="Stickers"><Smile size={19}/></button><input ref={inputRef} value={input} onChange={e=>void toggleTyping(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void sendMessage();}}} disabled={Boolean(active?.locked)} placeholder={active?.locked?"Group is locked":"Type a message…"} className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none disabled:cursor-not-allowed"/><button type="button" onClick={()=>void sendMessage()} disabled={Boolean(active?.locked)||(!input.trim())} className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1674cf] text-white disabled:opacity-40" aria-label="Send message"><Send size={18}/></button></div><p className="mt-2 flex items-center gap-1 px-2 text-[10px] text-[#66809a]"><Paperclip size={11}/>Text, stickers and MatchUp Feed links only.</p></div>
+ </div>
 
-  const deleteMessage = async (message: Message) => {
-    if (!activeGroup || (message.sender_id !== user.id && activeGroup.created_by !== user.id)) return;
-    const { error: deleteError } = await supabase.from("chat_messages").update({ deleted_at: new Date().toISOString() }).eq("id", message.id);
-    if (deleteError) setError(deleteError.message);
-    setMenu(null);
-  };
+ {showCreate&&<div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-[#214a78] bg-[#08182b] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">New private group</p><h2 className="mt-1 text-xl font-black">Create Group</h2></div><button type="button" onClick={()=>setShowCreate(false)}><X size={19}/></button></div><input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Group name" className="mt-5 w-full rounded-2xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm outline-none"/><label className="mt-4 block rounded-2xl border border-dashed border-[#214a78] p-4 text-center text-xs text-[#7892ac]"><span className="font-bold text-white">Group photo</span><span className="ml-2">optional, up to 5 MB</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setGroupImage(e.target.files?.[0]||null)} className="mt-2 block w-full text-xs"/></label><div className="mt-4"><p className="mb-2 text-xs font-black uppercase tracking-[.14em] text-[#66809a]">Invite people</p><div className="flex items-center gap-2 rounded-2xl border border-[#214a78] bg-[#071426] px-3"><Search size={15} className="text-[#47a8ff]"/><input value={inviteSearch} onChange={e=>void searchPeople(e.target.value)} placeholder="Search friends or any MatchUp user" className="min-w-0 flex-1 bg-transparent py-3 text-sm outline-none"/></div><div className="mt-2 max-h-52 space-y-1 overflow-y-auto">{inviteCandidates.map(p=><button key={p.id} type="button" onClick={()=>setSelectedInvitees(v=>v.includes(p.id)?v.filter(x=>x!==p.id):[...v,p.id])} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${selectedInvitees.includes(p.id)?"bg-[#0b3154]":"hover:bg-[#0a1d32]"}`}><span className="grid size-9 place-items-center rounded-full bg-[#103a60] text-xs font-black">{nameOf(p).slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{nameOf(p)}</strong><small className="text-[10px] text-[#7892ac]">@{p.username||"player"}</small></span>{selectedInvitees.includes(p.id)?<Check size={16} className="text-[#70c1ff]"/>:<Plus size={15} className="text-[#66809a]"/>}</button>)}</div></div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={()=>setShowCreate(false)} className="rounded-2xl border border-[#214a78] px-4 py-2.5 text-sm font-bold">Cancel</button><button type="button" onClick={()=>void createGroup()} disabled={groupName.trim().length<2} className="rounded-2xl bg-[#1674cf] px-5 py-2.5 text-sm font-black disabled:opacity-40">Create Group</button></div></div></div>}
 
-  const createGroup = async () => {
-    if (!groupName.trim()) return;
-    const { data, error: rpcError } = await supabase.rpc("create_chat_group", { p_name: groupName.trim(), p_friend_ids: selectedFriends });
-    if (rpcError) { setError(rpcError.message); return; }
-    setShowCreate(false); setGroupName(""); setSelectedFriends([]); setShowInvitePane(false);
-    await loadUserAndGroups();
-    const created = groups.find((g) => g.id === data) || (await supabase.from("chat_groups").select("id,name,created_by,created_at").eq("id", data).maybeSingle()).data;
-    if (created) setActiveGroup(created as Group);
-  };
-
-  const acceptInvite = async (invite: Invite) => {
-    const { error: inviteError } = await supabase.from("chat_group_invites").update({ status: "accepted", responded_at: new Date().toISOString() }).eq("id", invite.id).eq("invited_user_id", user.id);
-    if (inviteError) { setError(inviteError.message); return; }
-    const { error: memberError } = await supabase.from("chat_group_members").insert({ group_id: invite.group_id, user_id: user.id });
-    if (memberError) { setError(memberError.message); return; }
-    await loadUserAndGroups();
-    const group = normalizeGroup(invite.chat_groups);
-    if (group) setActiveGroup(group);
-  };
-  const declineInvite = async (invite: Invite) => {
-    const { error: inviteError } = await supabase.from("chat_group_invites").update({ status: "declined", responded_at: new Date().toISOString() }).eq("id", invite.id).eq("invited_user_id", user.id);
-    if (inviteError) setError(inviteError.message);
-    else setInvites((prev) => prev.filter((x) => x.id !== invite.id));
-  };
-
-  const leaveGroup = async () => {
-    if (!activeGroup) return;
-    const ok = window.confirm(`Leave ${activeGroup.name}?`);
-    if (!ok) return;
-    const { error: leaveError } = await supabase.from("chat_group_members").delete().eq("group_id", activeGroup.id).eq("user_id", user.id);
-    if (leaveError) { setError(leaveError.message); return; }
-    const next = groups.find((g) => g.id !== activeGroup.id) || null;
-    setActiveGroup(next); setGroups((prev) => prev.filter((g) => g.id !== activeGroup.id));
-  };
-
-  const groupedReactions = useMemo(() => {
-    const map = new Map<string, Map<string, number>>();
-    for (const r of reactions) {
-      if (!map.has(r.message_id)) map.set(r.message_id, new Map());
-      const counts = map.get(r.message_id)!;
-      counts.set(r.emoji, (counts.get(r.emoji) || 0) + 1);
-    }
-    return map;
-  }, [reactions]);
-  const readSet = useMemo(() => new Set(reads.filter((r) => r.user_id !== user.id).map((r) => r.message_id)), [reads, user.id]);
-  const onlineMembers = useMemo(() => presence.filter((p) => p.user_id), [presence]);
-  const typingMembers = useMemo(() => onlineMembers.filter((p) => p.typing && p.user_id !== user.id), [onlineMembers, user.id]);
-  useEffect(() => {
-    if (typingMembers.length >= 3) setTypingNotice(`${typingMembers.length} people are typing…`);
-    else if (typingMembers.length === 2) setTypingNotice(`${typingMembers[0]?.name || "Someone"} and ${typingMembers[1]?.name || "someone"} are typing…`);
-    else if (typingMembers.length === 1) setTypingNotice(`${typingMembers[0]?.name || "Someone"} is typing…`);
-    else setTypingNotice("");
-  }, [typingMembers]);
-
-  const messageStatus = (message: Message) => {
-    if (message.pending || sendingIds.includes(message.id)) return "sending";
-    if (readSet.has(message.id)) return "read";
-    return onlineMembers.length > 1 ? "delivered" : "sent";
-  };
-
-  const handlePointerDown = (event: React.PointerEvent, message: Message) => {
-    swipeRef.current = { id: message.id, x: event.clientX, y: event.clientY };
-    longPressTimer.current = setTimeout(() => setMenu({ message, x: Math.min(event.clientX, window.innerWidth - 260), y: Math.min(event.clientY, window.innerHeight - 300) }), 560);
-  };
-  const handlePointerMove = (event: React.PointerEvent, message: Message) => {
-    if (!swipeRef.current || swipeRef.current.id !== message.id) return;
-    const dx = event.clientX - swipeRef.current.x;
-    const dy = Math.abs(event.clientY - swipeRef.current.y);
-    if (longPressTimer.current && (Math.abs(dx) > 20 || dy > 20)) clearTimeout(longPressTimer.current);
-    if (dx > 70 && dy < 45) { setReplyTo(message); inputRef.current?.focus(); swipeRef.current = null; }
-  };
-  const clearPointerTimers = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); swipeRef.current = null; };
-
-  if (loading) return <section className="surface-card p-6 text-sm text-[#8e8b9f]">Loading chat…</section>;
-  if (!user.id) return <section className="surface-card p-6 text-sm text-[#aaa8ba]"><p>Sign in to use MatchUp group chat.</p><div className="mt-4 flex gap-3"><a href="/auth/sign-in" className="flex-1 rounded-xl bg-[#6d27ff] px-4 py-3 text-center text-sm font-bold text-white transition hover:brightness-110">Sign In</a><a href="/auth/sign-up" className="flex-1 rounded-xl border border-[#6d27ff] bg-transparent px-4 py-3 text-center text-sm font-bold text-[#a979ff] transition hover:bg-[#17132b]">Sign Up</a></div></section>;
-
-  return (
-    <section className="relative min-h-[70vh] overflow-hidden rounded-[28px] border border-[#2a2941] bg-[#fafafa] text-[#1b1b22] shadow-[0_24px_70px_rgba(0,0,0,.28)]">
-      <div className="flex min-h-[70vh] flex-col">
-        <header className="border-b border-[#e6e6eb] bg-white px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setShowGroups((v) => !v)} className="grid size-10 place-items-center rounded-full border border-[#dedee6] bg-white" aria-label="My Groups"><Menu size={19}/></button>
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-lg font-bold">{activeGroup?.name || "My Groups"}</h1>
-              <p className="text-xs text-[#777784]">{activeGroup ? `${activeGroup.id ? onlineMembers.length : 0} Online` : "Choose a group to chat"}</p>
-            </div>
-            <button type="button" onClick={() => setShowCreate(true)} className="grid size-10 place-items-center rounded-full bg-[#6d27ff] text-white shadow-[0_8px_20px_rgba(109,39,255,.25)]" aria-label="Create Group"><Plus size={20}/></button>
-            <div className="relative">
-              <button type="button" onClick={() => setShowInvitePane((v) => !v)} className="grid size-10 place-items-center rounded-full border border-[#dedee6] bg-white" aria-label="Group invitations"><Users size={19}/>{invites.length ? <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-[#62c51f] px-1 text-[10px] font-black text-white">{invites.length}</span> : null}</button>
-            </div>
-            {activeGroup ? <button type="button" onClick={leaveGroup} className="grid size-10 place-items-center rounded-full border border-[#dedee6] bg-white" aria-label="Group menu"><MoreHorizontal size={19}/></button> : null}
-          </div>
-          <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#f4f4f8] px-3 py-2 text-xs font-semibold text-[#4e4e5b]"><span className="size-2 rounded-full bg-[#27c93f]" />Online <span className="font-black">{activeGroup ? onlineMembers.length : 0}</span></div>
-        </header>
-
-        {showGroups ? <div className="border-b border-[#e6e6eb] bg-white px-4 py-3 sm:px-6"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[.14em] text-[#8b8a95]">My Groups</p><button type="button" onClick={() => setShowGroups(false)}><X size={16}/></button></div>{groups.length ? groups.map((g) => <button key={g.id} type="button" onClick={() => { setActiveGroup(g); setShowGroups(false); }} className={`block w-full rounded-xl px-3 py-2 text-left text-sm ${activeGroup?.id === g.id ? "bg-[#efe9ff] font-bold text-[#5f22da]" : "hover:bg-[#f5f5f8]"}`}>{g.name}</button>) : <p className="py-2 text-sm text-[#8c8b97]">No groups yet. Create one with friends.</p>}</div> : null}
-
-        {showInvitePane && invites.length ? <div className="border-b border-[#e6e6eb] bg-[#fcfcfd] px-4 py-3 sm:px-6"><p className="mb-3 text-xs font-black uppercase tracking-[.14em] text-[#8b8a95]">Group Invites</p>{invites.map((invite) => <div key={invite.id} className="mb-2 rounded-2xl border border-[#e3e3e8] bg-white p-3"><p className="font-bold">{normalizeGroup(invite.chat_groups)?.name || "New group"}</p><p className="mt-1 text-xs text-[#777784]">You were invited to join this group.</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => void acceptInvite(invite)} className="rounded-xl bg-[#6d27ff] px-4 py-2 text-xs font-bold text-white">Accept</button><button type="button" onClick={() => void declineInvite(invite)} className="rounded-xl border border-[#dddde5] px-4 py-2 text-xs font-bold">Decline</button></div></div>)}</div> : null}
-
-        <div className="flex-1 overflow-y-auto bg-[#f7f7fa] px-3 py-4 sm:px-6">
-          {!activeGroup ? <div className="grid min-h-[48vh] place-items-center"><div className="max-w-sm text-center"><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#eee9fb] text-[#6d27ff]"><Users size={29}/></div><h2 className="mt-4 text-xl font-bold">Start a group conversation</h2><p className="mt-2 text-sm leading-6 text-[#777784]">Create a room with people already on your friends list. Everyone must accept an invite before they can read messages.</p><button type="button" onClick={() => setShowCreate(true)} className="mt-5 rounded-2xl bg-[#6d27ff] px-5 py-3 text-sm font-bold text-white">Create Group</button></div></div> : messages.length === 0 ? <div className="grid min-h-[48vh] place-items-center text-center text-sm text-[#858490]">No messages yet. Say hello.</div> : <div className="mx-auto max-w-3xl space-y-3">{messages.map((message) => {
-              const own = message.sender_id === user.id;
-              const counts = groupedReactions.get(message.id);
-              const status = messageStatus(message);
-              const parent = message.reply_to_id ? messages.find((m) => m.id === message.reply_to_id) : null;
-              return <div key={message.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
-                <div className="max-w-[82%] sm:max-w-[70%]" onPointerDown={(e) => handlePointerDown(e, message)} onPointerMove={(e) => handlePointerMove(e, message)} onPointerUp={clearPointerTimers} onPointerCancel={clearPointerTimers}>
-                  {!own ? <p className="mb-1 ml-2 text-[11px] font-semibold text-[#777784]">{displayName(message.profiles)}</p> : null}
-                  {parent ? <div className={`mb-1 rounded-xl border-l-4 border-[#9a73ff] px-3 py-2 text-[11px] ${own ? "bg-[#e9defd]" : "bg-white"}`}><span className="font-bold">Replying to {displayName(parent.profiles, parent.sender_id === user.id ? "You" : "Member")}</span><div className="truncate text-[#777784]">{parent.sticker_key || parent.body}</div></div> : null}
-                  <div className={`rounded-[22px] px-4 py-3 shadow-sm ${own ? "rounded-br-[7px] bg-[#6d27ff] text-white" : "rounded-bl-[7px] border border-[#e7e7ec] bg-white text-[#202027]"} ${message.deleted_at ? "opacity-60" : ""}`}>
-                    {message.deleted_at ? <span className="text-sm italic">Message deleted</span> : message.sticker_key ? <span className="text-5xl" aria-label="sticker">{message.sticker_key}</span> : <p className="whitespace-pre-wrap break-words text-[15px] leading-6">{message.body}</p>}
-                    <div className={`mt-1.5 flex items-center justify-end gap-2 text-[10px] ${own ? "text-white/70" : "text-[#9999a4]"}`}><span>{formatTime(message.created_at)}</span>{own ? <span aria-label={status}>{status === "sending" ? <span className="inline-flex items-center gap-1"><span className="size-2 animate-pulse rounded-full bg-current" />Sending</span> : status === "read" ? <CheckCheck size={14} className="text-[#6bdc5d]" /> : status === "delivered" ? <CheckCheck size={14}/> : <Check size={14}/>}</span> : null}</div>
-                  </div>
-                  {counts?.size ? <div className="mt-1 flex flex-wrap gap-1 pl-2">{Array.from(counts.entries()).map(([emoji, count]) => <button key={emoji} type="button" onClick={() => void toggleReaction(message.id, emoji)} className={`rounded-full border px-2 py-1 text-xs ${reactions.some((r) => r.message_id === message.id && r.user_id === user.id && r.emoji === emoji) ? "border-[#8d5bff] bg-[#efe8ff]" : "border-[#dddde5] bg-white"}`}>{emoji} {count}</button>)}</div> : null}
-                </div>
-              </div>;
-            })}<div ref={bottomRef} /></div>}
-          {typingNotice ? <div className="mx-auto mt-2 max-w-3xl text-xs font-semibold text-[#8b8a96]"><span className="mr-2 inline-flex gap-1 align-middle"><span className="size-1.5 animate-bounce rounded-full bg-[#888793] [animation-delay:-.2s]"/><span className="size-1.5 animate-bounce rounded-full bg-[#888793] [animation-delay:-.1s]"/><span className="size-1.5 animate-bounce rounded-full bg-[#888793]"/></span>{typingNotice}</div> : null}
-        </div>
-
-        {error ? <div className="border-t border-[#f1c7cd] bg-[#fff3f4] px-4 py-3 text-sm text-[#a5283d]">{error}</div> : null}
-        <div className="border-t border-[#e4e4ea] bg-white p-3 sm:p-4">
-          {replyTo ? <div className="mb-2 flex items-center gap-2 rounded-2xl bg-[#f1edfa] px-3 py-2 text-xs"><Reply size={14} className="text-[#6d27ff]"/><span className="min-w-0 flex-1 truncate">Replying to <strong>{displayName(replyTo.profiles)}</strong>: {replyTo.sticker_key || replyTo.body}</span><button type="button" onClick={() => setReplyTo(null)}><X size={15}/></button></div> : null}
-          {showStickers ? <div className="mb-2 grid grid-cols-6 gap-2 rounded-2xl border border-[#e2e2e8] bg-[#fbfbfc] p-3">{STICKERS.map((sticker) => <button type="button" key={sticker} onClick={() => void sendMessage("", sticker)} className="rounded-xl p-2 text-2xl hover:bg-[#f0eef5]">{sticker}</button>)}</div> : null}
-          <div className="flex items-end gap-2 rounded-[24px] border border-[#dcdce4] bg-[#fbfbfd] p-2">
-            <button type="button" onClick={() => setShowStickers((v) => !v)} className="grid size-10 shrink-0 place-items-center rounded-full text-[#777784] hover:bg-[#eeeeF3]" aria-label="Stickers"><Smile size={20}/></button>
-            <input ref={inputRef} value={input} onChange={(e) => void toggleTyping(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} placeholder="Type your message…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none" aria-label="Message" />
-            <button type="button" onClick={() => void sendMessage()} className="grid size-10 shrink-0 place-items-center rounded-full bg-[#1d1d27] text-white" aria-label="Send message"><Send size={18}/></button>
-          </div>
-          <div className="mt-2 flex items-center gap-2 px-2 text-[10px] text-[#90909a]"><Paperclip size={12}/>Text and stickers only. Feed links are the only links permitted.</div>
-        </div>
-      </div>
-
-      {menu ? <div className="fixed inset-0 z-[70]" onMouseDown={() => setMenu(null)}><div className="absolute w-[250px] rounded-2xl border border-[#dad9e0] bg-white p-2 shadow-[0_20px_55px_rgba(0,0,0,.22)]" style={{ left: menu.x, top: menu.y }} onMouseDown={(e) => e.stopPropagation()}>
-        <p className="px-3 py-2 text-[10px] font-black uppercase tracking-[.14em] text-[#92919b]">Message</p>
-        <div className="grid grid-cols-8 gap-1 px-2 pb-2">{QUICK_REACTIONS.map((emoji) => <button type="button" key={emoji} onClick={() => void toggleReaction(menu.message.id, emoji)} className="rounded-lg p-1.5 text-lg hover:bg-[#f3f2f7]">{emoji}</button>)}</div>
-        <button type="button" onClick={() => { setReplyTo(menu.message); setMenu(null); inputRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-[#f4f4f7]"><Reply size={16}/>Reply</button>
-        <button type="button" onClick={async () => { await navigator.clipboard?.writeText(menu.message.body); setMenu(null); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-[#f4f4f7]"><Copy size={16}/>Copy</button>
-        <button type="button" onClick={() => { setError("Forwarding is intentionally limited to copying text in this chat version."); setMenu(null); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-[#f4f4f7]"><Forward size={16}/>Forward</button>
-        {(menu.message.sender_id === user.id || activeGroup?.created_by === user.id) ? <button type="button" onClick={() => void deleteMessage(menu.message)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#b12e43] hover:bg-[#fff1f3]"><Trash2 size={16}/>Delete</button> : <div className="px-3 py-2 text-xs text-[#8c8b96]">Only the message author or group creator can delete.</div>}
-      </div></div> : null}
-
-      {showCreate ? <div className="fixed inset-0 z-[60] grid place-items-center bg-black/45 p-4"><div className="w-full max-w-lg rounded-[28px] bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#6d27ff]">New group</p><h2 className="mt-1 text-2xl font-black">Create Group</h2></div><button type="button" onClick={() => setShowCreate(false)}><X size={20}/></button></div><input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name" className="mt-5 w-full rounded-2xl border border-[#ddddE5] bg-[#fafafd] px-4 py-3 text-sm outline-none focus:border-[#8d63ef]" />
-          <div className="mt-4"><p className="mb-2 text-xs font-black uppercase tracking-[.14em] text-[#8b8a96]">Invite friends</p>{friends.length ? <div className="max-h-60 space-y-2 overflow-y-auto">{friends.map((friend) => <label key={friend.id} className="flex items-center gap-3 rounded-2xl border border-[#e5e5ea] p-3"><input type="checkbox" checked={selectedFriends.includes(friend.id)} onChange={(e) => setSelectedFriends((prev) => e.target.checked ? [...prev, friend.id] : prev.filter((id) => id !== friend.id))} /><span className="min-w-0"><span className="block truncate font-semibold">{displayName(friend)}</span><span className="text-xs text-[#8b8a96]">@{friend.username || "friend"}</span></span></label>)}</div> : <div className="rounded-2xl bg-[#f5f5f8] p-4 text-sm text-[#777784]">You don't have any accepted friends yet. Groups can only invite existing friends.</div>}</div><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setShowCreate(false)} className="rounded-2xl border border-[#dddde5] px-4 py-2.5 text-sm font-bold">Cancel</button><button type="button" disabled={!groupName.trim()} onClick={() => void createGroup()} className="rounded-2xl bg-[#6d27ff] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">Create Group</button></div></div></div> : null}
-    </section>
-  );
+ {showManage&&active?.kind==="group"&&<div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4"><div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[28px] border border-[#214a78] bg-[#08182b] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Group controls</p><h2 className="mt-1 text-xl font-black">{active.name}</h2></div><button type="button" onClick={()=>setShowManage(false)}><X size={19}/></button></div><div className="mt-5 grid gap-3"><div className="flex gap-2"><input value={groupName||active.name} onChange={e=>setGroupName(e.target.value)} className="min-w-0 flex-1 rounded-2xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm"/><button type="button" onClick={()=>void renameGroup()} className="rounded-2xl bg-[#126bc0] px-4 text-xs font-black">Rename</button></div><label className="flex items-center justify-between rounded-2xl border border-[#214a78] bg-[#071426] p-3 text-sm"><span>Change group photo</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(f)void changeGroupImage(f);}} className="max-w-[170px] text-xs"/></label><button type="button" onClick={()=>void toggleMute()} className="flex items-center justify-between rounded-2xl border border-[#214a78] bg-[#071426] p-3 text-left text-sm"><span>{muted?"Unmute this chat":"Mute this chat"}</span><span className="text-xs text-[#7892ac]">{muted?"UNMUTE":"MUTE"}</span></button>{owner?<button type="button" onClick={()=>void toggleLock()} className="flex items-center gap-3 rounded-2xl border border-[#214a78] bg-[#071426] p-3 text-left text-sm">{active.locked?<Unlock size={17}/>:<Lock size={17}/>}<span>{active.locked?"Unlock group":"Lock group"}</span></button>:null}</div><div className="mt-5"><div className="mb-2 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[.14em] text-[#66809a]">Members · {members.length}</p></div>{members.map(m=><div key={m.id} className="flex items-center gap-3 border-b border-[#122c48] py-2.5"><span className="grid size-8 place-items-center rounded-full bg-[#103a60] text-[10px] font-black">{nameOf(m).slice(0,1).toUpperCase()}</span><span className="min-w-0 flex-1 truncate text-sm">{nameOf(m)}{m.id===active.created_by?<span className="ml-2 text-[9px] text-[#70c1ff]">OWNER</span>:null}</span>{owner&&m.id!==user.id?<button type="button" onClick={()=>void removeMember(m.id)} className="rounded-lg p-2 text-[#ff8f9f]" aria-label={`Remove ${nameOf(m)}`}><Trash2 size={15}/></button>:null}</div>)}</div><div className="mt-5"><p className="mb-2 text-xs font-black uppercase tracking-[.14em] text-[#66809a]">Invite another person</p><div className="flex gap-2"><input value={inviteSearch} onChange={e=>void searchPeople(e.target.value)} placeholder="Search by username or name" className="min-w-0 flex-1 rounded-2xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm"/></div><div className="mt-2 max-h-44 overflow-y-auto">{inviteCandidates.map(p=><button key={p.id} type="button" onClick={()=>void inviteMember(p.id)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-[#0a1d32]"><UserPlus size={15} className="text-[#70c1ff]"/><span className="min-w-0 flex-1 truncate text-sm">{nameOf(p)}</span><span className="text-[10px] text-[#7892ac]">Invite</span></button>)}</div></div><div className="mt-6 flex flex-wrap justify-between gap-2"><button type="button" onClick={()=>void leaveGroup()} className="rounded-2xl border border-[#214a78] px-4 py-2.5 text-xs font-bold">Leave Group</button>{owner?<button type="button" onClick={()=>void deleteGroup()} className="rounded-2xl bg-[#7d2638] px-4 py-2.5 text-xs font-black">Delete Group</button>:null}</div></div></div>}
+ </section>;
 }
