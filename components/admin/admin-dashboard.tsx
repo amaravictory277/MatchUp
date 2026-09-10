@@ -2,182 +2,210 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CircleUserRound, Search, ShieldCheck, Users, Wifi, WifiOff } from 'lucide-react';
+import {
+  Activity, ArrowLeft, BarChart3, CheckCircle2, CircleUserRound, Clock3, Film, FolderKanban,
+  Image as ImageIcon, LayoutDashboard, MessageSquare, RefreshCw, Search, ShieldCheck, Trophy,
+  UserRound, Users, Video, Wifi, X,
+} from 'lucide-react';
 import { createBrowserSupabaseClient } from '../../lib/supabase/client';
+import type { AdminDashboardData, AdminUser } from '../../lib/admin/server';
 
-type AdminUser = {
-  id: string;
-  display_name: string | null;
-  username: string;
-  avatar_path: string | null;
-  last_seen_at: string | null;
-  created_at: string;
+type Props = { initialDashboard: AdminDashboardData; initialUsers: AdminUser[]; initialTotal: number; adminName: string };
+type Tab = 'overview' | 'users' | 'activity' | 'posts' | 'tournaments' | 'groups' | 'analytics';
+
+type Detail = {
+  profile: AdminUser & { bio?: string | null; role?: string };
+  counts: Record<string, number>;
+  posts: Array<Record<string, unknown>>;
+  friends: Array<Record<string, unknown>>;
+  groups: Array<Record<string, unknown>>;
 };
 
-type Props = {
-  initialUsers: AdminUser[];
-  initialTotal: number;
-  initialActiveToday: number;
-  adminName: string;
-};
+const tabs: Array<{ id: Tab; label: string; icon: ReactNode }> = [
+  { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={17} /> },
+  { id: 'users', label: 'Users', icon: <Users size={17} /> },
+  { id: 'activity', label: 'Activity', icon: <Activity size={17} /> },
+  { id: 'posts', label: 'Posts', icon: <ImageIcon size={17} /> },
+  { id: 'tournaments', label: 'Tournaments', icon: <Trophy size={17} /> },
+  { id: 'groups', label: 'Groups', icon: <FolderKanban size={17} /> },
+  { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={17} /> },
+];
 
-function initials(user: AdminUser) {
-  const value = user.display_name?.trim() || user.username;
-  return value.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U';
-}
-
-function avatarUrl(path: string | null) {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path) || path.startsWith('/')) return path;
-  return null;
-}
-
-function relativeTime(value: string | null) {
+function text(value: unknown, fallback = '—') { return value === null || value === undefined || value === '' ? fallback : String(value); }
+function num(value: unknown) { return Number(value || 0); }
+function date(value: unknown) { if (!value) return '—'; const d = new Date(String(value)); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+function dayDate(value: unknown) { if (!value) return '—'; const d = new Date(String(value)); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); }
+function relative(value: string | null) {
   if (!value) return 'No activity recorded';
-  const then = new Date(value).getTime();
-  const delta = Date.now() - then;
-  const seconds = Math.round(delta / 1000);
-  if (seconds < 60) return 'just now';
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const delta = Math.max(0, Date.now() - new Date(value).getTime());
+  const minutes = Math.round(delta / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
-  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  if (days < 7) return `${days}d ago`;
+  return dayDate(value);
+}
+function initials(name: string | null, username: string) { return (name?.trim() || username).split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'U'; }
+function avatar(path: string | null) { return path && (/^https?:\/\//i.test(path) || path.startsWith('/')) ? path : null; }
+function mediaUrl(path: unknown) {
+  if (!path) return null;
+  const value = String(path);
+  if (/^https?:\/\//i.test(value) || value.startsWith('/')) return value;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/feed-media/${value.split('/').map(encodeURIComponent).join('/')}`;
+}
+function isUuid(value: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
+
+function Avatar({ user, online = false, size = 'md' }: { user: { display_name?: string | null; username: string; avatar_path?: string | null }; online?: boolean; size?: 'sm' | 'md' | 'lg' }) {
+  const dimensions = size === 'lg' ? 'h-16 w-16 text-lg' : size === 'sm' ? 'h-9 w-9 text-xs' : 'h-11 w-11 text-sm';
+  const src = avatar(user.avatar_path ?? null);
+  return <div className={`relative shrink-0 ${dimensions}`}>
+    {src ? <img src={src} alt="" className={`h-full w-full rounded-full object-cover ring-1 ring-slate-200 ${size === 'lg' ? '' : ''}`} /> : <div className={`flex h-full w-full items-center justify-center rounded-full bg-blue-50 font-black text-blue-700 ring-1 ring-blue-100`}>{initials(user.display_name ?? null, user.username)}</div>}
+    <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${online ? 'bg-blue-600' : 'bg-slate-300'}`} aria-label={online ? 'Online' : 'Offline'} />
+  </div>;
 }
 
-function UserAvatar({ user, online }: { user: AdminUser; online: boolean }) {
-  const src = avatarUrl(user.avatar_path);
-  return (
-    <div className="relative h-12 w-12 shrink-0">
-      {src ? <img src={src} alt="" className="h-12 w-12 rounded-full object-cover ring-1 ring-slate-200" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-sm font-extrabold text-blue-700 ring-1 ring-blue-100">{initials(user)}</div>}
-      <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-slate-300'}`} aria-label={online ? 'Online now' : 'Offline'} />
-    </div>
-  );
-}
-
-export function AdminDashboard({ initialUsers, initialTotal, initialActiveToday, adminName }: Props) {
+export function AdminDashboard({ initialDashboard, initialUsers, initialTotal, adminName }: Props) {
+  const [dashboard, setDashboard] = useState(initialDashboard);
   const [users, setUsers] = useState(initialUsers);
   const [total, setTotal] = useState(initialTotal);
-  const [activeToday, setActiveToday] = useState(initialActiveToday);
-  const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
+  const [onlineIds, setOnlineIds] = useState<string[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<AdminUser[]>([]);
   const [query, setQuery] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [tab, setTab] = useState<Tab>('overview');
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const pageSize = 50;
+
+  const refreshDashboard = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch('/api/admin/dashboard', { cache: 'no-store' });
+      if (response.ok) setDashboard(await response.json() as AdminDashboardData);
+      const usersResponse = await fetch(`/api/admin/users?limit=${pageSize}&offset=${offset}${query ? `&q=${encodeURIComponent(query)}` : ''}`, { cache: 'no-store' });
+      if (usersResponse.ok) { const data = await usersResponse.json() as { users: AdminUser[]; total: number }; setUsers(data.users); setTotal(data.total); }
+    } finally { setRefreshing(false); }
+  };
 
   useEffect(() => {
     const supabase = createBrowserSupabaseClient();
     const presence = supabase.channel('matchup:online-users', { config: { presence: { key: `admin-${Date.now()}` } } });
-    const sync = () => setOnlineIds(new Set(Object.keys(presence.presenceState() as Record<string, unknown[]>)));
-    presence.on('presence', { event: 'sync' }, sync).on('presence', { event: 'join' }, sync).on('presence', { event: 'leave' }, sync).subscribe();
-
-    const profileEvents = supabase
-      .channel('matchup:admin-profiles')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, (payload) => {
-        const profile = payload.new as AdminUser;
-        setTotal((current) => current + 1);
-        setUsers((current) => current.some((item) => item.id === profile.id) ? current : [profile, ...current]);
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'profiles' }, (payload) => {
-        const deleted = payload.old as { id?: string };
-        if (!deleted.id) return;
-        setTotal((current) => Math.max(0, current - 1));
-        setUsers((current) => current.filter((item) => item.id !== deleted.id));
-        setOnlineIds((current) => {
-          const next = new Set(current);
-          next.delete(deleted.id!);
-          return next;
-        });
-      })
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(presence);
-      void supabase.removeChannel(profileEvents);
+    let refreshTimer: number | null = null;
+    const syncPresence = () => {
+      const ids = Object.keys(presence.presenceState()).filter(isUuid);
+      setOnlineIds(ids);
+      if (ids.length === 0) { setOnlineUsers([]); return; }
+      const params = new URLSearchParams(); ids.forEach((id) => params.append('id', id));
+      void fetch(`/api/admin/online?${params.toString()}`, { cache: 'no-store' }).then(async (response) => { if (response.ok) { const data = await response.json() as { users: AdminUser[] }; setOnlineUsers(data.users); } });
     };
+    presence.on('presence', { event: 'sync' }, syncPresence).on('presence', { event: 'join' }, syncPresence).on('presence', { event: 'leave' }, syncPresence).subscribe();
+    const activity = supabase.channel('matchup:admin-activity')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => { window.clearTimeout(refreshTimer ?? undefined); refreshTimer = window.setTimeout(() => void refreshDashboard(), 500); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, () => { window.clearTimeout(refreshTimer ?? undefined); refreshTimer = window.setTimeout(() => void refreshDashboard(), 500); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tournaments' }, () => { window.clearTimeout(refreshTimer ?? undefined); refreshTimer = window.setTimeout(() => void refreshDashboard(), 500); })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, () => { window.clearTimeout(refreshTimer ?? undefined); refreshTimer = window.setTimeout(() => void refreshDashboard(), 1000); })
+      .subscribe();
+    return () => { if (refreshTimer) window.clearTimeout(refreshTimer); void supabase.removeChannel(presence); void supabase.removeChannel(activity); };
+  // The initial page owns the first render; this subscription is deliberately mounted once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const trimmed = query.trim();
-    if (!trimmed) {
-      setUsers(initialUsers);
-      setTotal(initialTotal);
-      setActiveToday(initialActiveToday);
-      setSearching(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
+    const timer = window.setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await fetch(`/api/admin/users?q=${encodeURIComponent(trimmed)}`, { cache: 'no-store', signal: controller.signal });
-        if (!response.ok) return;
-        const data = await response.json() as { users: AdminUser[]; total: number; activeToday: number };
-        setUsers(data.users);
-        setTotal(data.total);
-        setActiveToday(data.activeToday);
-      } finally {
-        if (!controller.signal.aborted) setSearching(false);
-      }
-    }, 350);
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [query, initialUsers, initialTotal, initialActiveToday]);
+        const response = await fetch(`/api/admin/users?limit=${pageSize}&offset=0${trimmed ? `&q=${encodeURIComponent(trimmed)}` : ''}`, { cache: 'no-store' });
+        if (response.ok) { const data = await response.json() as { users: AdminUser[]; total: number }; setUsers(data.users); setTotal(data.total); setOffset(0); }
+      } finally { setSearching(false); }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
-  const onlineUsers = useMemo(() => users.filter((user) => onlineIds.has(user.id)), [users, onlineIds]);
-  const offlineUsers = useMemo(() => users.filter((user) => !onlineIds.has(user.id)).sort((a, b) => new Date(b.last_seen_at || b.created_at).getTime() - new Date(a.last_seen_at || a.created_at).getTime()), [users, onlineIds]);
-  const onlineCount = onlineIds.size;
+  useEffect(() => {
+    if (!selectedUser) { setDetail(null); return; }
+    setLoadingDetail(true);
+    void fetch(`/api/admin/users/${selectedUser}`, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error('Could not load user.'); return await response.json() as Detail; }).then(setDetail).catch(() => setDetail(null)).finally(() => setLoadingDetail(false));
+  }, [selectedUser]);
+
+  const onlineCount = onlineIds.length;
   const offlineCount = Math.max(0, total - onlineCount);
+  const onlineMap = useMemo(() => new Set(onlineIds), [onlineIds]);
+  const overview = dashboard.overview;
+  const analytics = dashboard.analytics;
 
-  return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
-      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <header className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/home" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm" aria-label="Back to MatchUp"><ArrowLeft className="h-5 w-5" /></Link>
-            <div>
-              <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-blue-600" /><p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">MatchUp Admin</p></div>
-              <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Overview</h1>
-              <p className="mt-1 text-sm text-slate-500">Signed in as {adminName}</p>
-            </div>
-          </div>
-          <div className="hidden rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 sm:block">Live user monitoring</div>
-        </header>
+  return <main className="min-h-screen bg-[#07101d] text-slate-100">
+    <div className="mx-auto max-w-[1500px] px-3 py-4 sm:px-5 lg:px-7 lg:py-6">
+      <header className="flex flex-col gap-4 rounded-3xl border border-slate-800 bg-[#0b1625] p-4 shadow-2xl sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/home" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-[#0e1b2d] text-slate-300 transition hover:border-blue-500 hover:text-white" aria-label="Back to MatchUp"><ArrowLeft size={18} /></Link>
+          <div><div className="flex items-center gap-2 text-xs font-black uppercase tracking-[.18em] text-blue-400"><ShieldCheck size={16} /> MatchUp Admin</div><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Command Center</h1><p className="mt-1 text-xs text-slate-400">Signed in as {adminName} · live production monitoring</p></div>
+        </div>
+        <button type="button" onClick={() => void refreshDashboard()} disabled={refreshing} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-[#0e1b2d] px-4 text-sm font-bold text-slate-200 transition hover:border-blue-500 disabled:opacity-50"><RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Refresh</button>
+      </header>
 
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="User statistics">
-          <StatCard label="Total users" value={total} icon={<Users className="h-5 w-5" />} />
-          <StatCard label="Online now" value={onlineCount} icon={<Wifi className="h-5 w-5" />} live />
-          <StatCard label="Offline" value={offlineCount} icon={<WifiOff className="h-5 w-5" />} />
-          <StatCard label="Active today" value={activeToday} icon={<CircleUserRound className="h-5 w-5" />} />
-        </section>
+      <nav className="mt-4 overflow-x-auto rounded-2xl border border-slate-800 bg-[#0b1625] p-1.5" aria-label="Admin sections"><div className="flex min-w-max gap-1">{tabs.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold transition sm:px-4 ${tab === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/40' : 'text-slate-400 hover:bg-[#102036] hover:text-slate-100'}`}>{item.icon}{item.label}</button>)}</div></nav>
 
-        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-base font-extrabold">Search users</h2><p className="mt-0.5 text-xs text-slate-500">Search by display name or username. Emails are never shown.</p></div>
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:max-w-md">
-              <Search className="h-4 w-4 shrink-0 text-slate-400" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search users" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
-              {searching ? <span className="text-xs font-semibold text-blue-600">Searching…</span> : null}
-            </label>
-          </div>
-        </section>
-
-        <section className="mt-5 grid gap-5 lg:grid-cols-2">
-          <UserSection title="Online now" subtitle={`${onlineCount} unique registered user${onlineCount === 1 ? '' : 's'} present`} users={onlineUsers} online />
-          <UserSection title="Offline" subtitle={`${offlineCount} registered user${offlineCount === 1 ? '' : 's'} not present`} users={offlineUsers} online={false} />
-        </section>
-      </div>
-    </main>
-  );
+      {tab === 'overview' ? <Overview dashboard={dashboard} onlineCount={onlineCount} offlineCount={offlineCount} onlineUsers={onlineUsers} onlineMap={onlineMap} onUser={setSelectedUser} /> : null}
+      {tab === 'users' ? <UsersSection users={users} total={total} offset={offset} pageSize={pageSize} query={query} searching={searching} onlineMap={onlineMap} onQuery={setQuery} onPage={(next) => { setOffset(next); void fetch(`/api/admin/users?limit=${pageSize}&offset=${next}${query ? `&q=${encodeURIComponent(query)}` : ''}`, { cache: 'no-store' }).then(async (r) => { if (r.ok) { const d = await r.json() as { users: AdminUser[]; total: number }; setUsers(d.users); setTotal(d.total); } }); }} onUser={setSelectedUser} /> : null}
+      {tab === 'activity' ? <ActivitySection dashboard={dashboard} onUser={setSelectedUser} /> : null}
+      {tab === 'posts' ? <PostsSection posts={dashboard.recentPosts} /> : null}
+      {tab === 'tournaments' ? <TournamentsSection tournaments={dashboard.recentTournaments} /> : null}
+      {tab === 'groups' ? <GroupsSection groups={dashboard.recentGroups} /> : null}
+      {tab === 'analytics' ? <AnalyticsSection analytics={analytics} overview={overview} notificationStats={dashboard.notificationStats} /> : null}
+    </div>
+    {selectedUser ? <UserDetailModal detail={detail} loading={loadingDetail} onClose={() => setSelectedUser(null)} /> : null}
+  </main>;
 }
 
-function StatCard({ label, value, icon, live = false }: { label: string; value: number; icon: ReactNode; live?: boolean }) {
-  return <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700">{icon}</div>{live ? <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-emerald-600"><span className="h-2 w-2 rounded-full bg-emerald-500" />Live</span> : null}</div><p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p><p className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value.toLocaleString()}</p></article>;
+function Overview({ dashboard, onlineCount, offlineCount, onlineUsers, onlineMap, onUser }: { dashboard: AdminDashboardData; onlineCount: number; offlineCount: number; onlineUsers: AdminUser[]; onlineMap: Set<string>; onUser: (id: string) => void }) {
+  const o = dashboard.overview;
+  const cards = [
+    ['Total users', o.totalUsers, Users], ['Online now', onlineCount, Wifi], ['Offline', offlineCount, Wifi], ['Active today', o.activeToday, Activity],
+    ['New today', o.newUsersToday, UserRound], ['New this week', o.newUsersThisWeek, UserRound], ['New this month', o.newUsersThisMonth, UserRound], ['Posts', o.posts, ImageIcon],
+  ] as const;
+  return <>
+    <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label, value, Icon]) => <Stat key={label} label={label} value={num(value)} icon={<Icon size={18} />} />)}</section>
+    <section className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+      <Panel title="Live users" icon={<Wifi size={18} />} meta={`${onlineCount} unique users present`}><div className="divide-y divide-slate-800">{onlineUsers.length ? onlineUsers.map((user) => <button type="button" key={user.id} onClick={() => onUser(user.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#0f1d30]"><Avatar user={user} online={onlineMap.has(user.id)} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{user.display_name || user.username}</p><p className="truncate text-xs text-slate-500">@{user.username}</p></div><span className="text-xs font-bold text-blue-400">Online now</span></button>) : <Empty text="No registered users are online right now." />}</div></Panel>
+      <Panel title="Recent sign-ups" icon={<UserRound size={18} />} meta="Real Supabase accounts"><div className="divide-y divide-slate-800">{dashboard.recentUsers.map((user) => <button type="button" key={user.id} onClick={() => onUser(user.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#0f1d30]"><Avatar user={user} online={onlineMap.has(user.id)} size="sm" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{user.display_name || user.username}</p><p className="text-xs text-slate-500">@{user.username}</p></div><span className="shrink-0 text-xs text-slate-500">{relative(user.created_at)}</span></button>)}</div></Panel>
+    </section>
+    <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Comments" value={o.comments} icon={<MessageSquare size={17} />} /><Metric label="Likes" value={o.likes} icon={<CircleUserRound size={17} />} /><Metric label="Follows" value={o.follows} icon={<Users size={17} />} /><Metric label="Messages" value={o.messages} icon={<MessageSquare size={17} />} /><Metric label="Groups" value={o.groups} icon={<FolderKanban size={17} />} /><Metric label="Tournaments" value={o.tournaments} icon={<Trophy size={17} />} /><Metric label="Participation" value={o.tournamentParticipants} icon={<Users size={17} />} /><Metric label="Notifications" value={o.notifications} icon={<Activity size={17} />} /></section>
+  </>;
 }
 
-function UserSection({ title, subtitle, users, online }: { title: string; subtitle: string; users: AdminUser[]; online: boolean }) {
-  return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 px-4 py-4 sm:px-5"><div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black">{title}</h2><p className="mt-0.5 text-xs text-slate-500">{subtitle}</p></div><span className={`h-3 w-3 rounded-full ${online ? 'bg-emerald-500' : 'bg-slate-300'}`} /></div></div><div className="divide-y divide-slate-100">{users.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500">{online ? 'No users are online right now.' : 'No offline users match this search.'}</div> : users.map((user) => <div key={user.id} className="flex items-center gap-3 px-4 py-3.5 sm:px-5"><UserAvatar user={user} online={online} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold text-slate-900">{user.display_name || user.username}</p><p className="truncate text-xs font-medium text-slate-500">@{user.username}</p></div><div className={`shrink-0 text-right text-xs font-semibold ${online ? 'text-emerald-600' : 'text-slate-500'}`}>{online ? 'Online now' : `Last seen ${relativeTime(user.last_seen_at)}`}</div></div>)}</div></section>;
+function UsersSection({ users, total, offset, pageSize, query, searching, onlineMap, onQuery, onPage, onUser }: { users: AdminUser[]; total: number; offset: number; pageSize: number; query: string; searching: boolean; onlineMap: Set<string>; onQuery: (v: string) => void; onPage: (offset: number) => void; onUser: (id: string) => void }) {
+  return <section className="mt-5"><Panel title="Users" icon={<Users size={18} />} meta={`${total.toLocaleString()} real registered profiles`}><div className="border-b border-slate-800 p-3 sm:p-4"><label className="flex h-11 max-w-xl items-center gap-2 rounded-xl border border-slate-700 bg-[#081321] px-3"><Search size={17} className="text-slate-500" /><input value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search username or display name" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-600" />{searching ? <RefreshCw size={14} className="animate-spin text-blue-400" /> : null}</label></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-[#081321] text-[10px] uppercase tracking-[.16em] text-slate-500"><tr><th className="px-4 py-3">User</th><th className="px-4 py-3">Created</th><th className="px-4 py-3">Provider</th><th className="px-4 py-3">Verification</th><th className="px-4 py-3">Last sign-in</th><th className="px-4 py-3">Status</th></tr></thead><tbody className="divide-y divide-slate-800">{users.map((user) => <tr key={user.id} className="cursor-pointer transition hover:bg-[#0f1d30]" onClick={() => onUser(user.id)}><td className="px-4 py-3"><div className="flex items-center gap-3"><Avatar user={user} online={onlineMap.has(user.id)} size="sm" /><div><p className="text-sm font-bold">{user.display_name || user.username}</p><p className="text-xs text-slate-500">@{user.username}</p></div></div></td><td className="px-4 py-3 text-xs text-slate-400">{dayDate(user.created_at)}</td><td className="px-4 py-3 text-xs font-semibold capitalize text-slate-300">{user.auth_provider}</td><td className="px-4 py-3 text-xs">{user.email_verified ? <span className="font-bold text-blue-400">Verified</span> : <span className="text-slate-500">Unverified</span>}</td><td className="px-4 py-3 text-xs text-slate-400">{relative(user.last_sign_in_at)}</td><td className="px-4 py-3 text-xs font-bold">{onlineMap.has(user.id) ? <span className="text-blue-400">Online</span> : <span className="text-slate-500">{relative(user.last_seen_at)}</span>}</td></tr>)}</tbody></table>{users.length === 0 ? <Empty text="No users match this search." /> : null}</div><div className="flex items-center justify-between gap-3 border-t border-slate-800 px-4 py-3"><p className="text-xs text-slate-500">Showing {Math.min(offset + 1, total)}–{Math.min(offset + users.length, total)} of {total}</p><div className="flex gap-2"><button type="button" disabled={offset === 0} onClick={() => onPage(Math.max(0, offset - pageSize))} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold disabled:opacity-30">Previous</button><button type="button" disabled={offset + pageSize >= total} onClick={() => onPage(offset + pageSize)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold disabled:opacity-30">Next</button></div></div></Panel></section>;
 }
+
+function ActivitySection({ dashboard, onUser }: { dashboard: AdminDashboardData; onUser: (id: string) => void }) {
+  return <section className="mt-5 grid gap-5 xl:grid-cols-2"><Panel title="Recent users" icon={<UserRound size={18} />} meta="Newest accounts"><div className="divide-y divide-slate-800">{dashboard.recentUsers.map((u) => <button key={u.id} type="button" onClick={() => onUser(u.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#0f1d30]"><Avatar user={u} size="sm" /><div className="flex-1"><p className="text-sm font-bold">{u.display_name || u.username}</p><p className="text-xs text-slate-500">Joined {date(u.created_at)}</p></div></button>)}</div></Panel><Panel title="Recent comments" icon={<MessageSquare size={18} />} meta="Real content"><div className="divide-y divide-slate-800">{dashboard.recentComments.map((c) => <Link key={text(c.id)} href={`/feeds?post=${encodeURIComponent(text(c.post_id, ''))}`} className="block px-4 py-3 hover:bg-[#0f1d30]"><div className="flex items-center gap-2"><p className="text-sm font-bold">{text(c.author_display_name, text(c.author_username))}</p><span className="text-xs text-slate-600">{relative(text(c.created_at, ''))}</span></div><p className="mt-1 line-clamp-2 text-sm text-slate-300">{text(c.body)}</p></Link>)}</div></Panel><Panel title="Recent groups" icon={<FolderKanban size={18} />} meta="System-level chat activity"><GroupRows groups={dashboard.recentGroups} /></Panel><Panel title="Recent tournaments" icon={<Trophy size={18} />} meta="Real records"><TournamentRows tournaments={dashboard.recentTournaments} /></Panel></section>;
+}
+
+function PostsSection({ posts }: { posts: Array<Record<string, unknown>> }) { return <section className="mt-5"><Panel title="Posts" icon={<ImageIcon size={18} />} meta="Newest real feed content"><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{posts.map((p) => <article key={text(p.id)} className="overflow-hidden rounded-2xl border border-slate-800 bg-[#081321]"><div className="flex items-center gap-3 p-4"><Avatar user={{ username: text(p.author_username), display_name: text(p.author_display_name, null), avatar_path: text(p.author_avatar, null) }} size="sm" /><div className="min-w-0"><p className="truncate text-sm font-bold">{text(p.author_display_name, text(p.author_username))}</p><p className="text-xs text-slate-500">{relative(text(p.created_at, ''))}</p></div></div>{p.media_path ? <div className="relative aspect-[16/9] bg-[#050b13]">{p.media_kind === 'video' ? <video src={mediaUrl(p.media_path) ?? undefined} controls preload="metadata" className="h-full w-full object-cover" /> : <img src={mediaUrl(p.media_path) ?? undefined} alt="" className="h-full w-full object-cover" />}</div> : null}<div className="p-4"><p className="line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-slate-200">{text(p.body)}</p><div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>{num(p.likes)} likes · {num(p.comments)} comments</span><Link href={`/feeds?post=${encodeURIComponent(text(p.id))}`} className="font-bold text-blue-400 hover:text-blue-300">Open post</Link></div></div></article>)}</div>{posts.length === 0 ? <Empty text="No posts have been created yet." /> : null}</Panel></section>; }
+
+function TournamentsSection({ tournaments }: { tournaments: Array<Record<string, unknown>> }) { return <section className="mt-5"><Panel title="Tournaments" icon={<Trophy size={18} />} meta="Newest real tournaments"><TournamentRows tournaments={tournaments} detailed /></Panel></section>; }
+function GroupsSection({ groups }: { groups: Array<Record<string, unknown>> }) { return <section className="mt-5"><Panel title="Groups" icon={<FolderKanban size={18} />} meta="Private groups are shown only through this admin-authorized RPC"><GroupRows groups={groups} detailed /></Panel></section>; }
+
+function TournamentRows({ tournaments, detailed = false }: { tournaments: Array<Record<string, unknown>>; detailed?: boolean }) { return <div className="divide-y divide-slate-800">{tournaments.map((t) => <div key={text(t.id)} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-950/50 text-blue-400"><Trophy size={18} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{text(t.name)}</p><p className="mt-1 text-xs text-slate-500">by @{text(t.organizer_username)} · created {date(t.created_at)}</p></div><div className="flex flex-wrap gap-2 text-[11px] font-bold"><Badge>{text(t.status)}</Badge><Badge>{num(t.participant_count)} accepted / {num(t.max_players)} capacity</Badge>{detailed && t.source_group_id ? <Badge>Group-originated</Badge> : null}</div></div>)}{tournaments.length === 0 ? <Empty text="No tournaments have been created yet." /> : null}</div>; }
+function GroupRows({ groups, detailed = false }: { groups: Array<Record<string, unknown>>; detailed?: boolean }) { return <div className="divide-y divide-slate-800">{groups.map((g) => <div key={text(g.id)} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-950/50 text-blue-400"><FolderKanban size={18} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-extrabold">{text(g.name)}</p><p className="mt-1 text-xs text-slate-500">Owner @{text(g.owner_username)} · created {dayDate(g.created_at)}</p></div><div className="flex flex-wrap gap-2 text-[11px] font-bold"><Badge>{num(g.member_count)} / {num(g.member_limit)} members</Badge><Badge>{num(g.messages_7d)} messages / 7d</Badge>{detailed && g.locked ? <Badge>Locked</Badge> : null}</div></div>)}{groups.length === 0 ? <Empty text="No private groups have been created yet." /> : null}</div>; }
+
+function AnalyticsSection({ analytics, overview, notificationStats }: { analytics: Record<string, number>; overview: Record<string, number>; notificationStats: Record<string, number> }) {
+  const rows = [['Daily active users', analytics.dau], ['Weekly active users', analytics.wau], ['Monthly active users', analytics.mau], ['New accounts · 30d', analytics.newAccounts30d], ['Posts · 30d', analytics.posts30d], ['Comments · 30d', analytics.comments30d], ['Likes · 30d', analytics.likes30d], ['Follows · 30d', analytics.follows30d], ['Friend records · 30d', analytics.friendRequests30d], ['Messages · 30d', analytics.messages30d], ['Groups · 30d', analytics.groups30d], ['Tournaments · 30d', analytics.tournaments30d], ['Participation · 30d', analytics.tournamentParticipation30d], ['Video posts · 30d', analytics.videoPosts30d], ['Image posts · 30d', analytics.imagePosts30d]] as Array<[string, number]>;
+  return <section className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]"><Panel title="Real activity analytics" icon={<BarChart3 size={18} />} meta="Derived from existing database timestamps; no fabricated history"><div className="grid gap-3 sm:grid-cols-2">{rows.map(([label, value]) => <div key={label} className="rounded-xl border border-slate-800 bg-[#081321] p-4"><p className="text-xs font-bold text-slate-500">{label}</p><p className="mt-1 text-2xl font-black">{num(value).toLocaleString()}</p></div>)}</div></Panel><div className="space-y-5"><Panel title="Content totals" icon={<Activity size={18} />} meta="All-time"><div className="grid grid-cols-2 gap-3">{[['Posts', overview.posts], ['Comments', overview.comments], ['Likes', overview.likes], ['Follows', overview.follows], ['Messages', overview.messages], ['Tournaments', overview.tournaments], ['Groups', overview.groups], ['Video posts', overview.videoPosts], ['Image posts', overview.imagePosts], ['Participants', overview.tournamentParticipants]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-800 bg-[#081321] p-3"><p className="text-[11px] text-slate-500">{label}</p><p className="mt-1 text-lg font-black">{num(value).toLocaleString()}</p></div>)}</div></Panel><Panel title="Notifications" icon={<MessageSquare size={18} />} meta="System metrics"><div className="grid grid-cols-2 gap-3"><Metric label="Total" value={notificationStats.total} /><Metric label="Last 30d" value={notificationStats.last30d} /><Metric label="Unread" value={notificationStats.unread} /><Metric label="Duplicate clusters" value={notificationStats.duplicateClusters} /></div></Panel></div></section>;
+}
+
+function UserDetailModal({ detail, loading, onClose }: { detail: Detail | null; loading: boolean; onClose: () => void }) { return <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5" role="dialog" aria-modal="true"><div className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-t-3xl border border-slate-700 bg-[#0b1625] shadow-2xl sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800 bg-[#0b1625]/95 px-4 py-4 backdrop-blur sm:px-6"><div className="flex items-center gap-2"><UserRound size={18} className="text-blue-400" /><h2 className="font-black">User detail</h2></div><button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 text-slate-300"><X size={17} /></button></div>{loading ? <div className="p-8"><div className="h-24 animate-pulse rounded-2xl bg-slate-800" /></div> : detail ? <div className="space-y-5 p-4 sm:p-6"><section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-[#081321] p-4 sm:flex-row sm:items-center"><Avatar user={detail.profile} online={false} size="lg" /><div className="min-w-0 flex-1"><h3 className="text-xl font-black">{detail.profile.display_name || detail.profile.username}</h3><p className="text-sm text-slate-400">@{detail.profile.username}</p><p className="mt-2 text-xs text-slate-500">Joined {date(detail.profile.created_at)} · {text(detail.profile.auth_provider)} · {detail.profile.email_verified ? 'Verified' : 'Unverified'}</p><p className="mt-1 text-xs text-slate-500">Last sign-in {relative(detail.profile.last_sign_in_at)} · Last activity {relative(detail.profile.last_seen_at)}</p></div><Badge>{text(detail.profile.role, 'player')}</Badge></section><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{Object.entries(detail.counts).map(([key, value]) => <div key={key} className="rounded-xl border border-slate-800 bg-[#081321] p-3"><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{key.replace(/[A-Z]/g, (m) => ` ${m}`).trim()}</p><p className="mt-1 text-xl font-black">{num(value).toLocaleString()}</p></div>)}</div><Panel title="Posts" icon={<ImageIcon size={17} />} meta="Latest 10"><div className="divide-y divide-slate-800">{detail.posts.map((post) => <Link key={text(post.id)} href={`/feeds?post=${encodeURIComponent(text(post.id))}`} className="block px-1 py-3 hover:bg-[#0f1d30]"><div className="flex items-center justify-between gap-3"><Badge>{text(post.media_kind)}</Badge><span className="text-xs text-slate-500">{date(post.created_at)}</span></div><p className="mt-2 line-clamp-2 text-sm text-slate-200">{text(post.body)}</p><p className="mt-2 text-xs text-slate-500">{num(post.likes)} likes · {num(post.comments)} comments</p></Link>)}{detail.posts.length === 0 ? <Empty text="This user has not created any posts." /> : null}</div></Panel><Panel title="Friends & groups" icon={<Users size={17} />} meta="Real relationships"><div className="grid gap-5 sm:grid-cols-2"><div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Friends</p>{detail.friends.length ? <div className="space-y-2">{detail.friends.slice(0, 12).map((f) => <div key={text(f.id)} className="rounded-xl border border-slate-800 bg-[#081321] px-3 py-2 text-sm">{text(f.display_name, text(f.username))}</div>)}</div> : <Empty text="No accepted friends." />}</div><div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Groups</p>{detail.groups.length ? <div className="space-y-2">{detail.groups.slice(0, 12).map((g) => <div key={text(g.id)} className="rounded-xl border border-slate-800 bg-[#081321] px-3 py-2 text-sm">{text(g.name)}</div>)}</div> : <Empty text="No group memberships." />}</div></div></Panel></div> : <Empty text="User detail is unavailable." />}</div></div>; }
+
+function Panel({ title, icon, meta, children }: { title: string; icon?: ReactNode; meta?: string; children: ReactNode }) { return <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#0b1625] shadow-xl"><div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-4 sm:px-5"><div className="flex items-center gap-2"><span className="text-blue-400">{icon}</span><h2 className="text-sm font-black sm:text-base">{title}</h2></div>{meta ? <span className="text-right text-[10px] font-bold uppercase tracking-wide text-slate-500">{meta}</span> : null}</div>{children}</section>; }
+function Stat({ label, value, icon }: { label: string; value: number; icon: ReactNode }) { return <article className="rounded-2xl border border-slate-800 bg-[#0b1625] p-4 shadow-xl"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-950/60 text-blue-400">{icon}</div><p className="mt-4 text-[10px] font-black uppercase tracking-[.14em] text-slate-500">{label}</p><p className="mt-1 text-2xl font-black tracking-tight">{value.toLocaleString()}</p></article>; }
+function Metric({ label, value, icon }: { label: string; value: unknown; icon?: ReactNode }) { return <div className="rounded-xl border border-slate-800 bg-[#081321] p-3"><div className="flex items-center gap-2 text-slate-500">{icon}<span className="text-xs font-bold">{label}</span></div><p className="mt-1 text-lg font-black">{num(value).toLocaleString()}</p></div>; }
+function Badge({ children }: { children: ReactNode }) { return <span className="inline-flex rounded-full border border-blue-900/70 bg-blue-950/50 px-2.5 py-1 text-[10px] font-bold capitalize text-blue-300">{children}</span>; }
+function Empty({ text: value }: { text: string }) { return <div className="flex min-h-24 items-center justify-center px-5 py-8 text-center text-sm text-slate-500">{value}</div>; }
