@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BottomNav } from "../../components/navigation";
+import { FeedQuickActionBridge } from "../../components/feeds/feed-quick-action-bridge";
 import { FeedsClient } from "../../components/feeds/feeds-client";
 
 export const metadata: Metadata = {
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 export default function FeedsPage() {
   return (
     <main className="app-shell">
+      <FeedQuickActionBridge />
       <FeedsClient />
       <BottomNav />
     </main>
