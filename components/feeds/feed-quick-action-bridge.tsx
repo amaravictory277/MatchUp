@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 const ALLOWED = new Set(["post-squad", "upload-gameplay", "normal-post"]);
 
 export function FeedQuickActionBridge() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("create") !== "post") return;
     const action = params.get("action");
@@ -23,9 +23,7 @@ export function FeedQuickActionBridge() {
       if (open()) {
         window.clearInterval(timer);
         window.setTimeout(() => document.querySelector<HTMLButtonElement>(`[data-feed-action='${action}']`)?.click(), 60);
-      } else if (attempts > 40) {
-        window.clearInterval(timer);
-      }
+      } else if (attempts > 40) window.clearInterval(timer);
     }, 25);
     return () => window.clearInterval(timer);
   }, []);
