@@ -1,0 +1,12 @@
+/* MatchUp interaction rules: normal interface copy is not an accidental long-press target. */
+body, button, a, label, [role="button"], [role="menuitem"], nav, header, main, article, section, aside, p, h1, h2, h3, h4, h5, h6, small, time, svg {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, select, [contenteditable="true"], [contenteditable=""] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
