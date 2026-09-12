@@ -25,8 +25,9 @@ export function ChatVisualEnhancer(){
       const footer=row.querySelector<HTMLElement>('.mt-1.flex.items-center.justify-end');
       if(footer){footer.dataset.chatTime=rel;footer.dataset.chatDate=formatted;}
       const other=row.querySelector<HTMLElement>('.matchup-chat-bubble-other');
-      const sender=other?.querySelector<HTMLElement>('div:first-child span:first-child');
-      if(sender){row.dataset.chatInitial=(sender.textContent||'M').trim().slice(0,1).toUpperCase();}
+      const header=other?.querySelector<HTMLElement>('div:first-child');
+      const sender=header?.querySelector<HTMLElement>('span:first-child');
+      if(sender&&header){header.dataset.chatAvatar=(sender.textContent||'M').trim().slice(0,1).toUpperCase();}
     });
     apply();
     const observer=new MutationObserver(apply); observer.observe(document.body,{subtree:true,childList:true});
