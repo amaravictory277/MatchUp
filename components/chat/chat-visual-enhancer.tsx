@@ -10,7 +10,6 @@ function relative(value: Date){
   if(hours<24)return `${hours} hour${hours===1?"":"s"} ago`;
   const days=Math.floor(hours/24);
   if(days===1)return "Yesterday";
-  if(days<7)return `${days} days ago`;
   return `${days} days ago`;
 }
 
@@ -21,8 +20,12 @@ export function ChatVisualEnhancer(){
       if(!title)return;
       const date=new Date(title);
       if(Number.isNaN(date.getTime()))return;
-      row.dataset.chatRelative=relative(date);
-      row.dataset.chatDate=date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+      const rel=relative(date);
+      const formatted=date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+      row.dataset.chatRelative=rel;
+      row.dataset.chatDate=formatted;
+      const footer=row.querySelector<HTMLElement>('.mt-1.flex.items-center.justify-end');
+      if(footer){footer.dataset.chatTime=rel;footer.dataset.chatDate=formatted;}
     });
     apply();
     const observer=new MutationObserver(apply);
