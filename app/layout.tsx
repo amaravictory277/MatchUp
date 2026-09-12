@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./brand-theme.css";
+import "./ui-interaction.css";
 import { ServiceWorker } from "../components/service-worker";
 import { InstallPrompt } from "../components/install-prompt";
 import { AuthNotice } from "../components/auth/auth-notice";
