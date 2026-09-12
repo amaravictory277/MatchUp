@@ -1,17 +1,7 @@
 .matchup-chat [data-message-id] > .matchup-chat-bubble-own,
-.matchup-chat [data-message-id] > .matchup-chat-bubble-other {
-  background: transparent !important;
-  border: 0 !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-}
+.matchup-chat [data-message-id] > .matchup-chat-bubble-other { background: transparent !important; border: 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; overflow: visible !important; }
 .matchup-chat [data-message-id] > .matchup-chat-bubble-own > div:first-child,
-.matchup-chat [data-message-id] > .matchup-chat-bubble-other > div:first-child {
-  margin: 0 0 5px !important;
-  min-height: 18px;
-}
+.matchup-chat [data-message-id] > .matchup-chat-bubble-other > div:first-child { margin: 0 0 5px !important; min-height: 18px; }
 .matchup-chat [data-message-id] > .matchup-chat-bubble-other > div:first-child { position: relative; padding-left: 30px; }
 .matchup-chat [data-message-id] > .matchup-chat-bubble-other > div:first-child::before { content: attr(data-chat-avatar); position: absolute; left: 0; top: -2px; display: grid; width: 24px; height: 24px; place-items: center; border-radius: 999px; background: #0b3154; border: 1px solid #194b7c; color: #70c1ff; font-size: 10px; font-weight: 900; }
 .matchup-chat [data-message-id] > .matchup-chat-bubble-own > div:first-child > span:last-child,
@@ -36,3 +26,5 @@
 .matchup-chat [data-message-id] > .matchup-chat-bubble-other > div.flex.flex-wrap { margin-top: 0 !important; }
 .matchup-chat [data-message-id] > .matchup-chat-bubble-own + button,
 .matchup-chat [data-message-id] > .matchup-chat-bubble-other + button { align-self: flex-end; margin-bottom: 27px !important; min-width: 38px; min-height: 38px; }
+.matchup-chat [class*="171109"], .matchup-chat [class*="100d09"] { background: #071426 !important; }
+.matchup-chat [class*="241205"] { color: #fff !important; }
