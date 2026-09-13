@@ -1,70 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, MessageCircle, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowLeft, ChevronRight, MessageCircle, Plus, UsersRound } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { MatchUpAvatar } from "../ui/matchup-avatar";
 
-type Profile = { id: string; display_name: string | null; username: string | null; avatar_path: string | null };
-type Chat = { id: string; name: string; kind: string; lastAt: string | null };
-const nameOf = (p: Profile) => p.display_name || p.username || "MatchUp Player";
-const initials = (p: Profile) => nameOf(p).slice(0, 2).toUpperCase();
+type Profile={id:string;display_name:string|null;username:string|null;avatar_path:string|null};
+type Chat={id:string;name:string;kind:string;lastAt:string|null;preview:string;avatar?:Profile|null};
+const nameOf=(p:Profile)=>p.display_name||p.username||"MatchUp Player";
+const relative=(value:string|null)=>{if(!value)return "";const d=new Date(value);const mins=Math.max(0,Math.floor((Date.now()-d.getTime())/60000));if(mins<1)return "Just now";if(mins<60)return `${mins}m`;const hours=Math.floor(mins/60);if(hours<24)return `${hours}h`;if(hours<48)return "Yesterday";return d.toLocaleDateString([], {month:"short",day:"numeric"});};
 
-export function MessageFriendsPage() {
-  const router = useRouter();
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [newFriends, setNewFriends] = useState<Profile[]>([]);
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [showAllFriends, setShowAllFriends] = useState(false);
-  const [showAllChats, setShowAllChats] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) { router.push("/auth"); return; }
-      const uid = auth.user.id;
-      const { data: fr } = await supabase.from("friendships").select("user_id,friend_id").eq("status", "accepted").or(`user_id.eq.${uid},friend_id.eq.${uid}`);
-      const ids = ((fr || []) as any[]).map(r => r.user_id === uid ? r.friend_id : r.user_id);
-      const profiles = ids.length ? (await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", ids)).data || [] : [];
-      const { data: memberships } = await supabase.from("chat_group_members").select("group_id,chat_groups(id,name,kind)").eq("user_id", uid);
-      const groups = (memberships || []).map((r: any) => r.chat_groups).filter(Boolean) as any[];
-      const privateGroups = groups.filter(g => g.kind === "private");
-      let messagedIds: string[] = [];
-      if (privateGroups.length) {
-        const { data: all } = await supabase.from("chat_group_members").select("group_id,user_id").in("group_id", privateGroups.map(g => g.id));
-        messagedIds = privateGroups.map(g => ((all || []) as any[]).find(r => r.group_id === g.id && r.user_id !== uid)?.user_id).filter(Boolean) as string[];
-      }
-      const available = (profiles as Profile[]).filter(p => !messagedIds.includes(p.id));
-      const chatRows: Chat[] = [];
-      for (const g of groups) {
-        const { data: m } = await supabase.from("chat_messages").select("created_at").eq("group_id", g.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
-        if (m) chatRows.push({ id: g.id, name: g.name, kind: g.kind, lastAt: m.created_at });
-      }
-      chatRows.sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
-      if (!cancelled) { setNewFriends(available); setChats(chatRows); setLoading(false); }
-    };
-    void load();
-    return () => { cancelled = true; };
-  }, [router, supabase]);
-
-  const message = async (p: Profile) => {
-    setBusy(p.id);
-    const { data, error } = await supabase.rpc("get_or_create_private_chat", { p_friend: p.id });
-    if (!error && data) router.push(`/leaderboard?group=${data}`);
-    setBusy("");
-  };
-
-  return <main className="min-h-screen bg-[#061120] px-4 pb-10 pt-5 text-white sm:px-6">
-    <div className="mx-auto max-w-3xl">
-      <header className="sticky top-0 z-20 -mx-4 flex items-center gap-3 border-b border-white/5 bg-[#061120]/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6"><button type="button" onClick={() => router.back()} className="icon-button" aria-label="Back"><ArrowLeft size={18} /></button><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Messaging</p><h1 className="text-2xl font-black">Message New Friends</h1></div></header>
-      {loading ? <div className="py-16 text-center text-sm text-[#7892ac]">Loading your conversations…</div> : <>
-        <section className="pt-7"><div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-black">Message New Friends</h2><p className="mt-1 text-xs text-[#7892ac]">Friends you have accepted but have not messaged yet.</p></div>{newFriends.length > 5 ? <button type="button" onClick={() => setShowAllFriends(v => !v)} className="rounded-xl px-3 py-2 text-xs font-black text-[#9bd3ff] hover:bg-[#0a2946]">{showAllFriends ? "Show Less" : "See All"}</button> : null}</div>{newFriends.length ? <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">{(showAllFriends ? newFriends : newFriends.slice(0, 5)).map(p => <div key={p.id} className="min-w-[155px] rounded-2xl border border-[#18365f] bg-[#071426] p-4"><div className="grid size-14 place-items-center overflow-hidden rounded-full bg-[#0b3154] text-sm font-black text-[#70c1ff]">{p.avatar_path ? <img src={p.avatar_path} alt="" className="size-full object-cover" /> : initials(p)}</div><p className="mt-3 truncate text-sm font-black">{nameOf(p)}</p><button type="button" disabled={busy === p.id} onClick={() => void message(p)} className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50"><MessageCircle size={14} />{busy === p.id ? "Opening…" : "Message"}</button></div>)}</div> : <div className="rounded-2xl border border-dashed border-[#18365f] p-6 text-center text-sm text-[#7892ac]">You have no unmessaged friends right now.</div>}</section>
-        <section className="mt-9"><div className="rounded-2xl border border-[#194b7c] bg-[#08182b] px-4 py-3"><h2 className="text-center text-sm font-black tracking-[.14em] text-[#9bd3ff]">MY CHATS</h2></div><div className="mt-3 space-y-2">{(showAllChats ? chats : chats.slice(0, 3)).map(c => <button key={c.id} type="button" onClick={() => router.push(`/leaderboard?group=${c.id}`)} className="flex w-full items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-4 text-left"><span className="grid size-11 place-items-center rounded-full bg-[#0b3154] text-[#70c1ff]"><MessageCircle size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{c.name}</span><span className="block text-[11px] text-[#7892ac]">{c.kind === "group" ? "Group" : "Conversation"}</span></span><span className="text-[10px] text-[#7892ac]">{c.lastAt ? new Date(c.lastAt).toLocaleDateString() : ""}</span></button>)}{!chats.length ? <p className="rounded-2xl border border-dashed border-[#18365f] p-7 text-center text-sm text-[#7892ac]">No chats yet.</p> : null}</div>{chats.length > 3 ? <button type="button" onClick={() => setShowAllChats(v => !v)} className="mt-3 w-full rounded-xl border border-[#245b91] bg-[#0a2946] px-4 py-3 text-sm font-black text-[#9bd3ff]">{showAllChats ? "Show Less" : "See All"}</button> : null}</section>
-        <section className="mt-9"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">MY GROUPS</h2><button type="button" onClick={() => router.push("/leaderboard?create=group")} className="flex items-center gap-2 rounded-xl bg-[#167bd1] px-4 py-3 text-sm font-black"><Plus size={16} />Create Group</button></div><p className="text-xs text-[#7892ac]">Create or manage groups from Chat.</p></section>
-      </>}
-    </div>
-  </main>;
+export function MessageFriendsPage(){
+ const router=useRouter(); const params=useSearchParams(); const supabase=useMemo(()=>createBrowserSupabaseClient(),[]); const [friends,setFriends]=useState<Profile[]>([]); const [chats,setChats]=useState<Chat[]>([]); const [loading,setLoading]=useState(true); const [busy,setBusy]=useState(""); const [showAll,setShowAll]=useState(false);
+ const tab=params.get("tab")==="groups"?"groups":"friends";
+ useEffect(()=>{let cancelled=false; const load=async()=>{const {data:auth}=await supabase.auth.getUser();if(!auth.user){router.push("/auth");return;}const uid=auth.user.id;
+   const {data:fr}=await supabase.from("friendships").select("user_id,friend_id").eq("status","accepted").or(`user_id.eq.${uid},friend_id.eq.${uid}`);const ids=((fr||[]) as any[]).map(r=>r.user_id===uid?r.friend_id:r.user_id);const fp=ids.length?(await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id",ids)).data||[]:[];
+   const {data:memberships}=await supabase.from("chat_group_members").select("group_id,chat_groups(id,name,kind,image_path)").eq("user_id",uid);const groups=(memberships||[]).map((r:any)=>Array.isArray(r.chat_groups)?r.chat_groups[0]:r.chat_groups).filter(Boolean);const unique=groups.filter((g:any,i:number,a:any[])=>a.findIndex(x=>x.id===g.id)===i);
+   const chatRows:Chat[]=[];for(const g of unique){const latest=(await supabase.from("chat_messages").select("body,created_at,sender_id,profiles(id,display_name,username,avatar_path)").eq("group_id",g.id).order("created_at",{ascending:false}).limit(1).maybeSingle()).data as any;if(latest)chatRows.push({id:g.id,name:g.name,kind:g.kind,lastAt:latest.created_at,preview:latest.body||"Sent a message",avatar:Array.isArray(latest.profiles)?latest.profiles[0]:latest.profiles});else if(g.kind==="group")chatRows.push({id:g.id,name:g.name,kind:g.kind,lastAt:null,preview:"No messages yet",avatar:null});}
+   if(!cancelled){setFriends(fp as Profile[]);setChats(chatRows.sort((a,b)=>new Date(b.lastAt||0).getTime()-new Date(a.lastAt||0).getTime()));setLoading(false);}
+ };void load();return()=>{cancelled=true;};},[router,supabase]);
+ const message=async(p:Profile)=>{setBusy(p.id);const {data,error}=await supabase.rpc("get_or_create_private_chat",{p_friend:p.id});if(!error&&data)router.push(`/leaderboard?group=${data}`);setBusy("");};
+ return <main className="min-h-screen bg-[#061120] px-4 pb-28 pt-5 text-white sm:px-6"><div className="mx-auto max-w-2xl">
+  <header className="flex items-center gap-3 border-b border-white/5 pb-5"><button type="button" onClick={()=>router.back()} className="icon-button" aria-label="Back"><ArrowLeft size={18}/></button><div className="flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Messaging</p><h1 className="text-2xl font-black">Friends</h1></div><button type="button" onClick={()=>router.push("/friends")} className="grid size-10 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]" aria-label="Add friends"><Plus size={18}/></button></header>
+  <div className="mt-6 flex rounded-2xl border border-[#18365f] bg-[#071426] p-1"><button type="button" onClick={()=>router.replace("/message-friends?tab=friends")} className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${tab==="friends"?"bg-[#167bd1] text-white":"text-[#7892ac]"}`}>FRIENDS</button><button type="button" onClick={()=>router.replace("/groups")} className={`flex-1 rounded-xl px-4 py-3 text-sm font-black transition ${tab==="groups"?"bg-[#167bd1] text-white":"text-[#7892ac]"}`}>GROUPS</button></div>
+  {loading?<div className="py-16 text-center text-sm text-[#7892ac]">Loading your messages…</div>:tab==="groups"?<section className="mt-7"><div className="mb-3 flex items-center justify-between"><div><h2 className="text-[11px] font-black uppercase tracking-[.16em] text-[#70c1ff]">Groups</h2><p className="mt-1 text-xs text-[#7892ac]">Your active group conversations.</p></div><button type="button" onClick={()=>router.push("/groups")} className="rounded-xl px-3 py-2 text-xs font-black text-[#9bd3ff]">View all</button></div>{chats.filter(c=>c.kind==="group").length?<div className="space-y-3">{chats.filter(c=>c.kind==="group").map(c=><button key={c.id} type="button" onClick={()=>router.push(`/leaderboard?group=${c.id}`)} className="flex w-full items-center gap-4 rounded-2xl border border-[#18365f] bg-[#071426] p-4 text-left"><MatchUpAvatar group profile={{id:c.id,display_name:c.name,avatar_path:null,username:null}} size="md"/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{c.name}</span><span className="mt-1 block truncate text-xs text-[#7892ac]">{c.preview}</span></span><ChevronRight size={18} className="text-[#5f86a8]"/></button>)}</div>:<div className="rounded-2xl border border-dashed border-[#18365f] p-8 text-center text-sm text-[#7892ac]">You are not in any groups yet.</div>}</section>:<>
+   <section className="mt-7"><div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-black">Friends</h2><p className="mt-1 text-xs text-[#7892ac]">People you can start a conversation with.</p></div><button type="button" onClick={()=>router.push("/friends")} className="rounded-xl px-3 py-2 text-xs font-black text-[#9bd3ff]">Add Friends</button></div>{friends.length?<div className="space-y-2">{friends.slice(0,showAll?friends.length:5).map(p=><div key={p.id} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-3"><MatchUpAvatar profile={p} size="md" alt={nameOf(p)}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{nameOf(p)}</p><p className="mt-1 text-xs text-[#7892ac]">Friend on MatchUp</p></div><button type="button" disabled={busy===p.id} onClick={()=>void message(p)} className="rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50">{busy===p.id?"Opening…":"Message"}</button></div>)}</div>:<div className="rounded-2xl border border-dashed border-[#18365f] p-7 text-center text-sm text-[#7892ac]">No accepted friends yet.</div>}{friends.length>5?<button type="button" onClick={()=>setShowAll(v=>!v)} className="mt-3 w-full rounded-xl border border-[#245b91] bg-[#0a2946] px-4 py-3 text-xs font-black text-[#9bd3ff]">{showAll?"Show Less":"See All Friends"}</button>:null}</section>
+   <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">Recent Chats</h2>{chats.length>5?<button type="button" onClick={()=>setShowAll(v=>!v)} className="text-xs font-black text-[#9bd3ff]">{showAll?"Show Less":"See All"}</button>:null}</div>{chats.length?<div className="space-y-1">{(showAll?chats:chats.slice(0,5)).map(c=><button key={c.id} type="button" onClick={()=>router.push(`/leaderboard?group=${c.id}`)} className="flex w-full items-center gap-3 rounded-2xl px-2 py-3 text-left transition hover:bg-[#071426]"><MatchUpAvatar group={c.kind==="group"} profile={c.kind==="group"?{id:c.id,display_name:c.name,avatar_path:null,username:null}:c.avatar} size="md" alt={c.name}/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-black">{c.name}</span><span className="mt-1 block truncate text-xs text-[#7892ac]">{c.preview}</span></span><span className="shrink-0 text-[10px] text-[#7892ac]">{relative(c.lastAt)}</span></button>)}</div>:<div className="rounded-2xl border border-dashed border-[#18365f] p-7 text-center text-sm text-[#7892ac]">No conversations yet.</div>}</section>
+   <section className="mt-8 rounded-2xl border border-[#18365f] bg-[#071426] p-4"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]"><UsersRound size={18}/></span><div className="min-w-0 flex-1"><h2 className="text-sm font-black">My Groups</h2><p className="mt-1 text-xs text-[#7892ac]">Create or open your football communities.</p></div></div><div className="mt-4 grid grid-cols-2 gap-2"><button type="button" onClick={()=>router.push("/leaderboard?create=group")} className="rounded-xl bg-[#167bd1] px-3 py-3 text-xs font-black">Create Group</button><button type="button" onClick={()=>router.push("/groups")} className="rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-3 text-xs font-black text-[#9bd3ff]">View Groups</button></div></section>
+  </>}
+ </div></main>;
 }
