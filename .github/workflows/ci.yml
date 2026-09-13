@@ -26,16 +26,13 @@ jobs:
           git checkout main
           python - <<'PY'
           from pathlib import Path
+          import re
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
-          old = '''              entries={friends.slice(0, 2).map((f) => ({
-                id: f.id,
-                label: nameOf(f),
-                secondary: `@${f.username || "friend"}`,
-                profile: f,
-                onClick: () => void openPrivate(f),
-              }))}'''
-          new = '''              entries={friends
+          pattern = re.compile(
+              r'(?m)^(\s*)entries=\{friends\.slice\(0, 2\)\.map\(\(f\) => \(\{\n[\s\S]*?^\s*\}\)\)\}'
+          )
+          replacement = '''              entries={friends
                 .slice(0, 2)
                 .map((f) => ({
                   id: f.id,
@@ -44,9 +41,10 @@ jobs:
                   profile: f,
                   onClick: () => void openPrivate(f),
                 }))}'''
-          if old not in s:
-              raise SystemExit('Unrelated sidebar formatting is already restored or not found')
-          s = s.replace(old, new, 1)
+          matches = list(pattern.finditer(s))
+          if len(matches) != 1:
+              raise SystemExit(f'Expected exactly one Message Friends entries block, found {len(matches)}')
+          s = s[:matches[0].start()] + replacement + s[matches[0].end():]
           p.write_text(s)
           PY
       - name: Typecheck
