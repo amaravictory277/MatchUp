@@ -7,7 +7,6 @@ import { SectionCard } from "./section-card";
 type SidebarEntry = {
   label: string;
   secondary?: string | null;
-  source?: HTMLElement;
   group?: boolean;
 };
 
@@ -37,13 +36,7 @@ function entriesFromLines(drawer: HTMLElement, lines: string[], excluded: string
       !/^@/.test(value) &&
       !/^\d+(\s|$)/.test(value),
   );
-
-  return [...new Set(clean)].slice(0, 2).map((label) => {
-    const source = [...drawer.querySelectorAll<HTMLElement>("button,a,[role='button'],div,span")].find(
-      (el) => (el.textContent || "").trim() === label,
-    );
-    return { label, source, group };
-  });
+  return [...new Set(clean)].slice(0, 2).map((label) => ({ label, group }));
 }
 
 function removeSiblingsUntil(start: Element, end: Element | null) {
@@ -62,14 +55,6 @@ function removeSiblingsAfter(start: Element) {
     node.remove();
     node = next;
   }
-}
-
-function runSource(source: HTMLElement | undefined, fallbackHref: string) {
-  if (source) {
-    source.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-    return;
-  }
-  window.location.assign(fallbackHref);
 }
 
 export function ChatSidebarSectionCards() {
@@ -117,9 +102,11 @@ export function ChatSidebarSectionCards() {
             "General",
             "Global MatchUp chat",
             "Create Group",
+            "New Group",
             "View Groups",
             "Message Friends",
             "Add Friends",
+            "Send",
           ]);
 
           const mount = document.createElement("div");
@@ -133,9 +120,8 @@ export function ChatSidebarSectionCards() {
               entries={entries.map((entry) => ({
                 id: entry.label,
                 label: entry.label,
-                secondary: entry.secondary,
                 profile: { display_name: entry.label },
-                onClick: () => runSource(entry.source, "/message-friends?tab=friends"),
+                onClick: () => window.location.assign("/message-friends?tab=friends"),
               }))}
               description="Connect with your friends and start a conversation."
               primaryLabel="Message Friends"
@@ -158,11 +144,13 @@ export function ChatSidebarSectionCards() {
             const lines = sectionLines(drawer, "MY GROUPS");
             const entries = entriesFromLines(drawer, lines, [
               "Create Group",
+              "New Group",
               "View Groups",
               "Message Friends",
               "Add Friends",
               "MESSAGE FRIENDS",
               "PRIVATE CHATS",
+              "Lock",
             ], true);
 
             header.querySelectorAll("button").forEach((button) => button.remove());
@@ -177,10 +165,9 @@ export function ChatSidebarSectionCards() {
                 entries={entries.map((entry) => ({
                   id: entry.label,
                   label: entry.label,
-                  secondary: entry.secondary,
                   profile: { id: entry.label, display_name: entry.label },
                   group: true,
-                  onClick: () => runSource(entry.source, "/groups"),
+                  onClick: () => window.location.assign("/groups"),
                 }))}
                 description="Keep your groups close and jump back into the conversations that matter."
                 primaryLabel="View Groups"
