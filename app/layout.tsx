@@ -3,6 +3,7 @@ import "./globals.css";
 import "./brand-theme.css";
 import "./ui-interaction.css";
 import "./chat-ui.css";
+import "./chat-sidebar-overrides.css";
 import { ServiceWorker } from "../components/service-worker";
 import { InstallPrompt } from "../components/install-prompt";
 import { AuthNotice } from "../components/auth/auth-notice";
@@ -10,6 +11,7 @@ import { RequestOverlays } from "../components/requests/request-overlays";
 import { PresenceProvider } from "../components/presence-provider";
 import { ChatVisualEnhancer } from "../components/chat/chat-visual-enhancer";
 import { ChatSidebarSectionCards } from "../components/chat/chat-sidebar-section-card";
+import { ChatHeaderActionsEnhancer } from "../components/chat/chat-header-actions-enhancer";
 export const metadata: Metadata = { title: "MatchUp | Football competition platform", description: "Create, discover, and compete in real football tournaments.", manifest: "/manifest.webmanifest", appleWebApp: { capable: true, title: "MatchUp", statusBarStyle: "black-translucent" }, icons: { icon: "/icon.svg", apple: "/icon.svg" } };
 export const viewport: Viewport = { themeColor: "#167bd1", width: "device-width", initialScale: 1 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><ChatVisualEnhancer/><ChatSidebarSectionCards/><ServiceWorker/><InstallPrompt/></body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><ChatVisualEnhancer/><ChatSidebarSectionCards/><ChatHeaderActionsEnhancer/><ServiceWorker/><InstallPrompt/></body></html>; }
