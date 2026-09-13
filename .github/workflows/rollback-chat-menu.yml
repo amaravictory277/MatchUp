@@ -1,0 +1,55 @@
+name: Roll back chat hamburger menu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/rollback-chat-menu.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore previous ChatHub menu
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("components/chat/chat-hub.tsx")
+          s = p.read_text()
+
+          # Remove only state introduced for the newer Recent/Seen menu.
+          s = s.replace('const [showRooms,setShowRooms]=useState(false);const [roomTab,setRoomTab]=useState<"recent"|"seen">("recent");', 'const [showRooms,setShowRooms]=useState(false);', 1)
+
+          start = s.index('{showRooms?<aside')
+          end = s.index('</aside>:null}', start) + len('</aside>:null}')
+
+          previous_menu = '''<SidebarSectionCard title="MESSAGE FRIENDS" description="Connect with your friends and start a conversation." entries={friends.slice(0,2).map(f=>({id:f.id,label:nameOf(f),secondary:`@${f.username||"friend"}`,profile:f,onClick:()=>void openPrivate(f)}))} primaryLabel="Message Friends" secondaryLabel="Add Friends" onPrimary={()=>window.location.assign("/message-friends?tab=friends")} onSecondary={()=>window.location.assign("/friends")} emptyText="No friends available yet."/><SidebarSectionCard title="MY GROUPS" description="Keep your groups close and jump back into the conversations that matter." entries={groups.slice(0,2).map(g=>({id:g.id,label:g.name,secondary:g.locked?"Locked group":"Group",group:true,onClick:()=>{setActive(g);setShowRooms(false);}}))} primaryLabel="View Groups" secondaryLabel="Create Group" onPrimary={()=>window.location.assign("/groups")} onSecondary={()=>{setInviteSearch("");setInviteCandidates(friends);setShowCreate(true);setShowRooms(false);}} emptyText="No groups yet."/>'''
+
+          s = s[:start] + previous_menu + s[end:]
+
+          # The restored menu must not contain the newer redesign markers.
+          forbidden = ["roomTab", "PRIVATE MESSAGES", "GROUPS &amp; CHANNELS", "Private messages and groups", "Chats"]
+          for marker in forbidden:
+              if marker in s:
+                  raise SystemExit(f"rollback verification failed: {marker} still present")
+          if '<SidebarSectionCard title="MESSAGE FRIENDS"' not in s:
+              raise SystemExit("rollback verification failed: previous Friends card missing")
+          if '<SidebarSectionCard title="MY GROUPS"' not in s:
+              raise SystemExit("rollback verification failed: previous Groups card missing")
+
+          p.write_text(s)
+          PY
+
+      - name: Commit rollback
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/chat/chat-hub.tsx
+          git commit -m "fix(chat): restore previous hamburger menu" || exit 0
+          git push
