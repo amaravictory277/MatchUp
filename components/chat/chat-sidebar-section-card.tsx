@@ -5,11 +5,12 @@ import { createRoot, type Root } from "react-dom/client";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 
 type SidebarEntry={name:string;source?:HTMLElement};
-type SectionCardProps={entries:SidebarEntry[];leftLabel:string;rightLabel:string;leftHref:string;rightHref:string;emptyLabel:string};
+type SectionCardProps={entries:SidebarEntry[];description:string;leftLabel:string;rightLabel:string;leftHref:string;rightHref:string;emptyLabel:string};
 
-function SectionCard({entries,leftLabel,rightLabel,leftHref,rightHref,emptyLabel}:SectionCardProps){
+function SectionCard({entries,description,leftLabel,rightLabel,leftHref,rightHref,emptyLabel}:SectionCardProps){
  const runSource=(entry:SidebarEntry)=>{if(entry.source){entry.source.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));return}window.location.assign(leftHref)};
  return <div className="mt-3 rounded-3xl border border-[#18365f] bg-[#071426] p-3 shadow-[0_12px_34px_rgba(0,0,0,.18)]">
+  <p className="mb-3 px-1 text-xs leading-5 text-[#7892ac]">{description}</p>
   <div className="space-y-2">
    {entries.slice(0,2).map((entry,index)=><button key={`${entry.name}-${index}`} type="button" onClick={()=>runSource(entry)} className="flex w-full min-w-0 items-center gap-3 rounded-2xl border border-[#102b49] bg-[#0a1b2f] p-3 text-left transition hover:border-[#245b91]">
     <MatchUpAvatar profile={{display_name:entry.name}} size="sm" alt={entry.name}/>
@@ -50,7 +51,7 @@ export function ChatSidebarSectionCards(){
      const entries=entriesFromLines(drawer,lines,["General","Global MatchUp chat","Create Group","View Groups","Message Friends","Add Friends"]);
      const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";messageHeading.parentElement?.insertBefore(mount,messageHeading.nextSibling||null);
      hideBetween(messageHeading,privateHeading);mount.style.display="block";
-     renderCard(mount,<SectionCard entries={entries} leftLabel="Message Friends" rightLabel="Add Friends" leftHref="/message-friends?tab=friends" rightHref="/friends" emptyLabel="No friends available yet."/>);
+     renderCard(mount,<SectionCard entries={entries} description="Connect with your friends and start a conversation." leftLabel="Message Friends" rightLabel="Add Friends" leftHref="/message-friends?tab=friends" rightHref="/friends" emptyLabel="No friends available yet."/>);
     }
     if(privateHeading){privateHeading.style.display="none";if(groupsHeading&&privateHeading.parentElement===groupsHeading.parentElement)hideBetween(privateHeading,groupsHeading);}
     if(groupsHeading){
@@ -58,9 +59,9 @@ export function ChatSidebarSectionCards(){
      const entries=entriesFromLines(drawer,lines,["Create Group","View Groups","Message Friends","Add Friends","MESSAGE FRIENDS","PRIVATE CHATS"]);
      const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";groupsHeading.parentElement?.insertBefore(mount,groupsHeading.nextSibling||null);
      let node=groupsHeading.nextElementSibling;while(node){const next=node.nextElementSibling;if(node!==mount)(node as HTMLElement).style.display="none";node=next;}
-     renderCard(mount,<SectionCard entries={entries} leftLabel="View Groups" rightLabel="Create Group" leftHref="/groups" rightHref="/leaderboard?create=group" emptyLabel="No groups yet."/>);
+     renderCard(mount,<SectionCard entries={entries} description="Keep your groups close and jump back into the conversations that matter." leftLabel="View Groups" rightLabel="Create Group" leftHref="/groups" rightHref="/leaderboard?create=group" emptyLabel="No groups yet."/>);
     }
-    window.requestAnimationFrame(()=>{internalMutation=false;});
+   window.requestAnimationFrame(()=>{internalMutation=false;});
    });
   };
   observer=new MutationObserver(apply);observer.observe(document.body,{subtree:true,childList:true});apply();
