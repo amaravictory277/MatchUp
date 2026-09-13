@@ -17,14 +17,33 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Inspect ChatHub
+      - name: Patch ChatHub
         run: |
           python - <<'PY'
           from pathlib import Path
-          s = Path('components/chat/chat-hub.tsx').read_text()
-          for needle in ['Settings2', 'Group settings', 'showManage']:
-              i = s.find(needle)
-              print(f'--- {needle} at {i} ---')
-              if i >= 0:
-                  print(s[max(0,i-900):i+900])
+          import re
+          p = Path('components/chat/chat-hub.tsx')
+          s = p.read_text()
+          before = s
+          s = s.replace('Settings2, Smile', 'Smile')
+          pattern = re.compile(r'\{active\?\.kind===\"group\"\?<button type=\"button\" onClick=\{\(\)=>\{setGroupName\(active\.name\);.*?</button>:null\}')
+          s, n = pattern.subn('', s, count=1)
+          if n != 1:
+              raise SystemExit(f'Expected one visible Group settings header button, found {n}')
+          marker = '<span>Group invitations</span>{invites.length?<span className="rounded-full bg-[#126bc0] px-1.5 py-0.5 text-[9px]">{invites.length}</span>:null}</button>'
+          if s.count(marker) != 1:
+              raise SystemExit(f'Expected one group invitations menu action, found {s.count(marker)}')
+          action = '<button type="button" onClick={()=>{setGroupName(active?.name||"");setInviteSearch("");setInviteCandidates(friends);setGroupLimit(active?.member_limit||20);setShowManage(true);setShowChatOptions(false)}} className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-[#0b223c]">Group settings</button>'
+          s = s.replace(marker, marker + action, 1)
+          if s == before:
+              raise SystemExit('No changes made')
+          p.write_text(s)
           PY
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/chat/chat-hub.tsx
+          git diff --cached --check
+          git commit -m 'fix(chat): move group settings into options menu'
+          git push origin main
