@@ -28,68 +28,24 @@ jobs:
       - name: Repair the actual broken JSX conditional
         shell: bash
         run: |
-          rm -f chat-hub-format-error.txt chat-hub-format-context.txt
           python3 - <<'PY'
           from pathlib import Path
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
+          prefix_old = '{messages.length?messages.map(m=>{'
+          prefix_new = '{messages.length?<>{messages.map(m=>{'
+          if s.count(prefix_old) != 1:
+              raise SystemExit(f'Expected exactly one messages.length prefix, found {s.count(prefix_old)}')
+          s = s.replace(prefix_old, prefix_new, 1)
           old = '})<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}'
           new = '})}</>:<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}'
-          count = s.count(old)
-          if count != 1:
-              raise SystemExit(f'Expected exactly one broken messages.length conditional, found {count}')
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected exactly one broken messages.length ending, found {s.count(old)}')
           p.write_text(s.replace(old, new, 1))
           PY
 
-      - name: Capture formatter diagnostics
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          npx --yes prettier@3.6.2 --write components/chat/chat-hub.tsx 2>&1 | tee /tmp/prettier.log
-          rc=${PIPESTATUS[0]}
-          if [ "$rc" -ne 0 ]; then
-            python3 - <<'PY'
-            from pathlib import Path
-            p = Path('components/chat/chat-hub.tsx')
-            lines = p.read_text().splitlines()
-            out = []
-            for n in (48, 49, 50):
-                if n <= len(lines):
-                    line = lines[n-1]
-                    center = 4543 if n == 50 else min(2000, len(line)//2)
-                    start = max(0, center-1000)
-                    end = min(len(line), center+1000)
-                    out.append(f'LINE {n} LENGTH {len(line)} CENTER {center}')
-                    out.append(line[start:end])
-                    out.append('---')
-            Path('chat-hub-format-context.txt').write_text('\n'.join(out))
-            PY
-            cp /tmp/prettier.log chat-hub-format-error.txt
-            python3 - <<'PY'
-            import base64, json, os, urllib.request
-            from pathlib import Path
-            token = os.environ['GITHUB_TOKEN']
-            repo = os.environ['GITHUB_REPOSITORY']
-            for name in ('chat-hub-format-context.txt','chat-hub-format-error.txt'):
-                data = base64.b64encode(Path(name).read_bytes()).decode()
-                url = f'https://api.github.com/repos/{repo}/contents/{name}'
-                req = urllib.request.Request(url, method='PUT', data=json.dumps({
-                    'message': f'debug: publish {name}',
-                    'content': data,
-                    'branch': 'main'
-                }).encode(), headers={
-                    'Authorization': f'Bearer {token}',
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': '2022-11-28',
-                    'Content-Type': 'application/json'
-                })
-                with urllib.request.urlopen(req) as r:
-                    print(r.status)
-            PY
-            exit "$rc"
-          fi
+      - name: Reformat ChatHub JSX
+        run: npx --yes prettier@3.6.2 --write components/chat/chat-hub.tsx
 
       - name: Typecheck
         run: npx tsc --noEmit
