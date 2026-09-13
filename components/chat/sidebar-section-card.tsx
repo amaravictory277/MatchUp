@@ -8,7 +8,7 @@ export function SidebarSectionCard({ title, description, entries, primaryLabel, 
   const shown = entries.slice(0, 2);
   return <div className="mt-5">
     <p className="mb-2 text-[10px] font-black uppercase tracking-[.14em] text-[#66809a]">{title}</p>
-    <section className="overflow-hidden rounded-2xl border border-[#214a78] bg-[#071426] shadow-[0_12px_32px_rgba(0,0,0,.16)]">
+    <section className="overflow-hidden rounded-xl border border-[#214a78] bg-[#071426] shadow-[0_12px_32px_rgba(0,0,0,.16)]">
       <div className="px-3.5 pb-3 pt-3.5">
         <p className="text-[11px] leading-5 text-[#7892ac]">{description}</p>
         <div className="mt-3 space-y-1.5">
