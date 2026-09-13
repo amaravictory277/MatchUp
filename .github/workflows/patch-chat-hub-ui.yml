@@ -31,3 +31,4 @@ jobs:
           git add components/chat/chat-hub.tsx
           git commit -m "fix(chat): update rendered chat hub UI"
           git push
+      # retrigger source patch after the initial workflow was added
