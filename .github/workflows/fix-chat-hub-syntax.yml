@@ -53,24 +53,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Production build with diagnostics
-        shell: bash
-        run: |
-          set +e
-          npm run build 2>&1 | tee /tmp/build.log
-          rc=${PIPESTATUS[0]}
-          cp /tmp/build.log chat-hub-build-error.txt
-          if [ "$rc" -ne 0 ]; then
-            exit "$rc"
-          fi
-
-      - name: Upload build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chat-hub-build-diagnostics
-          path: chat-hub-build-error.txt
-          if-no-files-found: ignore
+      - name: Production build with required env placeholders
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-build-validation
+        run: npm run build
 
       - name: Commit only ChatHub after successful verification
         if: success()
