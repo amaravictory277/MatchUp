@@ -2,6 +2,8 @@ name: Inspect ChatHub (temporary)
 on:
   push:
     branches: [main]
+permissions:
+  contents: write
 jobs:
   patch:
     runs-on: ubuntu-latest
