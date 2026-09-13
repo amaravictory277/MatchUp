@@ -4,43 +4,37 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/patch-chat-ui.yml'
-      - 'components/chat/chat-hub.tsx'
-      - 'components/chat/sidebar-section-card.tsx'
 permissions:
   contents: write
 jobs:
   patch:
-    if: ${{ !startsWith(github.event.head_commit.message, 'fix(chat): full width cards') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch actual ChatHub source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch actual ChatHub layout
         run: |
           node <<'NODE'
           const fs = require('fs');
           const path = 'components/chat/chat-hub.tsx';
           let src = fs.readFileSync(path, 'utf8');
-          const before = src;
           const returnIndex = src.indexOf('return ');
           if (returnIndex < 0) throw new Error('ChatHub return statement not found');
           const prefix = src.slice(0, returnIndex);
-          const tail = src.slice(returnIndex);
+          let tail = src.slice(returnIndex);
           const rootMatch = tail.match(/<div className="([^"]+)"/);
           if (!rootMatch) throw new Error('ChatHub root div not found');
-          let rootClasses = rootMatch[1].split(/\s+/).filter(Boolean).filter(c => !/^max-w-/.test(c) && c !== 'mx-auto' && c !== 'w-screen');
-          for (const c of ['w-full','max-w-none','min-w-0','overflow-x-hidden']) if (!rootClasses.includes(c)) rootClasses.push(c);
-          src = prefix + `<div className="${rootClasses.join(' ')}"` + tail.slice(rootMatch[0].length);
-          if (!/Group settings/.test(src)) {
-            const invitationButton = src.match(/<button[^>]*>[\s\S]*?Group invitations[\s\S]*?<\/button>/);
-            if (invitationButton) {
-              const groupSettingsButton = `<button type="button" onClick={()=>{setShowChatOptions(false);setShowManage(true)}} className="block w-full px-3 py-2 text-left text-xs font-semibold text-white hover:bg-[#0b223c]">Group settings</button>`;
-              src = src.slice(0, invitationButton.index + invitationButton[0].length) + groupSettingsButton + src.slice(invitationButton.index + invitationButton[0].length);
-            } else throw new Error('Group invitations menu item not found');
-          }
+          const classes = rootMatch[1].split(/\s+/).filter(Boolean).filter(c => !/^max-w-/.test(c) && c !== 'mx-auto' && c !== 'w-screen');
+          for (const c of ['w-full','max-w-none','min-w-0','overflow-x-hidden']) if (!classes.includes(c)) classes.push(c);
+          src = prefix + `<div className="${classes.join(' ')}"` + tail.slice(rootMatch[0].length);
+          fs.writeFileSync(path, src);
+
           const cardPath = 'components/chat/sidebar-section-card.tsx';
-          let card = fs.readFileSync(cardPath, 'utf8').replace('rounded-2xl border border-[#214a78]', 'rounded-xl border border-[#214a78]');
-          fs.writeFileSync(path, src); fs.writeFileSync(cardPath, card);
-          if (src === before) throw new Error('No ChatHub change produced');
+          let card = fs.readFileSync(cardPath, 'utf8');
+          card = card.replace('rounded-2xl border border-[#214a78]', 'rounded-xl border border-[#214a78]');
+          fs.writeFileSync(cardPath, card);
           NODE
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
