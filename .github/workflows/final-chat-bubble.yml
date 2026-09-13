@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+      - run: npm ci
       - name: Patch only outgoing bubble frame
         run: |
           python3 - <<'PY'
