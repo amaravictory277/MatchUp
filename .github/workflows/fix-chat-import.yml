@@ -1,0 +1,23 @@
+name: Fix Chat Import
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'chore: fix chat import'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove unused import
+        run: |
+          sed -i '/import { MatchUpAvatar } from "..\/ui\/matchup-avatar";/d' components/chat/chat-hub.tsx
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/chat/chat-hub.tsx
+          if git diff --cached --quiet; then echo 'Already clean'; exit 0; fi
+          git commit -m 'chore: fix chat import'
+          git push origin main
