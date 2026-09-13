@@ -1367,13 +1367,15 @@ export function ChatHub() {
             <SidebarSectionCard
               title="MESSAGE FRIENDS"
               description="Connect with your friends and start a conversation."
-              entries={friends.slice(0, 2).map((f) => ({
-                id: f.id,
-                label: nameOf(f),
-                secondary: `@${f.username || "friend"}`,
-                profile: f,
-                onClick: () => void openPrivate(f),
-              }))}
+              entries={friends
+      .slice(0, 2)
+      .map((f) => ({
+        id: f.id,
+        label: nameOf(f),
+        secondary: `@${f.username || "friend"}`,
+        profile: f,
+        onClick: () => void openPrivate(f),
+      }))}
               primaryLabel="Message Friends"
               secondaryLabel="Add Friends"
               onPrimary={() =>
