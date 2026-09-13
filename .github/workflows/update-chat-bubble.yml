@@ -1,0 +1,114 @@
+name: Update Chat Bubble
+
+on:
+  push:
+    paths:
+      - .github/workflows/update-chat-bubble.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply scoped chat bubble change
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('components/chat/chat-hub.tsx')
+          s = p.read_text()
+          old = '''className={`rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3 transition ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}'''
+          new = '''className={`relative rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3.5 transition ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}'''
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected exactly one outgoing bubble class, found {s.count(old)}')
+          s = s.replace(old, new)
+          old_status = '''                        <div className="mt-1 flex items-center justify-end gap-2">
+                          <span className="text-[9px] text-white/50">
+                            {timeOf(m.created_at)}
+                          </span>
+                          {!m.pending ? (
+                            <span
+                              className={`grid size-5 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}
+                              aria-label={read ? "Read" : "Delivered"}
+                            >
+                              {read ? (
+                                <CheckCheck
+                                  size={11}
+                                  className="text-[#126bc0]"
+                                />
+                              ) : (
+                                <CheckCheck
+                                  size={11}
+                                  className="text-white/45"
+                                />
+                              )}
+                            </span>
+                          ) : (
+                            <span
+                              className="grid size-5 place-items-center rounded-full border border-white/25"
+                              aria-label="Sent"
+                            >
+                              <Check size={11} className="text-white/45" />
+                            </span>
+                          )}
+                        </div>'''
+          new_status = '''                        <div className="mt-1 flex items-center justify-end">
+                          <span className="text-[9px] text-white/50">
+                            {timeOf(m.created_at)}
+                          </span>
+                        </div>'''
+          if s.count(old_status) != 1:
+              raise SystemExit(f'Expected exactly one outgoing status row, found {s.count(old_status)}')
+          s = s.replace(old_status, new_status)
+          marker = '''                        </div>
+                        <div className="mt-1 flex items-center justify-end">'''
+          replacement = '''                        </div>
+                        {!m.pending ? (
+                          <span
+                            className={`absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}
+                            aria-label={read ? "Read" : "Delivered"}
+                          >
+                            {read ? (
+                              <CheckCheck size={9} className="text-[#126bc0]" />
+                            ) : (
+                              <CheckCheck size={9} className="text-white/45" />
+                            )}
+                          </span>
+                        ) : (
+                          <span
+                            className="absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border border-white/25"
+                            aria-label="Sent"
+                          >
+                            <Check size={9} className="text-white/45" />
+                          </span>
+                        )}
+                        <div className="mt-1 flex items-center justify-end">'''
+          if s.count(marker) != 1:
+              raise SystemExit(f'Expected exactly one insertion point, found {s.count(marker)}')
+          s = s.replace(marker, replacement, 1)
+          p.write_text(s)
+          PY
+          npx prettier@3.6.2 --write components/chat/chat-hub.tsx
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        run: npm run build
+      - name: Commit scoped source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/chat/chat-hub.tsx
+          git diff --cached --check
+          git commit -m "fix: refine chat bubble padding and check placement"
+          git push
