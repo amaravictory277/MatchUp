@@ -1,38 +1,16 @@
 "use client";
+import { useEffect, useMemo } from "react";
+import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
-import { useEffect } from "react";
-
-function relative(value: Date){
-  const mins=Math.max(0,Math.floor((Date.now()-value.getTime())/60000));
-  if(mins<1)return "Just now";
-  if(mins<60)return `${mins} minute${mins===1?"":"s"} ago`;
-  const hours=Math.floor(mins/60);
-  if(hours<24)return `${hours} hour${hours===1?"":"s"} ago`;
-  const days=Math.floor(hours/24);
-  if(days===1)return "Yesterday";
-  return `${days} days ago`;
-}
-
-export function ChatVisualEnhancer(){
-  useEffect(()=>{
-    const apply=()=>document.querySelectorAll<HTMLElement>('[data-message-id]').forEach(row=>{
-      const title=row.querySelector<HTMLElement>('[title]')?.getAttribute('title');
-      if(!title)return;
-      const date=new Date(title);
-      if(Number.isNaN(date.getTime()))return;
-      const rel=relative(date); const formatted=date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
-      row.dataset.chatRelative=rel; row.dataset.chatDate=formatted;
-      const footer=row.querySelector<HTMLElement>('.mt-1.flex.items-center.justify-end');
-      if(footer){footer.dataset.chatTime=rel;footer.dataset.chatDate=formatted;}
-      const other=row.querySelector<HTMLElement>('.matchup-chat-bubble-other');
-      const header=other?.querySelector<HTMLElement>('div:first-child');
-      const sender=header?.querySelector<HTMLElement>('span:first-child');
-      if(sender&&header){header.dataset.chatAvatar=(sender.textContent||'M').trim().slice(0,1).toUpperCase();}
-    });
-    apply();
-    const observer=new MutationObserver(apply); observer.observe(document.body,{subtree:true,childList:true});
-    const timer=window.setInterval(apply,30000);
-    return()=>{observer.disconnect();window.clearInterval(timer);};
-  },[]);
-  return null;
-}
+const fallback="#47a8ff";
+const keyFor=(name:string)=>{let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))|0;return Math.abs(h).toString(36)};
+function readColor(key:string){try{return localStorage.getItem(`matchup:name-color:${key}`)||fallback}catch{return fallback}}
+function saveColor(key:string,c:string){try{localStorage.setItem(`matchup:name-color:${key}`,c)}catch{}}
+function extractColor(src:string,done:(c:string)=>void){const img=new Image();img.crossOrigin="anonymous";img.onload=()=>{try{const canvas=document.createElement("canvas");canvas.width=24;canvas.height=24;const ctx=canvas.getContext("2d",{willReadFrequently:true});if(!ctx)return;ctx.drawImage(img,0,0,24,24);const p=ctx.getImageData(0,0,24,24).data,bins=new Map<string,number>();for(let i=0;i<p.length;i+=4){const a=p[i+3],r=p[i],g=p[i+1],b=p[i+2],v=(r+g+b)/3,s=Math.max(r,g,b)-Math.min(r,g,b);if(a<160||v<22||v>235||s<28)continue;const q=[Math.round(r/24)*24,Math.round(g/24)*24,Math.round(b/24)*24],k=q.join(",");bins.set(k,(bins.get(k)||0)+1+s/255)}const winner=[...bins.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0];if(!winner)return;let[r,g,b]=winner.split(",").map(Number);const lift=Math.max(r,g,b)<115?1.45:1;r=Math.min(255,Math.round(r*lift));g=Math.min(255,Math.round(g*lift));b=Math.min(255,Math.round(b*lift));done(`rgb(${r}, ${g}, ${b})`)}catch{}};img.src=src}
+function relative(d:Date){const m=Math.max(0,Math.floor((Date.now()-d.getTime())/60000));if(m<1)return"Just now";if(m<60)return`${m}m`;if(m<1440)return`${Math.floor(m/60)}h`;const days=Math.floor(m/1440);return days===1?"Yesterday":`${days}d`}
+export function ChatVisualEnhancer(){const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);useEffect(()=>{let observer:MutationObserver;let queued=false;const apply=async()=>{if(queued)return;queued=true;observer?.disconnect();try{const rows=[...document.querySelectorAll<HTMLElement>('[data-message-id]')];const names=new Set<string>();rows.forEach(row=>{const title=row.querySelector<HTMLElement>('[title]')?.getAttribute("title");if(title){const d=new Date(title);if(!Number.isNaN(d.getTime())){row.dataset.chatRelative=relative(d);row.dataset.chatDate=d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});const footer=row.querySelector<HTMLElement>('.mt-1.flex.items-center.justify-end');if(footer){footer.dataset.chatTime=relative(d);footer.dataset.chatDate=row.dataset.chatDate}}}const sender=row.querySelector<HTMLElement>('.matchup-chat-bubble-other span:first-child');if(sender){const n=(sender.textContent||"").trim();if(n)names.add(n)}});
+ document.querySelectorAll('.matchup-date-separator').forEach(e=>e.remove());let last="";rows.forEach(row=>{const d=row.dataset.chatDate||"";if(d&&d!==last){const sep=document.createElement("div");sep.className="matchup-date-separator";sep.innerHTML=`<span></span><strong>${d}</strong><span></span>`;row.parentElement?.insertBefore(sep,row);last=d}});
+ for(const n of names){const key=keyFor(n),cached=readColor(key);document.querySelectorAll<HTMLElement>('.matchup-chat-bubble-other span:first-child').forEach(el=>{if((el.textContent||"").trim()===n)el.style.color=cached});if(cached!==fallback)continue;const {data}=await supabase.from("profiles").select("display_name,username,avatar_path").or(`display_name.eq.${n},username.eq.${n}`).limit(1).maybeSingle();if(data?.avatar_path)extractColor(data.avatar_path,c=>{saveColor(key,c);document.querySelectorAll<HTMLElement>('.matchup-chat-bubble-other span:first-child').forEach(el=>{if((el.textContent||"").trim()===n)el.style.color=c})})}
+ const drawer=document.querySelector<HTMLElement>('.matchup-chat aside');if(drawer){drawer.classList.add('matchup-fullscreen-sidebar');const privateLabel=[...drawer.querySelectorAll<HTMLElement>('p')].find(p=>(p.textContent||"").trim()==="Private Chats");if(privateLabel){privateLabel.style.display="none";let n=privateLabel.nextElementSibling;while(n){const next=n.nextElementSibling;(n as HTMLElement).style.display="none";n=next}}}
+ const header=document.querySelector<HTMLElement>('.matchup-chat-header');if(header){const text=header.textContent||"",buttons=[...header.querySelectorAll<HTMLButtonElement>('button')];const isGeneral=/\bGeneral\b/.test(text);const isMatch=/\bMatch Chat\b/.test(text);const hide=/Mute chat|Group invitations|Group settings/i;if(isGeneral||isMatch){buttons.filter(b=>hide.test(b.getAttribute("aria-label")||"")).forEach(b=>b.style.display="none");let more=header.querySelector<HTMLButtonElement>('.matchup-menu-extra');if(!more){more=document.createElement('button');more.className='icon-button matchup-menu-extra';more.setAttribute('aria-label',isMatch?'Match chat menu':'General group menu');more.textContent="⋯";more.onclick=()=>{if(isMatch){const panel=document.createElement('div');panel.className='matchup-match-menu';panel.innerHTML='<p class="eyebrow">MATCH</p><strong>Opponent</strong><p>Private communication for this match. Exchange game IDs and arrange the game here.</p><button type="button">Message Your Opponent</button><button type="button" class="close-match-menu">Close</button>';panel.querySelector('.close-match-menu')?.addEventListener('click',()=>panel.remove());document.body.appendChild(panel)}else{buttons.filter(b=>hide.test(b.getAttribute('aria-label')||"")).forEach(b=>b.style.display=b.style.display==='none'?"grid":"none")}};header.querySelector('.flex.items-center')?.appendChild(more)}}}
+ }finally{queued=false;observer?.observe(document.body,{subtree:true,childList:true})}};observer=new MutationObserver(()=>void apply());observer.observe(document.body,{subtree:true,childList:true});void apply();return()=>observer.disconnect()},[supabase]);return null}
