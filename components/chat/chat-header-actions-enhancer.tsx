@@ -1,35 +1,121 @@
 "use client";
 
 import { useEffect } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { MoreVertical } from "lucide-react";
 
-export function ChatHeaderActionsEnhancer(){
- useEffect(()=>{
-  const apply=()=>{
-   const header=document.querySelector<HTMLElement>(".matchup-chat-header");
-   if(!header)return;
-   const visibleActions=header.querySelector<HTMLElement>(".flex.items-center:last-child");
-   if(!visibleActions)return;
-   const buttons=[...visibleActions.querySelectorAll<HTMLButtonElement>("button")];
-   const originals=buttons.filter(button=>!button.classList.contains("matchup-menu-extra"));
-   originals.forEach(button=>{button.style.display="none"});
-   const existing=visibleActions.querySelector<HTMLButtonElement>(".matchup-menu-extra");
-   if(existing)return;
-   const menu=document.createElement("button");
-   menu.type="button";menu.className="icon-button matchup-menu-extra";menu.setAttribute("aria-label","Chat options");menu.title="Chat options";menu.textContent="⋮";
-   menu.style.fontSize="25px";menu.style.fontWeight="900";menu.style.lineHeight="1";
-   menu.onclick=()=>{
-    const panel=header.querySelector<HTMLElement>(".matchup-chat-options");
-    if(panel){panel.remove();return}
-    const options=document.createElement("div");options.className="matchup-chat-options";
-    options.innerHTML='<button type="button" data-action="mute">Mute chat</button><button type="button" data-action="settings">Group settings</button>';
-    options.querySelector('[data-action="mute"]')?.addEventListener("click",()=>{const mute=originals.find(b=>/mute|notification/i.test(b.getAttribute("aria-label")||b.title||""));mute?.click();options.remove()});
-    options.querySelector('[data-action="settings"]')?.addEventListener("click",()=>{const settings=originals.find(b=>/settings/i.test(b.getAttribute("aria-label")||b.title||""));settings?.click();options.remove()});
-    header.appendChild(options);
-   };
-   visibleActions.appendChild(menu);
-  };
-  const observer=new MutationObserver(apply);observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["aria-label"]});apply();
-  return()=>observer.disconnect();
- },[]);
- return null;
+const ACTION_LABELS = /^(Search messages|Mute chat|Unmute chat|Group invitations|Group settings)$/;
+
+type OriginalAction = {
+  button: HTMLButtonElement;
+  label: string;
+};
+
+export function ChatHeaderActionsEnhancer() {
+  useEffect(() => {
+    let menuRoot: Root | null = null;
+    let menuButton: HTMLButtonElement | null = null;
+    let options: HTMLElement | null = null;
+    let originalActions: OriginalAction[] = [];
+    let applied = false;
+
+    const cleanup = () => {
+      options?.remove();
+      options = null;
+      menuRoot?.unmount();
+      menuRoot = null;
+      menuButton?.remove();
+      menuButton = null;
+      originalActions = [];
+      applied = false;
+    };
+
+    const apply = () => {
+      const header = document.querySelector<HTMLElement>(".matchup-chat-header");
+      if (!header) return;
+      if (applied && header.querySelector(".matchup-menu-extra")) return;
+
+      const candidates = [...header.querySelectorAll<HTMLButtonElement>("button")].filter((button) =>
+        ACTION_LABELS.test(button.getAttribute("aria-label") || ""),
+      );
+      if (!candidates.length) return;
+
+      const actionParent = candidates[0].parentElement;
+      if (!actionParent) return;
+
+      originalActions = candidates.map((button) => ({
+        button,
+        label: button.getAttribute("aria-label") || "Action",
+      }));
+
+      const insertionPoint = candidates[0];
+      candidates.forEach((button) => button.remove());
+
+      menuButton = document.createElement("button");
+      menuButton.type = "button";
+      menuButton.className = "icon-button matchup-menu-extra";
+      menuButton.setAttribute("aria-label", "Chat options");
+      menuButton.title = "Chat options";
+      actionParent.insertBefore(menuButton, insertionPoint.nextSibling);
+      menuRoot = createRoot(menuButton);
+      menuRoot.render(<MoreVertical size={19} aria-hidden="true" />);
+      applied = true;
+
+      menuButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (options) {
+          options.remove();
+          options = null;
+          return;
+        }
+
+        options = document.createElement("div");
+        options.className = "matchup-chat-options";
+        options.setAttribute("role", "menu");
+        const available = originalActions.filter(({ button }) => button);
+        const rows = [
+          ["Search messages", "Search messages"],
+          ["Mute chat", "Mute chat"],
+          ["Group invitations", "Group invitations"],
+          ["Group settings", "Group settings"],
+        ] as const;
+
+        rows.forEach(([label, text]) => {
+          const action = available.find(({ label: originalLabel }) =>
+            originalLabel.toLowerCase() === label.toLowerCase() ||
+            (label === "Mute chat" && /mute chat|unmute chat/i.test(originalLabel)),
+          );
+          if (!action) return;
+          const item = document.createElement("button");
+          item.type = "button";
+          item.setAttribute("role", "menuitem");
+          item.textContent = text;
+          item.addEventListener("click", () => {
+            action.button.click();
+            options?.remove();
+            options = null;
+          });
+          options!.appendChild(item);
+        });
+
+        if (!options.childElementCount) {
+          options.remove();
+          options = null;
+          return;
+        }
+        header.appendChild(options);
+      });
+    };
+
+    const observer = new MutationObserver(apply);
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-label"] });
+    apply();
+
+    return () => {
+      observer.disconnect();
+      cleanup();
+    };
+  }, []);
+
+  return null;
 }
