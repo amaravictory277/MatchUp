@@ -21,12 +21,12 @@ jobs:
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
           old = '''              entries={friends.slice(0, 2).map((f) => ({
-                id: f.id,
-                label: nameOf(f),
-                secondary: `@${f.username || "friend"}`,
-                profile: f,
-                onClick: () => void openPrivate(f),
-              }))}'''
+      id: f.id,
+      label: nameOf(f),
+      secondary: `@${f.username || "friend"}`,
+      profile: f,
+      onClick: () => void openPrivate(f),
+    }))}'''
           new = '''              entries={friends
                 .slice(0, 2)
                 .map((f) => ({
@@ -37,7 +37,7 @@ jobs:
                   onClick: () => void openPrivate(f),
                 }))}'''
           if old not in s:
-              raise SystemExit('Expected current sidebar formatting was not found')
+              raise SystemExit('Expected malformed sidebar formatting was not found')
           s = s.replace(old, new, 1)
           p.write_text(s)
           PY
