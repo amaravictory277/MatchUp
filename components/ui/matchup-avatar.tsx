@@ -13,6 +13,7 @@ type Props = {
 };
 
 const sizeClass = { sm: "size-10", md: "size-12", lg: "size-16" };
+const ACCENT_CACHE=new Map<string,string>();
 const palettes = [
   ["#123a63", "#43a8ff", "#d8f0ff"],
   ["#183f35", "#35c58a", "#d8fff0"],
@@ -36,6 +37,8 @@ export function MatchUpAvatar({ profile, size = "md", alt, className = "", group
     setAccent(null);
     const src = profile?.avatar_path;
     if (!src || !/^https?:\/\//i.test(src)) return;
+    const cached=ACCENT_CACHE.get(src);
+    if(cached){setAccent(cached);return;}
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -70,7 +73,7 @@ export function MatchUpAvatar({ profile, size = "md", alt, className = "", group
         if (winner) {
           const lift = Math.max(winner.r, winner.g, winner.b) < 115 ? 1.45 : 1;
           const rgb = [winner.r * lift, winner.g * lift, winner.b * lift].map(v => Math.min(255, Math.round(v)));
-          if (!cancelled) setAccent(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);
+          const value=`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`; ACCENT_CACHE.set(src,value); if (!cancelled) setAccent(value);
         }
       } catch {
         // Some storage hosts disallow canvas reads; keep the safe MatchUp accent.
