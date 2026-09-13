@@ -17,39 +17,14 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Patch ChatHub
+      - name: Inspect ChatHub
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('components/chat/chat-hub.tsx')
-          s = p.read_text()
-          before = s
-          s = s.replace('Settings2, Smile', 'Smile')
-          import re
-          pattern = re.compile(r'\{active\?\.kind===\\"group\\"\?<[Bb]utton[^>]*aria-label=\\"Group settings\\"[^>]*><Settings2[^>]*/></[Bb]utton>:null\}')
-          s, n = pattern.subn('', s)
-          if n != 1:
-              print('Group settings header matches:', n)
-              raise SystemExit(1)
-          marker = '<button type=\\"button\\" onClick={()=>setShowInvites(true)}'
-          idx = s.find(marker)
-          if idx < 0:
-              raise SystemExit('Could not find group invitations menu action')
-          end = s.find('</button>', idx)
-          if end < 0:
-              raise SystemExit('Could not find end of group invitations menu action')
-          end += len('</button>')
-          action = '<button type=\\"button\\" onClick={()=>{setShowManage(true);setShowChatOptions(false)}} className=\\"block w-full px-3 py-2 text-left text-sm text-slate-100 hover:bg-white/10\\">Group settings</button>'
-          s = s[:end] + action + s[end:]
-          if s == before:
-              raise SystemExit('No changes made')
-          p.write_text(s)
+          s = Path('components/chat/chat-hub.tsx').read_text()
+          for needle in ['Settings2', 'Group settings', 'showManage']:
+              i = s.find(needle)
+              print(f'--- {needle} at {i} ---')
+              if i >= 0:
+                  print(s[max(0,i-900):i+900])
           PY
-      - name: Commit patch
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add components/chat/chat-hub.tsx
-          git diff --cached --check
-          git commit -m 'fix(chat): move group settings into options menu'
-          git push origin main
