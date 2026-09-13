@@ -28,12 +28,13 @@ jobs:
       - name: Repair the actual broken JSX conditional
         shell: bash
         run: |
+          rm -f chat-hub-format-error.txt chat-hub-format-context.txt
           python3 - <<'PY'
           from pathlib import Path
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
           old = '})<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}'
-          new = '):<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}'
+          new = '})}</>:<div className="grid min-h-[45vh] place-items-center text-center"><div><div className="mx-auto grid size-16 place-items-center rounded-3xl bg-[#0b3154] text-[#70c1ff]"><Users size={28}/></div><h2 className="mt-4 text-lg font-black">{active?.kind==="general"?"Welcome to General":"No messages yet"}</h2><p className="mt-2 text-sm text-[#7892ac]">Send a real message. It will persist and appear here in realtime.</p></div></div>}'
           count = s.count(old)
           if count != 1:
               raise SystemExit(f'Expected exactly one broken messages.length conditional, found {count}')
@@ -93,6 +94,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
           git add components/chat/chat-hub.tsx
           git commit -m 'fix: repair and format ChatHub JSX'
           git push origin main
