@@ -1367,15 +1367,13 @@ export function ChatHub() {
             <SidebarSectionCard
               title="MESSAGE FRIENDS"
               description="Connect with your friends and start a conversation."
-              entries={friends
-                .slice(0, 2)
-                .map((f) => ({
-                  id: f.id,
-                  label: nameOf(f),
-                  secondary: `@${f.username || "friend"}`,
-                  profile: f,
-                  onClick: () => void openPrivate(f),
-                }))}
+              entries={friends.slice(0, 2).map((f) => ({
+                id: f.id,
+                label: nameOf(f),
+                secondary: `@${f.username || "friend"}`,
+                profile: f,
+                onClick: () => void openPrivate(f),
+              }))}
               primaryLabel="Message Friends"
               secondaryLabel="Add Friends"
               onPrimary={() =>
@@ -1500,7 +1498,7 @@ export function ChatHub() {
                       <div className="flex max-w-[84%] flex-col items-end sm:max-w-[72%]">
                         {replyPreview}
                         <div
-                          className={`rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3 transition ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}
+                          className={`relative rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3.5 transition ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}
                         >
                           {m.deleted_at ? (
                             <i className="text-sm">Message deleted</i>
@@ -1511,36 +1509,36 @@ export function ChatHub() {
                               {m.body}
                             </p>
                           )}
-                        </div>
-                        <div className="mt-1 flex items-center justify-end gap-2">
-                          <span className="text-[9px] text-white/50">
-                            {timeOf(m.created_at)}
-                          </span>
                           {!m.pending ? (
                             <span
-                              className={`grid size-5 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}
+                              className={`absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}
                               aria-label={read ? "Read" : "Delivered"}
                             >
                               {read ? (
                                 <CheckCheck
-                                  size={11}
+                                  size={9}
                                   className="text-[#126bc0]"
                                 />
                               ) : (
                                 <CheckCheck
-                                  size={11}
+                                  size={9}
                                   className="text-white/45"
                                 />
                               )}
                             </span>
                           ) : (
                             <span
-                              className="grid size-5 place-items-center rounded-full border border-white/25"
+                              className="absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border border-white/25"
                               aria-label="Sent"
                             >
-                              <Check size={11} className="text-white/45" />
+                              <Check size={9} className="text-white/45" />
                             </span>
                           )}
+                        </div>
+                        <div className="mt-1 flex items-center justify-end">
+                          <span className="text-[9px] text-white/50">
+                            {timeOf(m.created_at)}
+                          </span>
                         </div>
                         {counts?.size ? (
                           <div className="mt-2 flex flex-wrap justify-end gap-1">
