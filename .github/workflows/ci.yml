@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  issue_comment:
-    types: [created]
 
 permissions:
   contents: write
@@ -22,8 +20,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Apply scoped chat bubble change on main
-        if: github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/apply-chat-bubble')
+        if: github.event_name == 'pull_request'
         run: |
+          git fetch origin main
+          git checkout main
           python - <<'PY'
           from pathlib import Path
           import re
@@ -84,7 +84,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
         run: npm run build
       - name: Commit scoped source change
-        if: github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/apply-chat-bubble')
+        if: github.event_name == 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
