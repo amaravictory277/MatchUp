@@ -54,7 +54,38 @@ jobs:
         run: npm run lint
 
       - name: Production build
-        run: npm run build
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          npm run build 2>&1 | tee /tmp/build.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            cp /tmp/build.log chat-hub-build-error.txt
+            python3 - <<'PY'
+            import base64, json, os, urllib.request
+            from pathlib import Path
+            token = os.environ['GITHUB_TOKEN']
+            repo = os.environ['GITHUB_REPOSITORY']
+            name = 'chat-hub-build-error.txt'
+            data = base64.b64encode(Path(name).read_bytes()).decode()
+            url = f'https://api.github.com/repos/{repo}/contents/{name}'
+            req = urllib.request.Request(url, method='PUT', data=json.dumps({
+                'message': 'debug: publish ChatHub build output',
+                'content': data,
+                'branch': 'main'
+            }).encode(), headers={
+                'Authorization': f'Bearer {token}',
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json'
+            })
+            with urllib.request.urlopen(req) as r:
+                print(r.status)
+            PY
+            exit "$rc"
+          fi
 
       - name: Show diff and commit only ChatHub
         shell: bash
