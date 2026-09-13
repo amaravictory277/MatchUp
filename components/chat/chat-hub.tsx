@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCheck, Lock, Menu, Paperclip, Plus, Reply, Search, Send, Smile, MoreVertical, Trophy, Trash2, Unlock, Users, UserPlus, X } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { SidebarSectionCard } from "./sidebar-section-card";
-import { MatchUpAvatar } from "../ui/matchup-avatar";
 
 type Profile={id:string;display_name?:string|null;username?:string|null};
 type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group"|"match";locked:boolean;member_limit?:number;image_path?:string|null};
