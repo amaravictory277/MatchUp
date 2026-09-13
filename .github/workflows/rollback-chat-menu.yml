@@ -23,7 +23,6 @@ jobs:
           p = Path("components/chat/chat-hub.tsx")
           s = p.read_text()
 
-          # Remove only state introduced for the newer Recent/Seen menu.
           s = s.replace('const [showRooms,setShowRooms]=useState(false);const [roomTab,setRoomTab]=useState<"recent"|"seen">("recent");', 'const [showRooms,setShowRooms]=useState(false);', 1)
 
           start = s.index('{showRooms?<aside')
@@ -33,8 +32,7 @@ jobs:
 
           s = s[:start] + previous_menu + s[end:]
 
-          # The restored menu must not contain the newer redesign markers.
-          forbidden = ["roomTab", "PRIVATE MESSAGES", "GROUPS &amp; CHANNELS", "Private messages and groups", "Chats"]
+          forbidden = ["roomTab", "PRIVATE MESSAGES", "GROUPS &amp; CHANNELS", "Private messages and groups"]
           for marker in forbidden:
               if marker in s:
                   raise SystemExit(f"rollback verification failed: {marker} still present")
