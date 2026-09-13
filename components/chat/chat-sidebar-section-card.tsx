@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 
 type SidebarEntry={name:string;source?:HTMLElement};
@@ -23,48 +24,46 @@ function SectionCard({entries,leftLabel,rightLabel,leftHref,rightHref,emptyLabel
  </div>;
 }
 
-const HEADINGS=["MESSAGE FRIENDS","PRIVATE CHATS","MY GROUPS"];
 function exactHeading(drawer:HTMLElement,label:string){return [...drawer.querySelectorAll<HTMLElement>("p,h2,h3,h4,div,span")].find(el=>el.children.length===0&&(el.textContent||"").trim()===label)||null;}
 function sectionLines(drawer:HTMLElement,label:string,nextLabel?:string){const text=(drawer.innerText||"").split("\n").map(x=>x.trim()).filter(Boolean);const start=text.findIndex(x=>x===label);if(start<0)return[];const end=nextLabel?text.findIndex((x,i)=>i>start&&x===nextLabel):text.length;return text.slice(start+1,end<0?text.length:end);}
 function entriesFromLines(drawer:HTMLElement,lines:string[],excluded:string[]){const clean=lines.filter(x=>!excluded.includes(x)&&x.length>1&&!/^@/.test(x)&&!/^\d+(\s|$)/.test(x));return [...new Set(clean)].slice(0,2).map(name=>{const source=[...drawer.querySelectorAll<HTMLElement>("button,a,[role='button'],div,span")].find(el=>(el.textContent||"").trim()===name)||undefined;return {name,source}});}
 function hideBetween(start:HTMLElement,end:HTMLElement|null){const parent=start.parentElement;if(!parent)return;let node:Element|null=start;while(node){(node as HTMLElement).style.display=node===start?"block":"none";if(node===end)break;node=node.nextElementSibling;}}
 
 export function ChatSidebarSectionCards(){
- const roots=useRef<HTMLElement[]>([]);
+ const roots=useRef<Array<{mount:HTMLElement;root:Root}>>([]);
  useEffect(()=>{
   let queued=false;
+  const clear=()=>{roots.current.forEach(({mount,root})=>{root.unmount();mount.remove()});roots.current=[];};
+  const renderCard=(mount:HTMLElement,element:React.ReactElement)=>{const root=createRoot(mount);root.render(element);roots.current.push({mount,root});};
   const apply=()=>{
    if(queued)return;queued=true;
    window.requestAnimationFrame(()=>{
     queued=false;
     const drawer=document.querySelector<HTMLElement>(".matchup-chat aside");
     if(!drawer)return;
-    roots.current.forEach(root=>root.remove());roots.current=[];
+    clear();
     const messageHeading=exactHeading(drawer,"MESSAGE FRIENDS");
     const privateHeading=exactHeading(drawer,"PRIVATE CHATS");
     const groupsHeading=exactHeading(drawer,"MY GROUPS");
     if(messageHeading){
      const lines=sectionLines(drawer,"MESSAGE FRIENDS","PRIVATE CHATS");
      const entries=entriesFromLines(drawer,lines,["General","Global MatchUp chat","Create Group","View Groups","Message Friends","Add Friends"]);
-     const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";messageHeading.parentElement?.insertBefore(mount,messageHeading.nextSibling||null);roots.current.push(mount);
+     const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";messageHeading.parentElement?.insertBefore(mount,messageHeading.nextSibling||null);
      hideBetween(messageHeading,privateHeading);mount.style.display="block";
-     import("react-dom/client").then(({createRoot})=>createRoot(mount).render(<SectionCard entries={entries} leftLabel="Message Friends" rightLabel="Add Friends" leftHref="/message-friends?tab=friends" rightHref="/friends" emptyLabel="No friends available yet."/>));
+     renderCard(mount,<SectionCard entries={entries} leftLabel="Message Friends" rightLabel="Add Friends" leftHref="/message-friends?tab=friends" rightHref="/friends" emptyLabel="No friends available yet."/>);
     }
-    if(privateHeading){
-     privateHeading.style.display="none";
-     if(groupsHeading&&privateHeading.parentElement===groupsHeading.parentElement)hideBetween(privateHeading,groupsHeading);
-    }
+    if(privateHeading){privateHeading.style.display="none";if(groupsHeading&&privateHeading.parentElement===groupsHeading.parentElement)hideBetween(privateHeading,groupsHeading);}
     if(groupsHeading){
      const lines=sectionLines(drawer,"MY GROUPS");
      const entries=entriesFromLines(drawer,lines,["Create Group","View Groups","Message Friends","Add Friends","MESSAGE FRIENDS","PRIVATE CHATS"]);
-     const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";groupsHeading.parentElement?.insertBefore(mount,groupsHeading.nextSibling||null);roots.current.push(mount);
+     const mount=document.createElement("div");mount.className="matchup-sidebar-card-mount";groupsHeading.parentElement?.insertBefore(mount,groupsHeading.nextSibling||null);
      let node=groupsHeading.nextElementSibling;while(node){const next=node.nextElementSibling;if(node!==mount)(node as HTMLElement).style.display="none";node=next;}
-     import("react-dom/client").then(({createRoot})=>createRoot(mount).render(<SectionCard entries={entries} leftLabel="View Groups" rightLabel="Create Group" leftHref="/groups" rightHref="/leaderboard?create=group" emptyLabel="No groups yet."/>));
+     renderCard(mount,<SectionCard entries={entries} leftLabel="View Groups" rightLabel="Create Group" leftHref="/groups" rightHref="/leaderboard?create=group" emptyLabel="No groups yet."/>);
     }
    });
   };
   const observer=new MutationObserver(apply);observer.observe(document.body,{subtree:true,childList:true});apply();
-  return()=>{observer.disconnect();roots.current.forEach(root=>root.remove());roots.current=[];};
+  return()=>{observer.disconnect();clear();};
  },[]);
  return null;
 }
