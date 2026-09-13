@@ -1,0 +1,73 @@
+name: Patch Chat UI
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-chat-ui.yml'
+      - 'components/chat/chat-hub.tsx'
+      - 'components/chat/sidebar-section-card.tsx'
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !startsWith(github.event.head_commit.message, 'fix(chat): full width cards') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch actual ChatHub source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'components/chat/chat-hub.tsx';
+          let src = fs.readFileSync(path, 'utf8');
+          const before = src;
+
+          // Make the actual ChatHub root use all available width without introducing
+          // a fixed/minimum width that can create horizontal overflow.
+          const returnIndex = src.indexOf('return ');
+          if (returnIndex < 0) throw new Error('ChatHub return statement not found');
+          const prefix = src.slice(0, returnIndex);
+          const tail = src.slice(returnIndex);
+          const rootMatch = tail.match(/<div className="([^"]+)"/);
+          if (!rootMatch) throw new Error('ChatHub root div not found');
+          let rootClasses = rootMatch[1]
+            .split(/\s+/)
+            .filter(Boolean)
+            .filter(c => !/^max-w-/.test(c) && c !== 'mx-auto' && c !== 'w-screen');
+          for (const c of ['w-full','max-w-none','min-w-0','overflow-x-hidden']) {
+            if (!rootClasses.includes(c)) rootClasses.push(c);
+          }
+          const replacement = `<div className="${rootClasses.join(' ')}"`;
+          tail = replacement + tail.slice(rootMatch[0].length);
+          src = prefix + tail;
+
+          // The current implementation uses the three-dot menu as the only header
+          // action. Ensure group settings is available from that menu rather than as
+          // another visible header control. Do not duplicate it if already present.
+          if (!/Group settings/.test(src)) {
+            const invitationButton = src.match(/<button[^>]*>[\s\S]*?Group invitations[\s\S]*?<\/button>/);
+            if (invitationButton) {
+              const groupSettingsButton = `<button type="button" onClick={()=>{setShowChatOptions(false);setShowManage(true)}} className="block w-full px-3 py-2 text-left text-xs font-semibold text-white hover:bg-[#0b223c]">Group settings</button>`;
+              src = src.slice(0, invitationButton.index + invitationButton[0].length) + groupSettingsButton + src.slice(invitationButton.index + invitationButton[0].length);
+            } else {
+              throw new Error('Group invitations menu item not found; cannot safely add Group settings');
+            }
+          }
+
+          // Tighten the shared card to a normal rectangular radius while preserving
+          // the exact same reusable layout for both sections.
+          const cardPath = 'components/chat/sidebar-section-card.tsx';
+          let card = fs.readFileSync(cardPath, 'utf8');
+          card = card.replace('rounded-2xl border border-[#214a78]', 'rounded-xl border border-[#214a78]');
+          fs.writeFileSync(cardPath, card);
+          fs.writeFileSync(path, src);
+
+          if (src === before) throw new Error('ChatHub source was not changed');
+          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/chat/chat-hub.tsx components/chat/sidebar-section-card.tsx
+          git commit -m 'fix(chat): full width cards and chat options'
+          git push
