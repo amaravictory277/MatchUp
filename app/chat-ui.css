@@ -28,3 +28,27 @@
 .matchup-chat [data-message-id] > .matchup-chat-bubble-other + button { align-self: flex-end; margin-bottom: 27px !important; min-width: 38px; min-height: 38px; }
 .matchup-chat [class*="171109"], .matchup-chat [class*="100d09"] { background: #071426 !important; }
 .matchup-chat [class*="241205"] { color: #fff !important; }
+
+/* MatchUp social/chat reference pass */
+.matchup-avatar { display:inline-block; flex:0 0 auto; overflow:hidden; border-radius:15px; background:#103a60; box-shadow:inset 0 0 0 1px rgba(112,193,255,.13); }
+.matchup-avatar-stack { display:flex; align-items:center; }
+.matchup-avatar-stack-item { display:inline-flex; margin-left:-9px; border:2px solid #071426; border-radius:16px; overflow:hidden; }
+.matchup-avatar-stack-item:first-child { margin-left:0; }
+.matchup-avatar-more { display:grid; place-items:center; margin-left:-9px; border:2px solid #071426; border-radius:16px; background:#123a60; color:#bfe3ff; font-size:10px; font-weight:900; }
+.matchup-chat-header { position:sticky; top:0; z-index:35; backdrop-filter:blur(18px); }
+.matchup-chat-composer { position:sticky; bottom:0; z-index:35; padding-bottom:max(.75rem, env(safe-area-inset-bottom)); }
+.matchup-chat-body { overscroll-behavior:contain; scrollbar-width:thin; }
+.matchup-chat [data-message-id] .matchup-personalized-name { transition:color .2s ease; }
+.matchup-date-separator { display:flex; align-items:center; gap:10px; margin:18px 0 12px; color:#6e89a3; font-size:10px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+.matchup-date-separator::before,.matchup-date-separator::after { content:""; height:1px; flex:1; background:#173858; }
+.matchup-chat .matchup-message-status { display:inline-flex !important; width:18px; height:18px; align-items:center; justify-content:center; margin-left:5px; color:#9bcfff; vertical-align:middle; }
+@media (max-width:640px){
+  .matchup-chat { min-height:calc(100dvh - 96px) !important; height:calc(100dvh - 96px); border-radius:0 !important; border-left:0 !important; border-right:0 !important; }
+  .matchup-chat > .flex { min-height:100% !important; height:100%; }
+  .matchup-chat-body { min-height:0; }
+  .matchup-chat [data-message-id] > .matchup-chat-bubble-own > p,.matchup-chat [data-message-id] > .matchup-chat-bubble-other > p { max-width:82vw; }
+}
+/* The old explicit pagination control is replaced by top-of-scroll loading. */
+.matchup-chat .matchup-chat-body > div > button:first-child { display:none !important; }
+/* Mobile room switcher behaves as a full-screen panel instead of a partial drawer. */
+@media (max-width:640px){ .matchup-chat aside[aria-label], .matchup-chat > .flex > aside { position:fixed !important; inset:0 !important; top:0 !important; max-height:none !important; height:100dvh !important; z-index:80 !important; padding:calc(18px + env(safe-area-inset-top)) 16px 24px !important; overflow-y:auto !important; } }
