@@ -1,0 +1,25 @@
+name: Inspect Chat Redesign
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect targets
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('components/chat/chat-hub.tsx').read_text()
+          for needle in ['Message Friends','Create Group','View Groups','Load Older Messages','CheckCheck','showRooms','General']:
+              print('\n===', needle, '===')
+              start=0
+              for i in range(3):
+                  p=s.find(needle,start)
+                  if p<0: break
+                  print(s[max(0,p-900):p+1200])
+                  start=p+len(needle)
+          PY
