@@ -1,0 +1,21 @@
+name: Inspect ChatHub (temporary)
+on:
+  push:
+    branches: [main]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect ChatHub
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('components/chat/chat-hub.tsx').read_text()
+          for term in ['showRooms','Message Friends','Load older messages','Replying to','September','CheckCheck','inputRef','<main','<header']:
+              print('\n===== '+term+' =====')
+              i=s.find(term)
+              print('INDEX',i)
+              if i>=0: print(s[max(0,i-2500):i+5000])
+          print('\n===== SIZE =====',len(s))
+          PY
