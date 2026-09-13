@@ -148,13 +148,8 @@ export function ChatSidebarSectionCards() {
         }
 
         if (privateHeading) {
-          const privateParent = privateHeading.parentElement;
-          if (privateParent) {
-            removeSiblingsAfter(privateHeading);
-            privateParent.remove();
-          } else {
-            privateHeading.remove();
-          }
+          removeSiblingsUntil(privateHeading, groupsHeading);
+          privateHeading.remove();
         }
 
         if (groupsHeading) {
