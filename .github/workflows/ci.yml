@@ -19,61 +19,36 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Apply scoped chat bubble change on main
+      - name: Restore unrelated chat sidebar formatting
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin main
           git checkout main
           python - <<'PY'
           from pathlib import Path
-          import re
           p = Path('components/chat/chat-hub.tsx')
           s = p.read_text()
-          old_class = 'className={`rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3 transition'
-          new_class = 'className={`relative rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3.5 transition'
-          if old_class in s:
-              s = s.replace(old_class, new_class, 1)
-          elif new_class not in s:
-              raise SystemExit('Outgoing bubble class not found')
-          pattern = re.compile(
-              r'(?P<open>\s*<div\n\s*className={`relative rounded-\[22px\] rounded-br-\[7px\] bg-\[#126bc0\] px-4 py-3\.5 transition[^\n]*`}\n\s*>)'
-              r'(?P<body>[\s\S]*?)\n\s*</div>\n'
-              r'\s*<div className="mt-1 flex items-center justify-end(?: gap-2)?">[\s\S]*?\n\s*</div>'
-          )
-          match = pattern.search(s)
-          if not match:
-              raise SystemExit('Outgoing bubble and status row could not be located')
-          status = '''
-                          {!m.pending ? (
-                            <span
-                              className={`absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}
-                              aria-label={read ? "Read" : "Delivered"}
-                            >
-                              {read ? (
-                                <CheckCheck size={9} className="text-[#126bc0]" />
-                              ) : (
-                                <CheckCheck size={9} className="text-white/45" />
-                              )}
-                            </span>
-                          ) : (
-                            <span
-                              className="absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border border-white/25"
-                              aria-label="Sent"
-                            >
-                              <Check size={9} className="text-white/45" />
-                            </span>
-                          )}'''
-          time_row = '''
-                        <div className="mt-1 flex items-center justify-end">
-                          <span className="text-[9px] text-white/50">
-                            {timeOf(m.created_at)}
-                          </span>
-                        </div>'''
-          replacement = match.group('open') + match.group('body') + status + '\n                        </div>' + time_row
-          s = s[:match.start()] + replacement + s[match.end():]
+          old = '''              entries={friends.slice(0, 2).map((f) => ({
+                id: f.id,
+                label: nameOf(f),
+                secondary: `@${f.username || "friend"}`,
+                profile: f,
+                onClick: () => void openPrivate(f),
+              }))}'''
+          new = '''              entries={friends
+                .slice(0, 2)
+                .map((f) => ({
+                  id: f.id,
+                  label: nameOf(f),
+                  secondary: `@${f.username || "friend"}`,
+                  profile: f,
+                  onClick: () => void openPrivate(f),
+                }))}'''
+          if old not in s:
+              raise SystemExit('Unrelated sidebar formatting is already restored or not found')
+          s = s.replace(old, new, 1)
           p.write_text(s)
           PY
-          npx prettier@3.6.2 --write components/chat/chat-hub.tsx
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Lint
@@ -83,17 +58,17 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
         run: npm run build
-      - name: Commit scoped source change
+      - name: Commit scoped cleanup
         if: github.event_name == 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add components/chat/chat-hub.tsx
           if git diff --cached --quiet; then
-            echo "No chat bubble source change needed."
+            echo "No cleanup change needed."
           else
             git diff --cached --check
-            git commit -m "fix: align chat bubble padding and check mark"
+            git commit -m "chore: restore unrelated chat sidebar formatting"
             git push origin HEAD:main
           fi
       - name: Test status
