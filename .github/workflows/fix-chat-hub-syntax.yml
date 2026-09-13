@@ -43,6 +43,8 @@ jobs:
 
       - name: Capture formatter diagnostics
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set +e
           npx --yes prettier@3.6.2 --write components/chat/chat-hub.tsx 2>&1 | tee /tmp/prettier.log
