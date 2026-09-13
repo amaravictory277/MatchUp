@@ -50,3 +50,4 @@ jobs:
           git diff --cached --check
           git commit -m 'fix: align chat bubble padding and check mark'
           git push origin HEAD:tmp/final-chat-bubble-source
+# retrigger
