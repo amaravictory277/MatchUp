@@ -77,3 +77,4 @@ jobs:
           else
             echo "No automated test suite is configured in package.json."
           fi
+# temporary trigger comment
