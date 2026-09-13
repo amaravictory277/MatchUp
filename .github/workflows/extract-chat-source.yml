@@ -1,7 +1,7 @@
 name: Extract chat source
 on:
-  push:
-    branches: [tmp/final-source-extract]
+  pull_request:
+    branches: [main]
 permissions:
   contents: write
 jobs:
