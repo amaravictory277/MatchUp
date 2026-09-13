@@ -9,7 +9,7 @@ export function SidebarSectionCard({ title, description, entries, primaryLabel, 
   return <div className="mt-5">
     <p className="mb-2 text-[10px] font-black uppercase tracking-[.14em] text-[#66809a]">{title}</p>
     <section className="overflow-hidden rounded-xl border border-[#214a78] bg-[#071426] shadow-[0_12px_32px_rgba(0,0,0,.16)]">
-      <div className="px-3.5 pb-3 pt-3.5">
+      <div className="px-3.5 pb-3.5 pt-3.5">
         <p className="text-[11px] leading-5 text-[#7892ac]">{description}</p>
         <div className="mt-3 space-y-1.5">
           {shown.length ? shown.map(entry => <button key={entry.id} type="button" onClick={entry.onClick} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-[#0b223c]">
@@ -18,9 +18,9 @@ export function SidebarSectionCard({ title, description, entries, primaryLabel, 
           </button>) : <p className="rounded-xl px-2 py-2 text-xs text-[#7892ac]">{emptyText}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-2 border-t border-[#214a78]">
-        <button type="button" onClick={onPrimary} className="min-w-0 px-2 py-3 text-center text-[11px] font-black text-[#70c1ff] hover:bg-[#0b223c]">{primaryLabel}</button>
-        <button type="button" onClick={onSecondary} className="min-w-0 border-l border-[#214a78] px-2 py-3 text-center text-[11px] font-black text-[#70c1ff] hover:bg-[#0b223c]">{secondaryLabel}</button>
+      <div className="grid grid-cols-2 gap-2 px-3.5 pb-3.5">
+        <button type="button" onClick={onPrimary} className="min-w-0 rounded-xl bg-[#123a62] px-2 py-3 text-center text-[11px] font-black text-white shadow-[0_5px_14px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:bg-[#174875] active:translate-y-0">{primaryLabel}</button>
+        <button type="button" onClick={onSecondary} className="min-w-0 rounded-xl bg-[#123a62] px-2 py-3 text-center text-[11px] font-black text-white shadow-[0_5px_14px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:bg-[#174875] active:translate-y-0">{secondaryLabel}</button>
       </div>
     </section>
   </div>;
