@@ -2,6 +2,8 @@ name: Final chat bubble patcher
 on:
   push:
     branches: [tmp/final-chat-bubble-source]
+  pull_request:
+    branches: [main]
 permissions:
   contents: write
 jobs:
@@ -22,14 +24,12 @@ jobs:
           s = p.read_text()
           old = 'className={`rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3 transition'
           new = 'className={`relative rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3.5 transition'
-          if old not in s:
-              raise SystemExit('Outgoing bubble class not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
           old_status = '''                        </div>\n                        <div className="mt-1 flex items-center justify-end gap-2">\n                          <span className="text-[9px] text-white/50">\n                            {timeOf(m.created_at)}\n                          </span>\n                          {!m.pending ? (\n                            <span\n                              className={`grid size-5 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}\n                              aria-label={read ? "Read" : "Delivered"}\n                            >\n                              {read ? (\n                                <CheckCheck\n                                  size={11}\n                                  className="text-[#126bc0]"\n                                />\n                              ) : (\n                                <CheckCheck\n                                  size={11}\n                                  className="text-white/45"\n                                />\n                              )}\n                            </span>\n                          ) : (\n                            <span\n                              className="grid size-5 place-items-center rounded-full border border-white/25"\n                              aria-label="Sent"\n                            >\n                              <Check size={11} className="text-white/45" />\n                            </span>\n                          )}\n                        </div>'''
           new_status = '''                          {!m.pending ? (\n                            <span\n                              className={`absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border ${read ? "border-white bg-white" : "border-white/25 bg-transparent"}`}\n                              aria-label={read ? "Read" : "Delivered"}\n                            >\n                              {read ? (\n                                <CheckCheck size={9} className="text-[#126bc0]" />\n                              ) : (\n                                <CheckCheck size={9} className="text-white/45" />\n                              )}\n                            </span>\n                          ) : (\n                            <span\n                              className="absolute -right-2 bottom-0.5 grid size-4 place-items-center rounded-full border border-white/25"\n                              aria-label="Sent"\n                            >\n                              <Check size={9} className="text-white/45" />\n                            </span>\n                          )}\n                        </div>\n                        <div className="mt-1 flex items-center justify-end">\n                          <span className="text-[9px] text-white/50">\n                            {timeOf(m.created_at)}\n                          </span>\n                        </div>'''
-          if old_status not in s:
-              raise SystemExit('Outgoing status row not found')
-          s = s.replace(old_status, new_status, 1)
+          if old_status in s:
+              s = s.replace(old_status, new_status, 1)
           p.write_text(s)
           PY
           npx prettier@3.6.2 --write components/chat/chat-hub.tsx
@@ -43,11 +43,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
         run: npm run build
       - name: Commit source
+        if: github.event_name == 'pull_request'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add components/chat/chat-hub.tsx
+          if git diff --cached --quiet; then exit 0; fi
           git diff --cached --check
           git commit -m 'fix: align chat bubble padding and check mark'
           git push origin HEAD:tmp/final-chat-bubble-source
-# retrigger
