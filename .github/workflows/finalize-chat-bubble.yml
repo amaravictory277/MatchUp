@@ -3,7 +3,7 @@ name: Finalize Chat Bubble
 on:
   push:
     paths:
-      - .github/workflows/finalize-chat-bubble.yml
+      - .chat-bubble-trigger
 
 permissions:
   contents: write
