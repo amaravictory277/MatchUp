@@ -1,0 +1,80 @@
+name: Apply Social Redesign
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.event.head_commit.message != 'chore: apply social chat redesign updates'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Patch existing UI without duplicating implemented work
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          changed=[]
+          def write(path, fn):
+              p=Path(path); s=p.read_text(); n=fn(s)
+              if n!=s: p.write_text(n); changed.append(path)
+          
+          # The reusable sidebar card already exists. Only correct its action order to match the spec.
+          def chat(s):
+              s=s.replace('type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group";locked:boolean;', 'type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group"|"match";locked:boolean;')
+              s=s.replace('type Profile={id:string;display_name?:string|null;username?:string|null};', 'type Profile={id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null};')
+              s=s.replace('import { SidebarSectionCard } from "./sidebar-section-card";', 'import { SidebarSectionCard } from "./sidebar-section-card";\nimport { MatchUpAvatar } from "../ui/matchup-avatar";')
+              s=s.replace('supabase.from("profiles").select("id,display_name,username").eq("id",auth.user.id)', 'supabase.from("profiles").select("id,display_name,username,avatar_path").eq("id",auth.user.id)')
+              s=s.replace('supabase.from("profiles").select("id,display_name,username").in("id",friendIds)', 'supabase.from("profiles").select("id,display_name,username,avatar_path").in("id",friendIds)')
+              s=s.replace('profiles(id,display_name,username)', 'profiles(id,display_name,username,avatar_path)')
+              s=s.replace('primaryLabel="Message Friends" secondaryLabel="Add Friends"', 'primaryLabel="Add Friends" secondaryLabel="Message Friends"')
+              s=s.replace('primaryLabel="View Groups" secondaryLabel="Create Group"', 'primaryLabel="Create Group" secondaryLabel="View Groups"')
+              s=s.replace('onPrimary={()=>window.location.assign("/message-friends?tab=friends")} onSecondary={()=>window.location.assign("/friends")}', 'onPrimary={()=>window.location.assign("/friends")} onSecondary={()=>window.location.assign("/message-friends?tab=friends")}')
+              s=s.replace('onPrimary={()=>window.location.assign("/groups")} onSecondary={()=>{setInviteSearch("");setInviteCandidates(friends);setShowCreate(true);setShowRooms(false);}}', 'onPrimary={()=>{setInviteSearch("");setInviteCandidates(friends);setShowCreate(true);setShowRooms(false);}} onSecondary={()=>window.location.assign("/groups")}')
+              # Make the existing mobile rooms drawer full-screen; desktop remains a positioned panel.
+              s=s.replace('className="absolute inset-x-0 top-[73px] z-30 max-h-[calc(72vh-73px)] overflow-y-auto border-b border-[#18365f] bg-[#08182b] p-4 shadow-2xl"', 'className="fixed inset-0 z-[60] flex h-[100dvh] w-full flex-col overflow-y-auto border-[#18365f] bg-[#08182b] p-4 shadow-2xl sm:absolute sm:inset-x-0 sm:top-[73px] sm:z-30 sm:h-auto sm:max-h-[calc(72vh-73px)] sm:w-auto sm:border-b"')
+              # Remove the visible older-messages button; keep loadOlder for scroll-triggered use later.
+              s=re.sub(r'<button type="button" onClick=\{\(\)=>void loadOlder\(\)\} disabled=\{!messages\.length\|\|loadingOlder\}[^>]*>.*?</button>', '', s, count=1)
+              return s
+          write('components/chat/chat-hub.tsx', chat)
+          
+          # Friends already has real backend data; replace only the old circular/initial avatar rendering.
+          def friends(s):
+              s=s.replace('import { createBrowserSupabaseClient } from "../../lib/supabase/client";', 'import { createBrowserSupabaseClient } from "../../lib/supabase/client";\nimport { MatchUpAvatar } from "../ui/matchup-avatar";')
+              s=s.replace('function initials(p:Profile){return nameOf(p).split(/\\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();}', '')
+              s=s.replace('<div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0b3154] text-xs font-black text-[#70c1ff]">{p.avatar_path?<img src={p.avatar_path} alt="" className="size-full object-cover"/>:initials(p)}</div>', '<MatchUpAvatar profile={p} size="md" alt={nameOf(p)}/>')
+              s=s.replace('<div className="grid size-11 shrink-0 place-items-center rounded-full bg-[#0b3154] text-xs font-black text-[#70c1ff]">{initials(r.profile)}</div>', '<MatchUpAvatar profile={r.profile} size="md" alt={nameOf(r.profile)}/>')
+              s=s.replace('<div className="grid size-11 place-items-center rounded-full bg-[#0b3154] text-xs font-black text-[#70c1ff]">{p.avatar_path?<img src={p.avatar_path} alt="" className="size-full rounded-full object-cover"/>:initials(p)}</div>', '<MatchUpAvatar profile={p} size="md" alt={nameOf(p)}/>')
+              return s
+          write('components/friends/friends-page.tsx', friends)
+          
+          # Message Friends already has the segmented switch and real data. Keep it on one page when switching tabs.
+          def message_friends(s):
+              return s.replace('onClick={()=>router.replace("/groups")}', 'onClick={()=>router.replace("/message-friends?tab=groups")}')
+          write('components/chat/message-friends-page.tsx', message_friends)
+          
+          # MatchUpAvatar already provides the owned cartoon default + rounded-square shape + dominant color extraction.
+          # Add a module cache so dominant color is not recomputed for every mount/render.
+          def avatar(s):
+              if 'const ACCENT_CACHE=new Map<string,string>();' not in s:
+                  s=s.replace('const palettes = [', 'const ACCENT_CACHE=new Map<string,string>();\nconst palettes = [')
+              s=s.replace('const src = profile?.avatar_path;\n    if (!src || !/^https?:\\/\\//i.test(src)) return;', 'const src = profile?.avatar_path;\n    if (!src || !/^https?:\\/\\//i.test(src)) return;\n    const cached = ACCENT_CACHE.get(src);\n    if (cached) { setAccent(cached); return; }')
+              s=s.replace('if (!cancelled) setAccent(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);', 'const value=`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`; ACCENT_CACHE.set(src, value); if (!cancelled) setAccent(value);')
+              return s
+          write('components/ui/matchup-avatar.tsx', avatar)
+          
+          print('changed:', changed)
+          if not changed: raise SystemExit('No source changes were made; refusing a no-op redesign commit.')
+          PY
+      - name: Commit source changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components
+          git commit -m 'feat: apply social chat and avatar refinements'
+          git push origin main
