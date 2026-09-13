@@ -40,18 +40,34 @@ jobs:
           p.write_text(s.replace(old, new, 1))
           PY
 
-      - name: Reformat ChatHub JSX and capture parser diagnostics
+      - name: Capture formatter diagnostics
         shell: bash
         run: |
           set +e
           npx --yes prettier@3.6.2 --write components/chat/chat-hub.tsx 2>&1 | tee /tmp/prettier.log
           rc=${PIPESTATUS[0]}
           if [ "$rc" -ne 0 ]; then
+            python3 - <<'PY'
+            from pathlib import Path
+            p = Path('components/chat/chat-hub.tsx')
+            lines = p.read_text().splitlines()
+            out = []
+            for n in (48, 49, 50):
+                if n <= len(lines):
+                    line = lines[n-1]
+                    center = 4543 if n == 50 else min(2000, len(line)//2)
+                    start = max(0, center-1000)
+                    end = min(len(line), center+1000)
+                    out.append(f'LINE {n} LENGTH {len(line)} CENTER {center}')
+                    out.append(line[start:end])
+                    out.append('---')
+            Path('chat-hub-format-context.txt').write_text('\n'.join(out))
+            PY
             cp /tmp/prettier.log chat-hub-format-error.txt
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add chat-hub-format-error.txt
-            git commit -m 'debug: capture ChatHub formatter diagnostics'
+            git add chat-hub-format-context.txt chat-hub-format-error.txt
+            git commit -m 'debug: capture ChatHub parser context'
             git push origin main
             exit "$rc"
           fi
