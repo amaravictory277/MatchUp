@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 
@@ -32,15 +32,15 @@ function hideBetween(start:HTMLElement,end:HTMLElement|null){const parent=start.
 export function ChatSidebarSectionCards(){
  const roots=useRef<Array<{mount:HTMLElement;root:Root}>>([]);
  useEffect(()=>{
-  let queued=false;
+  let queued=false;let internalMutation=false;let observer:MutationObserver;
   const clear=()=>{roots.current.forEach(({mount,root})=>{root.unmount();mount.remove()});roots.current=[];};
-  const renderCard=(mount:HTMLElement,element:React.ReactElement)=>{const root=createRoot(mount);root.render(element);roots.current.push({mount,root});};
+  const renderCard=(mount:HTMLElement,element:ReactElement)=>{const root=createRoot(mount);root.render(element);roots.current.push({mount,root});};
   const apply=()=>{
-   if(queued)return;queued=true;
+   if(queued||internalMutation)return;queued=true;
    window.requestAnimationFrame(()=>{
-    queued=false;
+    queued=false;internalMutation=true;
     const drawer=document.querySelector<HTMLElement>(".matchup-chat aside");
-    if(!drawer)return;
+    if(!drawer){internalMutation=false;return;}
     clear();
     const messageHeading=exactHeading(drawer,"MESSAGE FRIENDS");
     const privateHeading=exactHeading(drawer,"PRIVATE CHATS");
@@ -60,9 +60,10 @@ export function ChatSidebarSectionCards(){
      let node=groupsHeading.nextElementSibling;while(node){const next=node.nextElementSibling;if(node!==mount)(node as HTMLElement).style.display="none";node=next;}
      renderCard(mount,<SectionCard entries={entries} leftLabel="View Groups" rightLabel="Create Group" leftHref="/groups" rightHref="/leaderboard?create=group" emptyLabel="No groups yet."/>);
     }
+    window.requestAnimationFrame(()=>{internalMutation=false;});
    });
   };
-  const observer=new MutationObserver(apply);observer.observe(document.body,{subtree:true,childList:true});apply();
+  observer=new MutationObserver(apply);observer.observe(document.body,{subtree:true,childList:true});apply();
   return()=>{observer.disconnect();clear();};
  },[]);
  return null;
