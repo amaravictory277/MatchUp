@@ -3,23 +3,65 @@ on:
   push:
     branches: [main]
 permissions:
-  contents: read
+  contents: write
 jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect targets
+      - name: Apply requested redesign only where it is not already implemented
         run: |
           python - <<'PY'
           from pathlib import Path
-          s=Path('components/chat/chat-hub.tsx').read_text()
-          for needle in ['Message Friends','Create Group','View Groups','Load Older Messages','CheckCheck','showRooms','General']:
-              print('\n===', needle, '===')
-              start=0
-              for i in range(3):
-                  p=s.find(needle,start)
-                  if p<0: break
-                  print(s[max(0,p-900):p+1200])
-                  start=p+len(needle)
+          import re
+          
+          def patch(path, fn):
+              p=Path(path); s=p.read_text(); n=fn(s)
+              if n != s:
+                  p.write_text(n); print('changed', path)
+              else: print('unchanged', path)
+          
+          def nav(s):
+              s=s.replace('import { Bell, FileText, House, MessageSquare, Newspaper, Plus, Search, Trophy, UserPlus, UsersRound, X }','import { Bell, FileText, House, MessageSquare, Newspaper, Plus, Search, Swords, Trophy, UserPlus, UsersRound, X }')
+              pattern=r'<button type="button" onClick=\{\(\) => \{ setCreateOpen\(false\); router\.push\("/friends"\); \}\}[^>]*>.*?</button><button type="button" onClick=\{\(\) => \{ setCreateOpen\(false\); router\.push\("/message-friends"\); \}\}[^>]*>.*?</button><button type="button" onClick=\{\(\) => \{ setCreateOpen\(false\); router\.push\("/leaderboard\?create=group"\); \}\}[^>]*>.*?</button>'
+              replacement='''<div className="rounded-2xl border border-[#18365f] bg-[#071426] p-3"><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#70c1ff]">GROUPS</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => { setCreateOpen(false); router.push("/leaderboard?create=group"); }} className="rounded-xl bg-[#167bd1] px-3 py-3 text-xs font-black text-white">Create Group</button><button type="button" onClick={() => { setCreateOpen(false); router.push("/groups"); }} className="rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-3 text-xs font-black text-[#9bd3ff]">View Groups</button></div></div><div className="rounded-2xl border border-[#18365f] bg-[#071426] p-3"><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#70c1ff]">FRIENDS</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => { setCreateOpen(false); router.push("/friends"); }} className="rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-3 text-xs font-black text-[#9bd3ff]">Add Friends</button><button type="button" onClick={() => { setCreateOpen(false); router.push("/message-friends?tab=friends"); }} className="rounded-xl bg-[#167bd1] px-3 py-3 text-xs font-black text-white">Message Friends</button></div></div><button type="button" onClick={() => { setCreateOpen(false); router.push("/ready-players"); }} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#0a1b2f] px-4 py-4 text-sm font-black text-white"><Swords size={20} /><span className="flex-1 text-left">Find Ready Players</span></button>'''
+              return re.sub(pattern,replacement,s,count=1,flags=re.S)
+          patch('components/navigation.tsx',nav)
+          
+          def friends(s):
+              if 'import { MatchUpAvatar }' not in s: s=s.replace('import { createBrowserSupabaseClient } from "../../lib/supabase/client";','import { createBrowserSupabaseClient } from "../../lib/supabase/client";\nimport { MatchUpAvatar } from "../ui/matchup-avatar";')
+              s=re.sub(r'function initials\(p:Profile\)\{.*?\}', '', s, count=1)
+              s=re.sub(r'<div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full[^>]*>\{p\.avatar_path\?[^<]*<img src=\{p\.avatar_path\}[^>]*\/>:initials\(p\)\}</div>', '<MatchUpAvatar profile={p} size="md" alt={nameOf(p)}/>', s, count=1)
+              s=s.replace('<div className="grid size-11 shrink-0 place-items-center rounded-full bg-[#0b3154] text-xs font-black text-[#70c1ff]">{initials(r.profile)}</div>','<MatchUpAvatar profile={r.profile} size="md" alt={nameOf(r.profile)}/>')
+              s=s.replace('<div className="grid size-11 place-items-center rounded-full bg-[#0b3154] text-xs font-black text-[#70c1ff]">{p.avatar_path?<img src={p.avatar_path} alt="" className="size-full rounded-full object-cover"/>:initials(p)}</div>','<MatchUpAvatar profile={p} size="md" alt={nameOf(p)}/>')
+              return s
+          patch('components/friends/friends-page.tsx',friends)
+          patch('components/chat/message-friends-page.tsx',lambda s:s.replace('onClick={()=>router.replace("/groups")}','onClick={()=>router.replace("/message-friends?tab=groups")}'))
+          
+          def avatar(s):
+              if 'const ACCENT_CACHE=new Map<string,string>();' not in s: s=s.replace('const palettes = [','const ACCENT_CACHE=new Map<string,string>();\nconst palettes = [')
+              needle='const src = profile?.avatar_path;\n    if (!src || !/^https?:\\/\\//i.test(src)) return;'
+              if needle in s and 'ACCENT_CACHE.get(src)' not in s: s=s.replace(needle,needle+'\n    const cached=ACCENT_CACHE.get(src);\n    if(cached){setAccent(cached);return;}')
+              s=s.replace('if (!cancelled) setAccent(`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`);','const value=`rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`; ACCENT_CACHE.set(src,value); if (!cancelled) setAccent(value);')
+              return s
+          patch('components/ui/matchup-avatar.tsx',avatar)
+          
+          def chat(s):
+              s=s.replace('type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group";locked:boolean;','type Group={id:string;name:string;created_by:string;created_at:string;kind:"general"|"private"|"group"|"match";locked:boolean;')
+              if 'import { MatchUpAvatar }' not in s: s=s.replace('import { SidebarSectionCard } from "./sidebar-section-card";','import { SidebarSectionCard } from "./sidebar-section-card";\nimport { MatchUpAvatar } from "../ui/matchup-avatar";')
+              s=s.replace('primaryLabel="Message Friends" secondaryLabel="Add Friends"','primaryLabel="Add Friends" secondaryLabel="Message Friends"')
+              s=s.replace('primaryLabel="View Groups" secondaryLabel="Create Group"','primaryLabel="Create Group" secondaryLabel="View Groups"')
+              s=s.replace('onPrimary={()=>window.location.assign("/message-friends?tab=friends")} onSecondary={()=>window.location.assign("/friends")}', 'onPrimary={()=>window.location.assign("/friends")} onSecondary={()=>window.location.assign("/message-friends?tab=friends")}')
+              s=s.replace('onPrimary={()=>window.location.assign("/groups")} onSecondary={()=>{setInviteSearch("");setInviteCandidates(friends);setShowCreate(true);setShowRooms(false);}}','onPrimary={()=>{setInviteSearch("");setInviteCandidates(friends);setShowCreate(true);setShowRooms(false);}} onSecondary={()=>window.location.assign("/groups")}')
+              s=s.replace('className="absolute inset-x-0 top-[73px] z-30 max-h-[calc(72vh-73px)] overflow-y-auto border-b border-[#18365f] bg-[#08182b] p-4 shadow-2xl"','className="fixed inset-0 z-[60] flex h-[100dvh] w-full flex-col overflow-y-auto border-[#18365f] bg-[#08182b] p-4 shadow-2xl sm:absolute sm:inset-x-0 sm:top-[73px] sm:z-30 sm:h-auto sm:max-h-[calc(72vh-73px)] sm:w-auto sm:border-b"')
+              return s
+          patch('components/chat/chat-hub.tsx',chat)
           PY
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then echo 'No source changes required.'; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components
+          git commit -m 'feat: apply social redesign'
+          git push origin main
