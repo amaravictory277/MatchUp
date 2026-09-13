@@ -1,7 +1,7 @@
 name: Finalize Chat Bubble
 
 on:
-  push:
+  pull_request_target:
     paths:
       - .chat-bubble-trigger
 
@@ -90,4 +90,4 @@ jobs:
           git add components/chat/chat-hub.tsx
           git diff --cached --check
           git commit -m "fix: align chat bubble padding and check mark"
-          git push
+          git push origin HEAD:main
