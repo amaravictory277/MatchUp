@@ -1,0 +1,15 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Swords, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createBrowserSupabaseClient } from "../lib/supabase/client";
+
+type Profile={id:string;display_name:string|null;username:string|null;avatar_path?:string|null};
+type Request={id:string;requester_id:string;opponent_id:string;profile:Profile};
+
+export function RealtimeMatchOverlay(){
+ const router=useRouter();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [request,setRequest]=useState<Request|null>(null);const [busy,setBusy]=useState(false);
+ useEffect(()=>{let dead=false;const load=async()=>{const {data:a}=await supabase.auth.getUser();if(!a.user)return;const {data}=await supabase.from("match_requests").select("id,requester_id,opponent_id,profiles!match_requests_requester_id_fkey(id,display_name,username,avatar_path)").eq("opponent_id",a.user.id).eq("status","pending").order("created_at",{ascending:false}).limit(1);const row=(data||[])[0] as any;const p=row?.profiles?(Array.isArray(row.profiles)?row.profiles[0]:row.profiles):null;if(!dead&&row&&p)setRequest({id:row.id,requester_id:row.requester_id,opponent_id:row.opponent_id,profile:p});};void load();const channel=supabase.channel("matchup-live-match-overlay").on("postgres_changes",{event:"*",schema:"public",table:"match_requests"},()=>void load()).subscribe();return()=>{dead=true;void supabase.removeChannel(channel)};},[supabase]);
+ const respond=async(accept:boolean)=>{if(!request)return;setBusy(true);const {data,error}=await supabase.rpc("respond_match_request",{p_request_id:request.id,p_accept:accept});if(!error&&accept&&data){const {data:c}=await supabase.from("match_conversations").select("conversation_id").eq("match_id",data).maybeSingle();if(c?.conversation_id)router.push(`/leaderboard?group=${c.conversation_id}`);}setRequest(null);setBusy(false);};
+ if(!request)return null;return <div className="fixed inset-0 z-[125] grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true"><div className="w-full max-w-sm rounded-3xl border border-[#194b7c] bg-[#08182b] p-5 text-center shadow-2xl"><div className="mx-auto grid size-14 place-items-center rounded-full bg-[#0b3154] text-[#70c1ff]"><Swords size={25}/></div><p className="mt-4 text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Quick match</p><h2 className="mt-2 text-xl font-black text-white">{request.profile.display_name||request.profile.username||"MatchUp Player"} challenged you to a match</h2><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={busy} onClick={()=>void respond(true)} className="rounded-xl bg-[#167bd1] px-4 py-3 text-xs font-black text-white"><Check size={14} className="mr-1 inline"/>Accept</button><button type="button" disabled={busy} onClick={()=>void respond(false)} className="rounded-xl border border-[#36506b] px-4 py-3 text-xs font-black text-[#b7c9da]"><X size={14} className="mr-1 inline"/>Decline</button></div></div></div>;
+}
