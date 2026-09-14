@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, MessageCircle, Plus, UsersRound } from "lucide-react";
+import { ArrowLeft, ChevronRight, Plus, UsersRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
