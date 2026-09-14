@@ -36,7 +36,11 @@ jobs:
           p.write_text(s)
           PY
       - run: npm ci
-      - run: npm run build
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
       - name: Commit source fixes
         shell: bash
         run: |
