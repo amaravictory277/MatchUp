@@ -16,6 +16,15 @@ function relative(value: Date) {
   return `${days} days ago`;
 }
 
+function dayLabel(value: Date) {
+  const now = new Date();
+  const start = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const delta = Math.round((start(now) - start(value)) / 86400000);
+  if (delta === 0) return "Today";
+  if (delta === 1) return "Yesterday";
+  return value.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
 function activeKey() {
   const group = new URLSearchParams(window.location.search).get("group");
   return `${window.location.pathname}:${group || "general"}`;
@@ -40,9 +49,8 @@ export function ChatVisualEnhancer() {
     let loadingOlder = false;
     let previousHeight = body.scrollHeight;
     let previousTop = body.scrollTop;
-    let lastScrollTop = body.scrollTop;
-    let matchSyncToken = "";
     let restoringPosition = false;
+    let metadataTimer = 0;
 
     const readSavedPosition = () => {
       try {
@@ -60,7 +68,7 @@ export function ChatVisualEnhancer() {
       try {
         sessionStorage.setItem(`${SCROLL_KEY}${activeKey()}`, String(body.scrollTop));
       } catch {
-        // Scroll restoration is an enhancement; chat remains fully functional if storage is unavailable.
+        // Scroll restoration is optional UI state, not chat data.
       }
     };
 
@@ -70,7 +78,6 @@ export function ChatVisualEnhancer() {
       restoringPosition = true;
       body.scrollTop = Math.min(value, Math.max(0, body.scrollHeight - body.clientHeight));
       previousTop = body.scrollTop;
-      lastScrollTop = body.scrollTop;
       window.requestAnimationFrame(() => {
         restoringPosition = false;
         savePosition();
@@ -81,7 +88,7 @@ export function ChatVisualEnhancer() {
     const syncMatchHeader = async () => {
       const groupId = new URLSearchParams(window.location.search).get("group");
       const title = header?.querySelector<HTMLElement>("h1");
-      if (!header || !title || !groupId || matchSyncToken === groupId) return;
+      if (!header || !title || !groupId || title.dataset.matchupMatchHeader === groupId) return;
 
       const { data: group } = await supabase
         .from("chat_groups")
@@ -104,7 +111,6 @@ export function ChatVisualEnhancer() {
       const opponent = people.find((p: any) => p.id !== auth.user.id);
       if (!me || !opponent) return;
 
-      matchSyncToken = groupId;
       title.replaceChildren();
       const mine = document.createElement("span");
       mine.textContent = me.display_name || me.username || "You";
@@ -116,38 +122,6 @@ export function ChatVisualEnhancer() {
       title.dataset.matchupMatchHeader = groupId;
       const subtitle = title.parentElement?.querySelector<HTMLElement>("p");
       if (subtitle) subtitle.textContent = "1-v-1 Match Chat";
-    };
-
-    const markRelativeTimes = () => {
-      chat.querySelectorAll<HTMLElement>("[data-message-id]").forEach((row) => {
-        const title = row.querySelector<HTMLElement>("[title]")?.getAttribute("title");
-        if (!title) return;
-        const date = new Date(title);
-        if (Number.isNaN(date.getTime())) return;
-        row.dataset.chatRelative = relative(date);
-        row.dataset.chatDate = date.toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-      });
-    };
-
-    const setKeyboardSafeComposer = () => {
-      const vv = window.visualViewport;
-      if (!vv) return;
-      const rect = chat.getBoundingClientRect();
-      const viewportBottom = vv.offsetTop + vv.height;
-      const keyboard = Math.max(0, window.innerHeight - viewportBottom);
-      composer.style.position = "fixed";
-      composer.style.left = `${Math.max(0, rect.left)}px`;
-      composer.style.right = `${Math.max(0, window.innerWidth - rect.right)}px`;
-      composer.style.bottom = `${keyboard}px`;
-      composer.style.width = `${Math.max(0, rect.width)}px`;
-      composer.style.transform = "none";
-      composer.style.zIndex = "40";
-      body.style.paddingBottom = `${composer.getBoundingClientRect().height + 24}px`;
-      chat.style.setProperty("--matchup-keyboard-height", `${keyboard}px`);
     };
 
     const removeOlderButton = () => {
@@ -181,10 +155,87 @@ export function ChatVisualEnhancer() {
     const updateIndicator = () => {
       const indicator = ensureNewMessageIndicator();
       const count = indicator.querySelector<HTMLElement>("[data-matchup-new-count]");
-      if (count) {
-        count.textContent = `${newMessageCount} new message${newMessageCount === 1 ? "" : "s"}`;
-      }
+      if (count) count.textContent = `${newMessageCount} new message${newMessageCount === 1 ? "" : "s"}`;
       indicator.hidden = newMessageCount === 0;
+    };
+
+    const renderMessageMetadata = async () => {
+      const rows = Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]"));
+      if (!rows.length) return;
+      const ids = rows.map((row) => row.dataset.messageId || "").filter(Boolean);
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data: messages } = await supabase
+        .from("chat_messages")
+        .select("id,sender_id,created_at")
+        .in("id", ids);
+      if (!messages?.length) return;
+
+      const byId = new Map((messages as any[]).map((m) => [m.id, m]));
+      body.querySelectorAll("[data-matchup-date-separator]").forEach((node) => node.remove());
+      let previousDay = "";
+      rows.forEach((row) => {
+        const message = byId.get(row.dataset.messageId || "");
+        if (!message) return;
+        const day = new Date(message.created_at).toDateString();
+        if (day !== previousDay) {
+          const separator = document.createElement("div");
+          separator.dataset.matchupDateSeparator = "true";
+          separator.className = "matchup-chat-date-separator";
+          separator.innerHTML = `<span aria-hidden="true"></span><strong>${dayLabel(new Date(message.created_at))}</strong><span aria-hidden="true"></span>`;
+          row.parentElement?.insertBefore(separator, row);
+          previousDay = day;
+        }
+      });
+
+      const groupId = new URLSearchParams(window.location.search).get("group");
+      if (!groupId) return;
+      const { data: group } = await supabase.from("chat_groups").select("kind").eq("id", groupId).maybeSingle();
+      if (group?.kind !== "group") return;
+
+      const outgoingIds = (messages as any[])
+        .filter((m) => m.sender_id === auth.user.id)
+        .map((m) => m.id);
+      if (!outgoingIds.length) return;
+      const { data: reads } = await supabase
+        .from("chat_message_reads")
+        .select("message_id,user_id")
+        .in("message_id", outgoingIds)
+        .neq("user_id", auth.user.id);
+      const seen = new Map<string, Set<string>>();
+      for (const read of (reads || []) as any[]) {
+        if (!seen.has(read.message_id)) seen.set(read.message_id, new Set());
+        seen.get(read.message_id)!.add(read.user_id);
+      }
+      rows.forEach((row) => {
+        const id = row.dataset.messageId || "";
+        if (!outgoingIds.includes(id)) return;
+        row.querySelectorAll("[data-matchup-seen-by]").forEach((node) => node.remove());
+        const count = seen.get(id)?.size || 0;
+        if (!count) return;
+        const note = document.createElement("div");
+        note.dataset.matchupSeenBy = "true";
+        note.className = "matchup-chat-seen-by";
+        note.textContent = `Seen by ${count} ${count === 1 ? "person" : "people"}`;
+        row.querySelector("div.flex.max-w-\\[84\\%\\]")?.appendChild(note);
+      });
+    };
+
+    const setKeyboardSafeComposer = () => {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const rect = chat.getBoundingClientRect();
+      const viewportBottom = vv.offsetTop + vv.height;
+      const keyboard = Math.max(0, window.innerHeight - viewportBottom);
+      composer.style.position = "fixed";
+      composer.style.left = `${Math.max(0, rect.left)}px`;
+      composer.style.right = `${Math.max(0, window.innerWidth - rect.right)}px`;
+      composer.style.bottom = `${keyboard}px`;
+      composer.style.width = `${Math.max(0, rect.width)}px`;
+      composer.style.transform = "none";
+      composer.style.zIndex = "40";
+      body.style.paddingBottom = `${composer.getBoundingClientRect().height + 24}px`;
+      chat.style.setProperty("--matchup-keyboard-height", `${keyboard}px`);
     };
 
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 72;
@@ -208,7 +259,6 @@ export function ChatVisualEnhancer() {
       }
       previousTop = current;
       previousHeight = body.scrollHeight;
-      lastScrollTop = current;
       savePosition();
     };
 
@@ -221,19 +271,14 @@ export function ChatVisualEnhancer() {
     const anchor = content?.lastElementChild as HTMLElement | null;
     const savedPosition = readSavedPosition();
     const originalScrollIntoView = anchor?.scrollIntoView;
-    if (anchor && savedPosition !== null) {
-      anchor.scrollIntoView = () => undefined;
-    }
+    if (anchor && savedPosition !== null) anchor.scrollIntoView = () => undefined;
 
     const initialApply = () => {
       removeOlderButton();
-      markRelativeTimes();
       setKeyboardSafeComposer();
       void syncMatchHeader();
       previousIds = new Set(
-        Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map(
-          (el) => el.dataset.messageId || "",
-        ),
+        Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map((el) => el.dataset.messageId || ""),
       );
       if (savedPosition !== null) {
         restoreSavedPosition();
@@ -241,6 +286,8 @@ export function ChatVisualEnhancer() {
           if (anchor && originalScrollIntoView) anchor.scrollIntoView = originalScrollIntoView;
         }, 220);
       }
+      window.clearTimeout(metadataTimer);
+      metadataTimer = window.setTimeout(() => void renderMessageMetadata(), 60);
     };
 
     body.addEventListener("scroll", onScroll, { passive: true });
@@ -250,14 +297,14 @@ export function ChatVisualEnhancer() {
 
     const observer = new MutationObserver(() => {
       removeOlderButton();
-      markRelativeTimes();
       setKeyboardSafeComposer();
       void syncMatchHeader();
+      window.clearTimeout(metadataTimer);
+      metadataTimer = window.setTimeout(() => void renderMessageMetadata(), 50);
 
       if (loadingOlder) {
         const delta = body.scrollHeight - previousHeight;
         body.scrollTop = previousTop + delta;
-        lastScrollTop = body.scrollTop;
         previousTop = body.scrollTop;
         previousHeight = body.scrollHeight;
         loadingOlder = false;
@@ -265,9 +312,7 @@ export function ChatVisualEnhancer() {
       }
 
       const currentIds = new Set(
-        Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map(
-          (el) => el.dataset.messageId || "",
-        ),
+        Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map((el) => el.dataset.messageId || ""),
       );
       const added = [...currentIds].filter((id) => id && !previousIds.has(id));
       if (added.length) {
@@ -285,7 +330,6 @@ export function ChatVisualEnhancer() {
       previousIds = currentIds;
       previousHeight = body.scrollHeight;
       previousTop = body.scrollTop;
-      lastScrollTop = body.scrollTop;
     });
     observer.observe(body, { childList: true, subtree: true });
 
@@ -294,10 +338,12 @@ export function ChatVisualEnhancer() {
       removeOlderButton();
       setKeyboardSafeComposer();
       if (savedPosition !== null) restoreSavedPosition();
+      void renderMessageMetadata();
     }, 140);
 
     return () => {
       window.clearTimeout(restoreTimer);
+      window.clearTimeout(metadataTimer);
       window.cancelAnimationFrame(keyboardFrame);
       body.removeEventListener("scroll", onScroll);
       window.visualViewport?.removeEventListener("resize", onViewport);
