@@ -37,6 +37,10 @@ export function ChatVisualEnhancer() {
     let restoringOlder = false;
     let previousHeight = body.scrollHeight;
     let previousTop = body.scrollTop;
+    let lastScrollTop = body.scrollTop;
+
+    const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 72;
+    const wasAtBottom = () => previousHeight - previousTop - body.clientHeight < 72;
 
     const markRelativeTimes = () => {
       chat.querySelectorAll<HTMLElement>("[data-message-id]").forEach((row) => {
@@ -65,10 +69,11 @@ export function ChatVisualEnhancer() {
       composer.style.left = `${left}px`;
       composer.style.right = `${right}px`;
       composer.style.bottom = `${keyboard}px`;
+      composer.style.width = `${Math.max(0, rect.width)}px`;
       composer.style.zIndex = "40";
 
       const composerHeight = composer.getBoundingClientRect().height;
-      body.style.paddingBottom = `${composerHeight + 12}px`;
+      body.style.paddingBottom = `${composerHeight + 20}px`;
       chat.style.setProperty("--matchup-keyboard-height", `${keyboard}px`);
     };
 
@@ -79,6 +84,8 @@ export function ChatVisualEnhancer() {
         const value = Number(raw);
         if (!Number.isFinite(value)) return false;
         body.scrollTop = Math.min(value, Math.max(0, body.scrollHeight - body.clientHeight));
+        lastScrollTop = body.scrollTop;
+        previousTop = body.scrollTop;
         return true;
       } catch {
         return false;
@@ -92,8 +99,6 @@ export function ChatVisualEnhancer() {
         // Storage is optional; chat remains functional without it.
       }
     };
-
-    const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 72;
 
     const removeOlderButton = () => {
       const button = Array.from(body.querySelectorAll<HTMLButtonElement>("button")).find(
@@ -117,6 +122,7 @@ export function ChatVisualEnhancer() {
         body.scrollTo({ top: body.scrollHeight, behavior: "smooth" });
         newMessageCount = 0;
         indicator!.hidden = true;
+        window.setTimeout(savePosition, 300);
       });
       body.appendChild(indicator);
       return indicator;
@@ -130,22 +136,38 @@ export function ChatVisualEnhancer() {
     };
 
     const onScroll = () => {
-      const nearTop = body.scrollTop < 120;
-      const wasAtBottom = atBottom();
+      const current = body.scrollTop;
+      if (header) {
+        if (current <= 4 || current < lastScrollTop - 1) {
+          header.style.maxHeight = "120px";
+          header.style.transform = "translateY(0)";
+          header.style.opacity = "1";
+          header.style.pointerEvents = "auto";
+        } else if (current > lastScrollTop + 1) {
+          header.style.maxHeight = "0px";
+          header.style.transform = "translateY(-100%)";
+          header.style.opacity = "0";
+          header.style.pointerEvents = "none";
+        }
+      }
+      const nearTop = current < 120;
       if (nearTop && !restoringOlder) {
         const loader = body.querySelector<HTMLButtonElement>("[data-matchup-older-loader]");
         if (loader && !loader.disabled) {
           restoringOlder = true;
           previousHeight = body.scrollHeight;
-          previousTop = body.scrollTop;
+          previousTop = current;
           loader.click();
         }
       }
-      if (wasAtBottom) {
+      if (atBottom()) {
         newMessageCount = 0;
         const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]");
         if (indicator) indicator.hidden = true;
       }
+      lastScrollTop = current;
+      previousTop = current;
+      previousHeight = body.scrollHeight;
       savePosition();
     };
 
@@ -180,6 +202,7 @@ export function ChatVisualEnhancer() {
       if (restoringOlder) {
         const delta = body.scrollHeight - previousHeight;
         body.scrollTop = previousTop + delta;
+        lastScrollTop = body.scrollTop;
         restoringOlder = false;
         previousHeight = body.scrollHeight;
         previousTop = body.scrollTop;
@@ -189,23 +212,21 @@ export function ChatVisualEnhancer() {
       const currentIds = new Set(Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map((el) => el.dataset.messageId || ""));
       const added = [...currentIds].filter((id) => id && !previousIds.has(id));
       if (added.length) {
-        if (atBottom()) {
-          newMessageCount = 0;
-        } else {
+        const stayedUp = !wasAtBottom();
+        if (stayedUp) {
           newMessageCount += added.length;
-          const indicator = ensureNewMessageIndicator();
-          const count = indicator.querySelector<HTMLElement>("[data-matchup-new-count]");
-          if (count) count.textContent = `${newMessageCount} new message${newMessageCount === 1 ? "" : "s"}`;
-          indicator.hidden = false;
-          window.setTimeout(() => {
-            const before = body.scrollTop;
-            if (!atBottom() && before !== previousTop) body.scrollTop = previousTop;
-          }, 25);
+          body.scrollTop = Math.min(previousTop, Math.max(0, body.scrollHeight - body.clientHeight));
+          updateIndicator();
+        } else {
+          newMessageCount = 0;
+          const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]");
+          if (indicator) indicator.hidden = true;
         }
       }
       previousIds = currentIds;
       previousHeight = body.scrollHeight;
       previousTop = body.scrollTop;
+      lastScrollTop = body.scrollTop;
     });
     observer.observe(body, { childList: true, subtree: true });
 
@@ -213,6 +234,9 @@ export function ChatVisualEnhancer() {
       header.style.position = "sticky";
       header.style.top = "0";
       header.style.zIndex = "50";
+      header.style.maxHeight = "120px";
+      header.style.transform = "translateY(0)";
+      header.style.opacity = "1";
     }
 
     initialApply();
