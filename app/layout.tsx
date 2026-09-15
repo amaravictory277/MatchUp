@@ -11,6 +11,11 @@ import { RealtimeMatchOverlay } from "../components/realtime-match-overlay";
 import { PresenceProvider } from "../components/presence-provider";
 import { ChatVisualEnhancer } from "../components/chat/chat-visual-enhancer";
 import { PrivateHeaderEnhancer } from "../components/chat/private-header-enhancer";
+import { MessageFriendsCardEnhancer } from "../components/chat/message-friends-card-enhancer";
+
 export const metadata: Metadata = { title: "MatchUp | Football competition platform", description: "Create, discover, and compete in real football tournaments.", manifest: "/manifest.webmanifest", appleWebApp: { capable: true, title: "MatchUp", statusBarStyle: "black-translucent" }, icons: { icon: "/icon.svg", apple: "/icon.svg" } };
 export const viewport: Viewport = { themeColor: "#167bd1", width: "device-width", initialScale: 1 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><PrivateHeaderEnhancer/><ServiceWorker/><InstallPrompt/></body></html>; }
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
+}
