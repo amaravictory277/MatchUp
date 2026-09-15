@@ -79,6 +79,8 @@ begin
 end;
 $$;
 
+revoke execute on function public.chat_message_notification_trigger() from public, anon, authenticated;
+
 drop trigger if exists chat_messages_notifications on public.chat_messages;
 create trigger chat_messages_notifications after insert on public.chat_messages for each row execute function public.chat_message_notification_trigger();
 
