@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export function MessageFriendsCardEnhancer() {
+  const pathname = usePathname();
+
   useEffect(() => {
-    if (window.location.pathname !== "/message-friends") return;
+    if (pathname !== "/message-friends") return;
 
     const onClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target || target.closest("button,a,input,textarea,select")) return;
-
       let node: HTMLElement | null = target;
       while (node && node.tagName !== "MAIN") {
-        const messageButton = Array.from(node.querySelectorAll<HTMLButtonElement>("button"))
-          .find((button) => button.textContent?.trim() === "Message");
+        const messageButton = Array.from(node.querySelectorAll<HTMLButtonElement>("button")).find(
+          (button) => button.textContent?.trim() === "Message",
+        );
         if (messageButton && !messageButton.disabled) {
           event.preventDefault();
           messageButton.click();
@@ -25,7 +28,7 @@ export function MessageFriendsCardEnhancer() {
 
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, []);
+  }, [pathname]);
 
   return null;
 }
