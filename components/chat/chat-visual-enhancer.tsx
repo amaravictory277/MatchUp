@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 const SCROLL_KEY = "matchup:chat-scroll:";
 
@@ -21,6 +22,7 @@ function activeKey(chat: HTMLElement) {
 }
 
 export function ChatVisualEnhancer() {
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   useEffect(() => {
     const chat = document.querySelector<HTMLElement>(".matchup-chat");
     if (!chat) return;
@@ -38,9 +40,33 @@ export function ChatVisualEnhancer() {
     let previousHeight = body.scrollHeight;
     let previousTop = body.scrollTop;
     let lastScrollTop = body.scrollTop;
+    let matchSyncToken = "";
 
     const atBottom = () => body.scrollHeight - body.scrollTop - body.clientHeight < 72;
     const wasAtBottom = () => previousHeight - previousTop - body.clientHeight < 72;
+
+    const syncMatchHeader = async () => {
+      const groupId = new URLSearchParams(window.location.search).get("group");
+      const title = header?.querySelector<HTMLElement>("h1");
+      if (!header || !title || !groupId || matchSyncToken === groupId) return;
+      const { data: group } = await supabase.from("chat_groups").select("id,kind").eq("id", groupId).maybeSingle();
+      if (!group || group.kind !== "match") return;
+      matchSyncToken = groupId;
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data: rows } = await supabase.from("chat_group_members").select("user_id,profiles(id,display_name,username)").eq("group_id", groupId).limit(2);
+      const people = ((rows || []) as any[]).map(r => Array.isArray(r.profiles) ? r.profiles[0] : r.profiles).filter(Boolean);
+      const me = people.find((p:any) => p.id === auth.user.id);
+      const opponent = people.find((p:any) => p.id !== auth.user.id);
+      if (!me || !opponent) return;
+      title.replaceChildren();
+      const mine = document.createElement("span"); mine.textContent = me.display_name || me.username || "You"; mine.className = "block truncate";
+      const other = document.createElement("span"); other.textContent = opponent.display_name || opponent.username || "Opponent"; other.className = "mt-0.5 block truncate text-[10px] font-bold text-[#70c1ff]";
+      title.append(mine, other);
+      title.dataset.matchupMatchHeader = groupId;
+      const subtitle = title.parentElement?.querySelector<HTMLElement>("p");
+      if (subtitle) subtitle.textContent = "1-v-1 Match Chat";
+    };
 
     const markRelativeTimes = () => {
       chat.querySelectorAll<HTMLElement>("[data-message-id]").forEach((row) => {
@@ -64,14 +90,12 @@ export function ChatVisualEnhancer() {
       const keyboard = Math.max(0, window.innerHeight - viewportBottom);
       const left = Math.max(0, rect.left);
       const right = Math.max(0, window.innerWidth - rect.right);
-
       composer.style.position = "fixed";
       composer.style.left = `${left}px`;
       composer.style.right = `${right}px`;
       composer.style.bottom = `${keyboard}px`;
       composer.style.width = `${Math.max(0, rect.width)}px`;
       composer.style.zIndex = "40";
-
       const composerHeight = composer.getBoundingClientRect().height;
       body.style.paddingBottom = `${composerHeight + 20}px`;
       chat.style.setProperty("--matchup-keyboard-height", `${keyboard}px`);
@@ -87,27 +111,16 @@ export function ChatVisualEnhancer() {
         lastScrollTop = body.scrollTop;
         previousTop = body.scrollTop;
         return true;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     };
 
     const savePosition = () => {
-      try {
-        sessionStorage.setItem(`${SCROLL_KEY}${activeKey(chat)}`, String(body.scrollTop));
-      } catch {
-        // Storage is optional; chat remains functional without it.
-      }
+      try { sessionStorage.setItem(`${SCROLL_KEY}${activeKey(chat)}`, String(body.scrollTop)); } catch {}
     };
 
     const removeOlderButton = () => {
-      const button = Array.from(body.querySelectorAll<HTMLButtonElement>("button")).find(
-        (b) => b.textContent?.trim() === "Load older messages" || b.textContent?.trim() === "Loading…",
-      );
-      if (button) {
-        button.dataset.matchupOlderLoader = "true";
-        button.style.display = "none";
-      }
+      const button = Array.from(body.querySelectorAll<HTMLButtonElement>("button")).find(b => b.textContent?.trim() === "Load older messages" || b.textContent?.trim() === "Loading…");
+      if (button) { button.dataset.matchupOlderLoader = "true"; button.style.display = "none"; }
     };
 
     const ensureNewMessageIndicator = () => {
@@ -117,13 +130,7 @@ export function ChatVisualEnhancer() {
       indicator.dataset.matchupNewMessages = "true";
       indicator.className = "matchup-new-messages-indicator";
       indicator.innerHTML = '<span data-matchup-new-count></span><button type="button">Scroll to bottom <span aria-hidden="true">↓</span></button>';
-      const button = indicator.querySelector("button");
-      button?.addEventListener("click", () => {
-        body.scrollTo({ top: body.scrollHeight, behavior: "smooth" });
-        newMessageCount = 0;
-        indicator!.hidden = true;
-        window.setTimeout(savePosition, 300);
-      });
+      indicator.querySelector("button")?.addEventListener("click", () => { body.scrollTo({ top: body.scrollHeight, behavior: "smooth" }); newMessageCount = 0; indicator!.hidden = true; window.setTimeout(savePosition, 300); });
       body.appendChild(indicator);
       return indicator;
     };
@@ -138,118 +145,39 @@ export function ChatVisualEnhancer() {
     const onScroll = () => {
       const current = body.scrollTop;
       if (header) {
-        if (current <= 4 || current < lastScrollTop - 1) {
-          header.style.maxHeight = "120px";
-          header.style.transform = "translateY(0)";
-          header.style.opacity = "1";
-          header.style.pointerEvents = "auto";
-        } else if (current > lastScrollTop + 1) {
-          header.style.maxHeight = "0px";
-          header.style.transform = "translateY(-100%)";
-          header.style.opacity = "0";
-          header.style.pointerEvents = "none";
-        }
+        if (current <= 4 || current < lastScrollTop - 1) { header.style.maxHeight = "120px"; header.style.transform = "translateY(0)"; header.style.opacity = "1"; header.style.pointerEvents = "auto"; }
+        else if (current > lastScrollTop + 1) { header.style.maxHeight = "0px"; header.style.transform = "translateY(-100%)"; header.style.opacity = "0"; header.style.pointerEvents = "none"; }
       }
-      const nearTop = current < 120;
-      if (nearTop && !restoringOlder) {
+      if (current < 120 && !restoringOlder) {
         const loader = body.querySelector<HTMLButtonElement>("[data-matchup-older-loader]");
-        if (loader && !loader.disabled) {
-          restoringOlder = true;
-          previousHeight = body.scrollHeight;
-          previousTop = current;
-          loader.click();
-        }
+        if (loader && !loader.disabled) { restoringOlder = true; previousHeight = body.scrollHeight; previousTop = current; loader.click(); }
       }
-      if (atBottom()) {
-        newMessageCount = 0;
-        const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]");
-        if (indicator) indicator.hidden = true;
-      }
-      lastScrollTop = current;
-      previousTop = current;
-      previousHeight = body.scrollHeight;
-      savePosition();
+      if (atBottom()) { newMessageCount = 0; const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]"); if (indicator) indicator.hidden = true; }
+      lastScrollTop = current; previousTop = current; previousHeight = body.scrollHeight; savePosition();
     };
 
-    const onViewport = () => {
-      cancelAnimationFrame(keyboardFrame);
-      keyboardFrame = requestAnimationFrame(setKeyboardSafeComposer);
-    };
-
-    const initialApply = () => {
-      removeOlderButton();
-      markRelativeTimes();
-      setKeyboardSafeComposer();
-      const ids = new Set(Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map((el) => el.dataset.messageId || ""));
-      previousIds = ids;
-      restoreTimer = window.setTimeout(() => {
-        restoreSavedPosition();
-        removeOlderButton();
-        setKeyboardSafeComposer();
-      }, 120);
-    };
+    const onViewport = () => { cancelAnimationFrame(keyboardFrame); keyboardFrame = requestAnimationFrame(setKeyboardSafeComposer); };
+    const initialApply = () => { removeOlderButton(); markRelativeTimes(); setKeyboardSafeComposer(); void syncMatchHeader(); previousIds = new Set(Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map(el => el.dataset.messageId || "")); restoreTimer = window.setTimeout(() => { restoreSavedPosition(); removeOlderButton(); setKeyboardSafeComposer(); void syncMatchHeader(); }, 120); };
 
     body.addEventListener("scroll", onScroll, { passive: true });
-    window.visualViewport?.addEventListener("resize", onViewport);
-    window.visualViewport?.addEventListener("scroll", onViewport);
-    window.addEventListener("resize", onViewport);
+    window.visualViewport?.addEventListener("resize", onViewport); window.visualViewport?.addEventListener("scroll", onViewport); window.addEventListener("resize", onViewport);
 
     const observer = new MutationObserver(() => {
-      removeOlderButton();
-      markRelativeTimes();
-      setKeyboardSafeComposer();
-
-      if (restoringOlder) {
-        const delta = body.scrollHeight - previousHeight;
-        body.scrollTop = previousTop + delta;
-        lastScrollTop = body.scrollTop;
-        restoringOlder = false;
-        previousHeight = body.scrollHeight;
-        previousTop = body.scrollTop;
-        return;
-      }
-
-      const currentIds = new Set(Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map((el) => el.dataset.messageId || ""));
-      const added = [...currentIds].filter((id) => id && !previousIds.has(id));
+      removeOlderButton(); markRelativeTimes(); setKeyboardSafeComposer(); void syncMatchHeader();
+      if (restoringOlder) { const delta = body.scrollHeight - previousHeight; body.scrollTop = previousTop + delta; lastScrollTop = body.scrollTop; restoringOlder = false; previousHeight = body.scrollHeight; previousTop = body.scrollTop; return; }
+      const currentIds = new Set(Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]")).map(el => el.dataset.messageId || ""));
+      const added = [...currentIds].filter(id => id && !previousIds.has(id));
       if (added.length) {
-        const stayedUp = !wasAtBottom();
-        if (stayedUp) {
-          newMessageCount += added.length;
-          body.scrollTop = Math.min(previousTop, Math.max(0, body.scrollHeight - body.clientHeight));
-          updateIndicator();
-        } else {
-          newMessageCount = 0;
-          const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]");
-          if (indicator) indicator.hidden = true;
-        }
+        if (!wasAtBottom()) { newMessageCount += added.length; body.scrollTop = Math.min(previousTop, Math.max(0, body.scrollHeight - body.clientHeight)); updateIndicator(); }
+        else { newMessageCount = 0; const indicator = body.querySelector<HTMLElement>("[data-matchup-new-messages]"); if (indicator) indicator.hidden = true; }
       }
-      previousIds = currentIds;
-      previousHeight = body.scrollHeight;
-      previousTop = body.scrollTop;
-      lastScrollTop = body.scrollTop;
+      previousIds = currentIds; previousHeight = body.scrollHeight; previousTop = body.scrollTop; lastScrollTop = body.scrollTop;
     });
     observer.observe(body, { childList: true, subtree: true });
-
-    if (header) {
-      header.style.position = "sticky";
-      header.style.top = "0";
-      header.style.zIndex = "50";
-      header.style.maxHeight = "120px";
-      header.style.transform = "translateY(0)";
-      header.style.opacity = "1";
-    }
-
+    if (header) { header.style.position = "sticky"; header.style.top = "0"; header.style.zIndex = "50"; header.style.maxHeight = "120px"; header.style.transform = "translateY(0)"; header.style.opacity = "1"; }
     initialApply();
-    return () => {
-      window.clearTimeout(restoreTimer);
-      cancelAnimationFrame(keyboardFrame);
-      body.removeEventListener("scroll", onScroll);
-      window.visualViewport?.removeEventListener("resize", onViewport);
-      window.visualViewport?.removeEventListener("scroll", onViewport);
-      window.removeEventListener("resize", onViewport);
-      observer.disconnect();
-    };
-  }, []);
+    return () => { window.clearTimeout(restoreTimer); cancelAnimationFrame(keyboardFrame); body.removeEventListener("scroll", onScroll); window.visualViewport?.removeEventListener("resize", onViewport); window.visualViewport?.removeEventListener("scroll", onViewport); window.removeEventListener("resize", onViewport); observer.disconnect(); };
+  }, [supabase]);
 
   return null;
 }
