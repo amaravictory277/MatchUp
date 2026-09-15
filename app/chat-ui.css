@@ -1,11 +1,118 @@
 .app-shell > header { padding-inline: 6px; }
-.matchup-chat { position: relative; isolation: isolate; overflow: hidden; }
-.matchup-chat-header { position: sticky !important; top: 0 !important; z-index: 50 !important; flex: 0 0 auto !important; overflow: hidden !important; }
-.matchup-chat-body { min-height: 0 !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 104px !important; }
-.matchup-chat-composer { position: sticky !important; bottom: 0 !important; z-index: 40 !important; width: 100% !important; margin: 0 !important; padding: .75rem max(.75rem, env(safe-area-inset-left)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-right)) !important; }
+
+/* Chat is a nested viewport: the page itself must not become the scroller. */
+html:has(.matchup-chat),
+body:has(.matchup-chat) { overflow: hidden; }
+
+.matchup-chat {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+}
+
+/* The consolidated chat specification requires the header to remain visible. */
+.matchup-chat-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 50 !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  max-height: 200px !important;
+  transform: translateY(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  padding-top: max(.75rem, env(safe-area-inset-top)) !important;
+}
+
+.matchup-chat-body {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 104px !important;
+  scrollbar-gutter: stable;
+}
+
+.matchup-chat-composer {
+  position: fixed !important;
+  bottom: 0 !important;
+  z-index: 40 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: .75rem max(.75rem, env(safe-area-inset-left)) calc(.75rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-right)) !important;
+  transform: none !important;
+}
+
 .matchup-chat-composer > div { width: 100%; }
 .matchup-chat-composer input { min-height: 40px; }
-.matchup-new-messages-indicator { position: sticky; bottom: 18px; z-index: 35; display: flex; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: calc(100% - 24px); margin: 12px auto 0; padding: 8px 10px 8px 13px; border: 1px solid #245b91; border-radius: 999px; background: #0a2946; color: #dff2ff; box-shadow: 0 10px 28px rgba(0,0,0,.28); font-size: 11px; font-weight: 800; }
-.matchup-new-messages-indicator button { border: 0; background: transparent; color: #70c1ff; font: inherit; cursor: pointer; }
+
+/* Status belongs beside the outgoing bubble, never inside a white badge. */
+.matchup-chat [aria-label="Sent"],
+.matchup-chat [aria-label="Delivered"],
+.matchup-chat [aria-label="Read"] {
+  position: absolute !important;
+  right: -24px !important;
+  bottom: 4px !important;
+  display: grid !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #167bd1 !important;
+  box-shadow: none !important;
+}
+
+.matchup-chat [aria-label="Sent"] svg,
+.matchup-chat [aria-label="Delivered"] svg,
+.matchup-chat [aria-label="Read"] svg {
+  color: #167bd1 !important;
+}
+
+.matchup-new-messages-indicator {
+  position: sticky;
+  bottom: 18px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 12px auto 0;
+  padding: 8px 10px 8px 13px;
+  border: 1px solid #245b91;
+  border-radius: 999px;
+  background: #0a2946;
+  color: #dff2ff;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.matchup-new-messages-indicator button {
+  border: 0;
+  background: transparent;
+  color: #70c1ff;
+  font: inherit;
+  cursor: pointer;
+}
+
 .matchup-new-messages-indicator[hidden] { display: none !important; }
-@media (max-width: 640px) { .matchup-chat { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; } .matchup-chat-header { padding-top: max(.75rem, env(safe-area-inset-top)) !important; } .matchup-chat-composer { padding-left: max(.75rem, env(safe-area-inset-left)) !important; padding-right: max(.75rem, env(safe-area-inset-right)) !important; } }
+
+@media (max-width: 640px) {
+  .matchup-chat {
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+
+  .matchup-chat-composer {
+    padding-left: max(.75rem, env(safe-area-inset-left)) !important;
+    padding-right: max(.75rem, env(safe-area-inset-right)) !important;
+  }
+}
