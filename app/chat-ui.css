@@ -48,6 +48,12 @@ body:has(.matchup-chat) { overflow: hidden; }
 .matchup-chat-composer > div { width: 100%; }
 .matchup-chat-composer input { min-height: 40px; }
 
+/* Match the supplied references: a clean rounded bubble with no pinched corner. */
+.matchup-chat [class*="rounded-br-[7px]"],
+.matchup-chat [class*="rounded-bl-[7px]"] {
+  border-radius: 22px !important;
+}
+
 /* Status belongs beside the outgoing bubble, never inside a white badge. */
 .matchup-chat [aria-label="Sent"],
 .matchup-chat [aria-label="Delivered"],
@@ -71,6 +77,33 @@ body:has(.matchup-chat) { overflow: hidden; }
 .matchup-chat [aria-label="Delivered"] svg,
 .matchup-chat [aria-label="Read"] svg {
   color: #167bd1 !important;
+}
+
+.matchup-chat-date-separator {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: #7892ac;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.matchup-chat-date-separator span {
+  height: 1px;
+  background: #18365f;
+}
+
+.matchup-chat-seen-by {
+  margin-top: 4px;
+  padding-right: 4px;
+  text-align: right;
+  color: #70c1ff;
+  font-size: 9px;
+  font-weight: 700;
 }
 
 .matchup-new-messages-indicator {
