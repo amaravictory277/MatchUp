@@ -1,3 +1,4 @@
+.app-shell > header { padding-inline: 6px; }
 .matchup-chat { position: relative; isolation: isolate; overflow: hidden; }
 .matchup-chat-header { position: sticky !important; top: 0 !important; z-index: 50 !important; flex: 0 0 auto !important; overflow: hidden !important; }
 .matchup-chat-body { min-height: 0 !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 104px !important; }
