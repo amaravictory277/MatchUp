@@ -16,12 +16,10 @@ function dayLabel(value: Date) {
 
 export function ChatMetadataEnhancer() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-
   useEffect(() => {
     const chat = document.querySelector<HTMLElement>(".matchup-chat");
     const body = chat?.querySelector<HTMLElement>(".matchup-chat-body");
     if (!body) return;
-
     let timer = 0;
     let dead = false;
 
@@ -29,7 +27,6 @@ export function ChatMetadataEnhancer() {
       const rows = Array.from(body.querySelectorAll<HTMLElement>("[data-message-id]"));
       const ids = rows.map((row) => row.dataset.messageId || "").filter((id) => UUID_RE.test(id));
       if (!ids.length) return;
-
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user || dead) return;
       const { data: messages } = await supabase.from("chat_messages").select("id,sender_id,created_at").in("id", ids);
@@ -60,7 +57,6 @@ export function ChatMetadataEnhancer() {
       if (!groupId) return;
       const { data: group } = await supabase.from("chat_groups").select("kind").eq("id", groupId).maybeSingle();
       if (group?.kind !== "group") return;
-
       const outgoingIds = (messages as any[]).filter((m) => m.sender_id === auth.user.id).map((m) => m.id);
       if (!outgoingIds.length) return;
       const { data: reads } = await supabase.from("chat_message_reads").select("message_id,user_id").in("message_id", outgoingIds).neq("user_id", auth.user.id);
@@ -69,7 +65,6 @@ export function ChatMetadataEnhancer() {
         if (!seen.has(read.message_id)) seen.set(read.message_id, new Set());
         seen.get(read.message_id)!.add(read.user_id);
       }
-
       for (const row of rows) {
         const id = row.dataset.messageId || "";
         if (!outgoingIds.includes(id)) continue;
@@ -82,7 +77,8 @@ export function ChatMetadataEnhancer() {
         const note = existing || document.createElement("div");
         note.dataset.matchupSeenBy = "true";
         note.className = "matchup-chat-seen-by";
-        note.textContent = `Seen by ${count} ${count === 1 ? "person" : "people"}`;
+        const text = `Seen by ${count} ${count === 1 ? "person" : "people"}`;
+        if (note.textContent !== text) note.textContent = text;
         if (!existing) row.querySelector("div.flex.max-w-\\[84\\%\\]")?.appendChild(note);
       }
     };
@@ -91,17 +87,14 @@ export function ChatMetadataEnhancer() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => void render(), 80);
     };
-
     const observer = new MutationObserver(schedule);
     observer.observe(body, { childList: true, subtree: true });
     schedule();
-
     return () => {
       dead = true;
       window.clearTimeout(timer);
       observer.disconnect();
     };
   }, [supabase]);
-
   return null;
 }
