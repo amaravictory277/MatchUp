@@ -37,6 +37,7 @@ export function ReadyPlayersPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const [activeMatch, setActiveMatch] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -48,7 +49,7 @@ export function ReadyPlayersPage() {
 
     const id = auth.user.id;
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const [{ data: me }, { data: ps }, { data: reqsIn }, { data: reqsOut }] = await Promise.all([
+    const [{ data: me }, { data: ps }, { data: reqsIn }, { data: reqsOut }, { data: activeRows }] = await Promise.all([
       supabase.from("profiles").select("id,display_name,username,avatar_path,ready_player_enabled").eq("id", id).maybeSingle(),
       supabase.rpc("get_ready_players"),
       supabase
@@ -65,12 +66,18 @@ export function ReadyPlayersPage() {
         .in("status", ["pending", "accepted"])
         .or(`status.eq.pending,responded_at.gte.${cutoff}`)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("matches")
+        .select("id")
+        .or(`player_a_id.eq.${id},player_b_id.eq.${id}`)
+        .limit(1),
     ]);
 
     setMeReady(Boolean((me as Profile | null)?.ready_player_enabled));
     setPlayers((ps || []) as Profile[]);
     setIncoming((reqsIn || []) as MatchRequest[]);
     setOutgoing((reqsOut || []) as MatchRequest[]);
+    setActiveMatch(Boolean((activeRows || []).length));
     setLoading(false);
   }, [router, supabase]);
 
@@ -105,7 +112,7 @@ export function ReadyPlayersPage() {
       .channel("matchup-ready-match-state")
       .on("postgres_changes", { event: "*", schema: "public", table: "match_requests" }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "ready_match_presence" }, () => void load())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "matches" }, () => void load())
       .subscribe();
 
     return () => {
@@ -186,6 +193,12 @@ export function ReadyPlayersPage() {
           </div>
         ) : null}
 
+        {activeMatch ? (
+          <div role="status" className="mt-5 rounded-2xl border border-[#3477c5] bg-[#123c72] px-5 py-4 text-base font-black text-white">
+            You already have an active match
+          </div>
+        ) : null}
+
         <section className="mt-6 rounded-2xl border border-[#18365f] bg-[#071426] p-4">
           <div className="flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]"><Swords size={21} /></span>
@@ -196,10 +209,10 @@ export function ReadyPlayersPage() {
             <button
               type="button"
               onClick={() => void toggleReady()}
-              disabled={busy === "self" || !sessionId}
-              className={`rounded-xl px-3 py-2 text-xs font-black ${meReady ? "bg-[#35a66f] text-white" : "bg-[#167bd1] text-white"}`}
+              disabled={busy === "self" || !sessionId || activeMatch}
+              className={`rounded-xl px-3 py-2 text-xs font-black ${meReady ? "bg-[#35a66f] text-white" : "bg-[#167bd1] text-white"} disabled:opacity-50`}
             >
-              {busy === "self" ? <Loader2 size={14} className="animate-spin" /> : meReady ? "Ready" : "Ready"}
+              {busy === "self" ? <Loader2 size={14} className="animate-spin" /> : "Ready"}
             </button>
           </div>
         </section>
@@ -222,22 +235,13 @@ export function ReadyPlayersPage() {
                       </div>
                     </div>
                     {accepted ? (
-                      <button
-                        type="button"
-                        disabled={busy === `message:${profile.id}`}
-                        onClick={() => void messageNow(profile.id)}
-                        className="mt-3 w-full rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black"
-                      >
+                      <button type="button" disabled={busy === `message:${profile.id}`} onClick={() => void messageNow(profile.id)} className="mt-3 w-full rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black">
                         {busy === `message:${profile.id}` ? "Opening…" : "MESSAGE NOW"}
                       </button>
                     ) : (
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button type="button" disabled={busy === request.id} onClick={() => void respond(request, true)} className="rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black">
-                          <Check size={14} className="mr-1 inline" />Accept
-                        </button>
-                        <button type="button" disabled={busy === request.id} onClick={() => void respond(request, false)} className="rounded-xl border border-[#36506b] px-4 py-2.5 text-xs font-black text-[#b7c9da]">
-                          <X size={14} className="mr-1 inline" />Decline
-                        </button>
+                        <button type="button" disabled={busy === request.id} onClick={() => void respond(request, true)} className="rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black"><Check size={14} className="mr-1 inline" />Accept</button>
+                        <button type="button" disabled={busy === request.id} onClick={() => void respond(request, false)} className="rounded-xl border border-[#36506b] px-4 py-2.5 text-xs font-black text-[#b7c9da]"><X size={14} className="mr-1 inline" />Decline</button>
                       </div>
                     )}
                   </div>
@@ -259,16 +263,9 @@ export function ReadyPlayersPage() {
                   <div key={request.id} className="rounded-2xl border border-[#18365f] bg-[#071426] p-3">
                     <div className="flex items-center gap-3">
                       <MatchUpAvatar profile={profile} size="md" alt={nameOf(profile)} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-black">{nameOf(profile)}</p>
-                        <p className="text-xs text-[#7892ac]">{accepted ? "Match accepted" : "Request sent"}</p>
-                      </div>
+                      <div className="min-w-0 flex-1"><p className="truncate font-black">{nameOf(profile)}</p><p className="text-xs text-[#7892ac]">{accepted ? "Match accepted" : "Request sent"}</p></div>
                     </div>
-                    {accepted ? (
-                      <button type="button" disabled={busy === `message:${profile.id}`} onClick={() => void messageNow(profile.id)} className="mt-3 w-full rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black">
-                        {busy === `message:${profile.id}` ? "Opening…" : "MESSAGE NOW"}
-                      </button>
-                    ) : null}
+                    {accepted ? <button type="button" disabled={busy === `message:${profile.id}`} onClick={() => void messageNow(profile.id)} className="mt-3 w-full rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black">{busy === `message:${profile.id}` ? "Opening…" : "MESSAGE NOW"}</button> : null}
                   </div>
                 );
               })}
@@ -278,36 +275,12 @@ export function ReadyPlayersPage() {
 
         <section className="mt-7">
           <div className="mb-3 flex items-end justify-between">
-            <div>
-              <h2 className="text-lg font-black">Players ready now</h2>
-              <p className="mt-1 text-xs text-[#7892ac]">Only users who are connected, inside Ready Match, and have enabled Ready Player are shown.</p>
-            </div>
+            <div><h2 className="text-lg font-black">Players ready now</h2><p className="mt-1 text-xs text-[#7892ac]">Only users who are connected, inside Ready Match, and have enabled Ready Player are shown.</p></div>
             <span className="text-xs font-bold text-[#7892ac]">{players.length}</span>
           </div>
-          {loading ? (
-            <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading ready players…</div>
-          ) : players.length ? (
-            <div className="space-y-2">
-              {players.map((player) => (
-                <div key={player.id} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-3">
-                  <MatchUpAvatar profile={player} size="md" alt={nameOf(player)} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-black">{nameOf(player)}</p>
-                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[#7892ac]"><span className="size-2 rounded-full bg-[#35c58a]" />Ready to play</p>
-                  </div>
-                  <button type="button" disabled={busy === player.id} onClick={() => void challenge(player.id)} className="flex items-center gap-1.5 rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50">
-                    <Swords size={14} />{busy === player.id ? "Sending…" : "Challenge"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="surface-card p-8 text-center">
-              <UserRound size={28} className="mx-auto text-[#47a8ff]" />
-              <p className="mt-3 font-black">No ready players right now</p>
-              <p className="mt-1 text-sm text-[#7892ac]">You can turn on Ready Player and wait for another user.</p>
-            </div>
-          )}
+          {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading ready players…</div> : players.length ? (
+            <div className="space-y-2">{players.map((player) => <div key={player.id} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-3"><MatchUpAvatar profile={player} size="md" alt={nameOf(player)} /><div className="min-w-0 flex-1"><p className="truncate font-black">{nameOf(player)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-[#7892ac]"><span className="size-2 rounded-full bg-[#35c58a]" />Ready to play</p></div><button type="button" disabled={busy === player.id || activeMatch} onClick={() => void challenge(player.id)} className="flex items-center gap-1.5 rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50"><Swords size={14} />{busy === player.id ? "Sending…" : "Challenge"}</button></div>)}</div>
+          ) : <div className="surface-card p-8 text-center"><UserRound size={28} className="mx-auto text-[#47a8ff]" /><p className="mt-3 font-black">No ready players right now</p><p className="mt-1 text-sm text-[#7892ac]">You can turn on Ready Player and wait for another user.</p></div>}
         </section>
       </div>
     </main>
