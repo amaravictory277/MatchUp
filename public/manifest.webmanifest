@@ -1,1 +1,15 @@
-{"name":"MatchUp — eFootball tournaments","short_name":"MatchUp","start_url":"/","display":"standalone","background_color":"#0b2116","theme_color":"#0b2116","description":"Create, discover and compete in eFootball tournaments.","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "MatchUp — eFootball tournaments",
+  "short_name": "MatchUp",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#061120",
+  "theme_color": "#167bd1",
+  "description": "Create, discover and compete in eFootball tournaments.",
+  "icons": [
+    { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
