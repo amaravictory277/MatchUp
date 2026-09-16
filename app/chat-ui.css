@@ -1,6 +1,5 @@
 .app-shell > header { padding-inline: 6px; }
 
-/* The chat owns its viewport: the document never becomes the message scroller. */
 html:has(.matchup-chat),
 body:has(.matchup-chat) {
   overflow: hidden !important;
@@ -22,11 +21,9 @@ body:has(.matchup-chat) {
   min-height: 0 !important;
 }
 
-/* Header and composer are outside the message scroller, so browser address-bar changes
-   cannot turn the whole chat page into a scrolling container. */
 .matchup-chat-header {
-  position: relative !important;
-  top: auto !important;
+  position: sticky !important;
+  top: 0 !important;
   z-index: 50 !important;
   flex: 0 0 auto !important;
   overflow: visible !important;
@@ -36,6 +33,7 @@ body:has(.matchup-chat) {
   opacity: 1 !important;
   pointer-events: auto !important;
   padding-top: max(.75rem, env(safe-area-inset-top)) !important;
+  background: #08182b !important;
 }
 
 .matchup-chat-body {
@@ -68,55 +66,50 @@ body:has(.matchup-chat) {
   border-radius: 22px !important;
 }
 
-/* Outgoing status: one bold white check in a deliberate blue circular frame. */
 .matchup-chat [aria-label="Sent"],
 .matchup-chat [aria-label="Delivered"],
 .matchup-chat [aria-label="Read"] {
   position: absolute !important;
-  right: -26px !important;
+  right: -22px !important;
   bottom: 2px !important;
   display: grid !important;
-  width: 20px !important;
-  height: 20px !important;
+  width: 12px !important;
+  height: 12px !important;
   margin: 0 !important;
   padding: 0 !important;
-  border: 2px solid #167bd1 !important;
+  border: 1.5px solid #167bd1 !important;
   border-radius: 999px !important;
   background: #167bd1 !important;
   color: #fff !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,.22) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18) !important;
 }
 
 .matchup-chat [aria-label="Sent"] svg,
 .matchup-chat [aria-label="Delivered"] svg,
 .matchup-chat [aria-label="Read"] svg {
-  width: 12px !important;
-  height: 12px !important;
+  width: 8px !important;
+  height: 8px !important;
   color: #fff !important;
   stroke: currentColor !important;
-  stroke-width: 3 !important;
+  stroke-width: 3.5 !important;
 }
 
-/* CheckCheck has two paths; keep only the first check visually. */
 .matchup-chat [aria-label="Sent"] svg path:nth-of-type(2),
 .matchup-chat [aria-label="Delivered"] svg path:nth-of-type(2),
 .matchup-chat [aria-label="Read"] svg path:nth-of-type(2) {
   display: none !important;
 }
 
-/* Reserve the status-icon gutter on outgoing messages so it never touches the bubble edge. */
 .matchup-chat-body .justify-end > div {
-  margin-right: 22px !important;
+  margin-right: 18px !important;
 }
 
-/* My-message reply stays on the left; the status stays on the right. */
 .matchup-chat-body .justify-end > button[aria-label="Reply to message"] {
   order: -1 !important;
   margin-left: 0 !important;
   margin-right: 12px !important;
 }
 
-/* Other-message reply stays on the right with a visible gap from the bubble. */
 .matchup-chat-body .justify-start > button[aria-label="Reply to message"] {
   margin-left: 10px !important;
   margin-right: 0 !important;
@@ -135,19 +128,8 @@ body:has(.matchup-chat) {
   text-transform: uppercase;
 }
 
-.matchup-chat-date-separator span {
-  height: 1px;
-  background: #18365f;
-}
-
-.matchup-chat-seen-by {
-  margin-top: 4px;
-  padding-right: 4px;
-  text-align: right;
-  color: #70c1ff;
-  font-size: 9px;
-  font-weight: 700;
-}
+.matchup-chat-date-separator span { height: 1px; background: #18365f; }
+.matchup-chat-seen-by { margin-top: 4px; padding-right: 4px; text-align: right; color: #70c1ff; font-size: 9px; font-weight: 700; }
 
 .matchup-new-messages-indicator {
   position: sticky;
@@ -170,33 +152,12 @@ body:has(.matchup-chat) {
   font-weight: 800;
 }
 
-.matchup-new-messages-indicator button {
-  border: 0;
-  background: transparent;
-  color: #70c1ff;
-  font: inherit;
-  cursor: pointer;
-}
-
+.matchup-new-messages-indicator button { border: 0; background: transparent; color: #70c1ff; font: inherit; cursor: pointer; }
 .matchup-new-messages-indicator[hidden] { display: none !important; }
 
 @media (max-width: 640px) {
-  .matchup-chat {
-    border-radius: 0 !important;
-    border-left: 0 !important;
-    border-right: 0 !important;
-  }
-
-  .matchup-chat-composer {
-    padding-left: max(.75rem, env(safe-area-inset-left)) !important;
-    padding-right: max(.75rem, env(safe-area-inset-right)) !important;
-  }
-
-  .matchup-chat-body .justify-end > div {
-    margin-right: 20px !important;
-  }
-
-  .matchup-chat-body .justify-end > button[aria-label="Reply to message"] {
-    margin-right: 8px !important;
-  }
+  .matchup-chat { border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
+  .matchup-chat-composer { padding-left: max(.75rem, env(safe-area-inset-left)) !important; padding-right: max(.75rem, env(safe-area-inset-right)) !important; }
+  .matchup-chat-body .justify-end > div { margin-right: 16px !important; }
+  .matchup-chat-body .justify-end > button[aria-label="Reply to message"] { margin-right: 8px !important; }
 }
