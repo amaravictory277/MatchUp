@@ -1,25 +1,37 @@
 .app-shell > header { padding-inline: 6px; }
 
-/* Chat is a nested viewport: the page itself must not become the scroller. */
+/* The chat owns its viewport: the document never becomes the message scroller. */
 html:has(.matchup-chat),
-body:has(.matchup-chat) { overflow: hidden; }
+body:has(.matchup-chat) {
+  overflow: hidden !important;
+  height: 100%;
+}
 
 .matchup-chat {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  display: block;
+  overflow: hidden !important;
   height: 100dvh !important;
+  min-height: 0 !important;
   max-height: 100dvh !important;
 }
 
-/* The consolidated chat specification requires the header to remain visible. */
+.matchup-chat > div {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Header and composer are outside the message scroller, so browser address-bar changes
+   cannot turn the whole chat page into a scrolling container. */
 .matchup-chat-header {
-  position: sticky !important;
-  top: 0 !important;
+  position: relative !important;
+  top: auto !important;
   z-index: 50 !important;
   flex: 0 0 auto !important;
   overflow: visible !important;
   max-height: 200px !important;
+  height: auto !important;
   transform: translateY(0) !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -27,7 +39,10 @@ body:has(.matchup-chat) { overflow: hidden; }
 }
 
 .matchup-chat-body {
+  flex: 1 1 auto !important;
   min-height: 0 !important;
+  height: 0 !important;
+  overflow-x: hidden !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -48,35 +63,63 @@ body:has(.matchup-chat) { overflow: hidden; }
 .matchup-chat-composer > div { width: 100%; }
 .matchup-chat-composer input { min-height: 40px; }
 
-/* Match the supplied references: a clean rounded bubble with no pinched corner. */
 .matchup-chat [class*="rounded-br-[7px]"],
 .matchup-chat [class*="rounded-bl-[7px]"] {
   border-radius: 22px !important;
 }
 
-/* Status belongs beside the outgoing bubble, never inside a white badge. */
+/* Outgoing status: one bold white check in a deliberate blue circular frame. */
 .matchup-chat [aria-label="Sent"],
 .matchup-chat [aria-label="Delivered"],
 .matchup-chat [aria-label="Read"] {
   position: absolute !important;
-  right: -24px !important;
-  bottom: 4px !important;
+  right: -26px !important;
+  bottom: 2px !important;
   display: grid !important;
-  width: 16px !important;
-  height: 16px !important;
+  width: 20px !important;
+  height: 20px !important;
   margin: 0 !important;
   padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: #167bd1 !important;
-  box-shadow: none !important;
+  border: 2px solid #167bd1 !important;
+  border-radius: 999px !important;
+  background: #167bd1 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.22) !important;
 }
 
 .matchup-chat [aria-label="Sent"] svg,
 .matchup-chat [aria-label="Delivered"] svg,
 .matchup-chat [aria-label="Read"] svg {
-  color: #167bd1 !important;
+  width: 12px !important;
+  height: 12px !important;
+  color: #fff !important;
+  stroke: currentColor !important;
+  stroke-width: 3 !important;
+}
+
+/* CheckCheck has two paths; keep only the first check visually. */
+.matchup-chat [aria-label="Sent"] svg path:nth-of-type(2),
+.matchup-chat [aria-label="Delivered"] svg path:nth-of-type(2),
+.matchup-chat [aria-label="Read"] svg path:nth-of-type(2) {
+  display: none !important;
+}
+
+/* Reserve the status-icon gutter on outgoing messages so it never touches the bubble edge. */
+.matchup-chat-body .justify-end > div {
+  margin-right: 22px !important;
+}
+
+/* My-message reply stays on the left; the status stays on the right. */
+.matchup-chat-body .justify-end > button[aria-label="Reply to message"] {
+  order: -1 !important;
+  margin-left: 0 !important;
+  margin-right: 12px !important;
+}
+
+/* Other-message reply stays on the right with a visible gap from the bubble. */
+.matchup-chat-body .justify-start > button[aria-label="Reply to message"] {
+  margin-left: 10px !important;
+  margin-right: 0 !important;
 }
 
 .matchup-chat-date-separator {
@@ -147,5 +190,13 @@ body:has(.matchup-chat) { overflow: hidden; }
   .matchup-chat-composer {
     padding-left: max(.75rem, env(safe-area-inset-left)) !important;
     padding-right: max(.75rem, env(safe-area-inset-right)) !important;
+  }
+
+  .matchup-chat-body .justify-end > div {
+    margin-right: 20px !important;
+  }
+
+  .matchup-chat-body .justify-end > button[aria-label="Reply to message"] {
+    margin-right: 8px !important;
   }
 }
