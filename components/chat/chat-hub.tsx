@@ -147,7 +147,7 @@ function chatBodyError(body: string) {
   return null;
 }
 
-export function ChatHub() {
+export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [user, setUser] = useState<{ id: string; displayName: string }>({
     id: "",
@@ -328,11 +328,32 @@ export function ChatHub() {
     setFriends(fp as Profile[]);
     setInviteCandidates(fp as Profile[]);
     setLoading(false);
-    if (!active && g) setActive(g);
-  }, [active, supabase]);
+    if (!active && g && !initialGroupId) setActive(g);
+  }, [active, initialGroupId, supabase]);
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+  useEffect(() => {
+    if (!initialGroupId || !user.id) return;
+    let cancelled = false;
+    const openRequestedConversation = async () => {
+      const { data, error: e } = await supabase
+        .from("chat_groups")
+        .select("id,name,created_by,created_at,kind,locked,member_limit,image_path")
+        .eq("id", initialGroupId)
+        .maybeSingle();
+      if (e) {
+        if (!cancelled) setError(e.message);
+        return;
+      }
+      if (!cancelled && data) {
+        setActive(data as Group);
+        setShowRooms(false);
+      }
+    };
+    void openRequestedConversation();
+    return () => { cancelled = true; };
+  }, [initialGroupId, supabase, user.id]);
   const loadGroup = useCallback(
     async (group: Group, olderThan?: string) => {
       const q = supabase
