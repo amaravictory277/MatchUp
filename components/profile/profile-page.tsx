@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Camera, Check, ChevronRight, CircleHelp, Crown, Eye, Gamepad2, Globe2, LockKeyhole, LogOut, Moon, Palette, Pencil, Play, ShieldCheck, Sparkles, Sun, UserRound } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronRight, CircleHelp, Crown, Eye, Gamepad2, Globe2, LockKeyhole, LogOut, Moon, Palette, Pencil, Play, ShieldCheck, Sparkles, Sun, UserRound, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navigation } from "../navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
@@ -152,6 +152,6 @@ export function ProfilePage(){
   </main>;
 }
 
-function Group({title,items}:{title:string;items:[string,string,React.ComponentType<{size?:number}>,()=>void][]}){
+function Group({title,items}:{title:string;items:[string,string,LucideIcon,()=>void][]}){
   return <div className="surface-card overflow-hidden"><p className="px-4 pt-4 text-[10px] font-black uppercase tracking-[.16em] text-[#70c1ff]">{title}</p><div className="mt-2 divide-y divide-[#15304e]">{items.map(([label,detail,Icon,action])=><button type="button" key={label} onClick={action} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-[#0a2139]"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]"><Icon size={16}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-black text-white">{label}</span><span className="mt-0.5 block text-xs leading-5 text-[#7892ac]">{detail}</span></span><ChevronRight size={16} className="text-[#4d769c]"/></button>)}</div></div>;
 }
