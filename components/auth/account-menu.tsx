@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -101,6 +101,7 @@ export function AccountMenu() {
             {user.email ? <p className="mt-0.5 truncate text-xs text-[#858196]">{user.email}</p> : null}
           </div>
           <div className="my-1 h-px bg-[#292743]" />
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); router.push("/profile"); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-black text-[#dbeeff] transition hover:bg-[#0a2139] hover:text-white"><UserRound size={17} /><span>Profile</span></button>
           {error ? <p role="alert" className="px-3 py-2 text-xs leading-5 text-[#ff9b9b]">{error}</p> : null}
           <button
             type="button"
