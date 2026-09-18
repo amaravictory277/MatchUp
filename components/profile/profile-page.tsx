@@ -152,6 +152,10 @@ export function ProfilePage(){
   </main>;
 }
 
+function ThemeOptions({theme,setTheme}:{theme:ThemePreference;setTheme:(theme:ThemePreference)=>void}){
+  return <div className="surface-card overflow-hidden"><p className="px-4 pt-4 text-[10px] font-black uppercase tracking-[.16em] text-[#70c1ff]">APPEARANCE</p><div className="grid grid-cols-3 gap-2 p-4">{(["light","dark","system"] as ThemePreference[]).map(option=>{const Icon=option==="light"?Sun:option==="dark"?Moon:Palette;return <button type="button" key={option} onClick={()=>setTheme(option)} className={`rounded-2xl border p-4 text-center ${theme===option?"border-[#2497ff] bg-[#0b3154] text-white":"border-[#18365f] bg-[#071426] text-[#9bb1c5]"}`}><Icon size={18} className="mx-auto"/><span className="mt-2 block text-xs font-black capitalize">{option}</span>{theme===option?<Check size={13} className="mx-auto mt-1 text-[#70c1ff]"/>:null}</button>})}</div></div>;
+}
+
 function Group({title,items}:{title:string;items:[string,string,LucideIcon,()=>void][]}){
   return <div className="surface-card overflow-hidden"><p className="px-4 pt-4 text-[10px] font-black uppercase tracking-[.16em] text-[#70c1ff]">{title}</p><div className="mt-2 divide-y divide-[#15304e]">{items.map(([label,detail,Icon,action])=><button type="button" key={label} onClick={action} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-[#0a2139]"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]"><Icon size={16}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-black text-white">{label}</span><span className="mt-0.5 block text-xs leading-5 text-[#7892ac]">{detail}</span></span><ChevronRight size={16} className="text-[#4d769c]"/></button>)}</div></div>;
 }
