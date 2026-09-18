@@ -692,24 +692,44 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
       const reply = replyTo;
       setReplyTo(null);
       setShowStickers(false);
-      const { data, error: e } = await supabase
+      const messageId = crypto.randomUUID();
+      const insertPayload = {
+        id: messageId,
+        group_id: active.id,
+        sender_id: user.id,
+        body,
+        sticker_key: sticker || null,
+        reply_to_id: reply?.id || null,
+      };
+
+      // Legacy private conversations can be repaired by the BEFORE trigger. Do not
+      // use INSERT ... RETURNING (.select()) here because the SELECT RLS policy is
+      // evaluated in the same statement before the repaired membership is visible.
+      const { error: insertError } =
+        await supabase.from("chat_messages").insert(insertPayload);
+
+      if (insertError) {
+        setMessages((v) => v.filter((m) => m.id !== temp));
+        setError(insertError.message);
+        return;
+      }
+
+      const { data, error: fetchError } = await supabase
         .from("chat_messages")
-        .insert({
-          group_id: active.id,
-          sender_id: user.id,
-          body,
-          sticker_key: sticker || null,
-          reply_to_id: reply?.id || null,
-        })
         .select(
           "id,group_id,sender_id,body,sticker_key,reply_to_id,created_at,deleted_at,profiles!chat_messages_sender_id_fkey(id,display_name,username)",
         )
+        .eq("id", messageId)
         .single();
-      if (e) {
-        setMessages((v) => v.filter((m) => m.id !== temp));
-        setError(e.message);
+
+      if (fetchError) {
+        // The message is already persisted. Reloading after the insert gives the
+        // repaired membership/visibility a chance to settle instead of deleting
+        // the optimistic message from the UI.
+        await loadGroup(active);
         return;
       }
+
       setMessages((v) =>
         v.map((m) =>
           m.id === temp
