@@ -117,6 +117,7 @@ export function ProfilePage(){
       </div>
       <div className="grid grid-cols-3 gap-2"><button onClick={()=>setScreen("edit")} className="surface-card p-4 text-left"><p className="text-[10px] font-black text-[#7892ac]">ACCOUNT</p><p className="mt-1 font-black text-white">Edit</p></button><button onClick={()=>setScreen("effects")} className="surface-card p-4 text-left"><p className="text-[10px] font-black text-[#7892ac]">PROFILE</p><p className="mt-1 font-black text-white">Effects</p></button><button onClick={()=>setScreen("settings")} className="surface-card p-4 text-left"><p className="text-[10px] font-black text-[#7892ac]">APP</p><p className="mt-1 font-black text-white">Settings</p></button></div>
       <div className="surface-card flex items-center gap-3 p-4"><span className="grid size-10 place-items-center rounded-xl bg-[#0b3154] text-[#70c1ff]"><Sparkles size={18}/></span><div className="min-w-0 flex-1"><p className="text-sm font-black text-white">Active Profile Effect</p><p className="mt-1 text-xs text-[#7892ac]">{activeEffect?activeEffect.name+" · "+expiry(active?.expires_at||null):"No profile effect is active."}</p></div></div>
+      <button type="button" disabled={loggingOut} onClick={()=>void logout()} className="flex w-full items-center gap-3 rounded-2xl border border-[#5a2b39] bg-[#21131b] px-4 py-4 text-sm font-black text-[#ff9ca9] disabled:opacity-60"><LogOut size={18}/><span className="flex-1 text-left">{loggingOut?"Logging out…":"Logout"}</span><ChevronRight size={16}/></button>
     </section>:null}
 
     {!loading&&profile&&screen==="edit"?<section className="surface-card p-5">
@@ -138,7 +139,7 @@ export function ProfilePage(){
       <Group title="PROFILE EFFECTS" items={[["Effects","Manage profile effects",Sparkles,()=>setScreen("effects")],["Preview","Sample effect preview",Play,()=>{setSelected(effects[0]||null);setScreen("preview")}],["Unlock Information","Ad/subscription integrations are prepared for later",ShieldCheck,()=>notify("Unlock integrations are not connected yet")],["Active Effect",activeEffect?.name||"None",Sparkles,()=>setScreen("effects")],["Expiration",expiry(active?.expires_at||null),Sparkles,()=>setScreen("effects")]]}/>
       <Group title="PREMIUM / SUBSCRIPTIONS" items={[["Premium Effects","Future subscription effects — coming soon",Crown,()=>notify("Subscriptions are not connected yet")]]}/>
       <Group title="HELP & ABOUT" items={[["Help / Support","MatchUp support",CircleHelp,()=>notify("Support is being prepared")],["About MatchUp","Football competition platform",ShieldCheck,()=>notify("MatchUp")],["Terms","Legal information",LockKeyhole,()=>notify("Terms page is not connected yet")],["Privacy Policy","Privacy information",LockKeyhole,()=>notify("Privacy Policy page is not connected yet")]]}/>
-      <button type="button" disabled={loggingOut} onClick={()=>void logout()} className="flex w-full items-center gap-3 rounded-2xl border border-[#5a2b39] bg-[#21131b] px-4 py-4 text-sm font-black text-[#ff9ca9] disabled:opacity-60"><LogOut size={18}/><span className="flex-1">{loggingOut?"Logging out…":"Logout"}</span><ChevronRight size={16}/></button>
+
     </section>:null}
 
     {!loading&&profile&&screen==="effects"?<section className="space-y-3">
