@@ -13,6 +13,7 @@ import { ChatVisualEnhancer } from "../components/chat/chat-visual-enhancer";
 import { ChatMetadataEnhancer } from "../components/chat/chat-metadata-enhancer";
 import { PrivateHeaderEnhancer } from "../components/chat/private-header-enhancer";
 import { MessageFriendsCardEnhancer } from "../components/chat/message-friends-card-enhancer";
+import { ThemeProvider } from "../components/theme-provider";
 
 export const metadata: Metadata = {
   title: "MatchUp | Football competition platform",
@@ -35,5 +36,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
+  return <html lang="en"><body><ThemeProvider>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></ThemeProvider></body></html>;
 }
