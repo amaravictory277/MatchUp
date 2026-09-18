@@ -93,7 +93,7 @@ export function ProfilePage(){
 
   const title=screen==="profile"?"Profile":screen==="edit"?"Edit Profile":screen==="settings"?"Settings":screen==="effects"?"Profile Effects":"Effect Preview";
 
-  return <main className="app-shell">
+  return <main className="app-shell profile-page">
     <Navigation/>
     <header className="relative z-20 flex items-center justify-between pb-5">
       <div className="flex items-center gap-3">{screen!=="profile"?<button type="button" className="icon-button" aria-label="Back" onClick={()=>setScreen("profile")}><ArrowLeft size={18}/></button>:null}<div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">MatchUp</p><h1 className="mt-1 text-3xl font-black text-white">{title}</h1></div></div>
