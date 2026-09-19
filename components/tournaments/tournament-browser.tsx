@@ -111,15 +111,15 @@ export function TournamentCard({
 
   return (
     <article
-      className="group w-full overflow-hidden rounded-[24px] border border-[#245b91] bg-[#071426] text-left shadow-[0_18px_50px_rgba(0,35,75,.22)]"
+      className="group w-full rounded-[24px] border border-[#245b91] bg-[#071426] text-left shadow-[0_18px_50px_rgba(0,35,75,.22)]"
       onPointerDown={swipeMode ? undefined : down}
       onPointerMove={swipeMode ? undefined : move}
       onPointerUp={swipeMode ? undefined : up}
       onPointerCancel={swipeMode ? undefined : () => { cancel(); moved.current = true; }}
       onContextMenu={e => e.preventDefault()}
     >
-      <div role="button" tabIndex={0} onClick={open} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
-        <div className="relative h-[182px] overflow-hidden bg-[#061120] sm:h-[220px]">
+      <div role="button" tabIndex={0} onClick={e => { if (swipeMode && e.detail > 0) { e.stopPropagation(); return; } open(); }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
+        <div className="relative h-[145px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[175px]">
           {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="grid h-full place-items-center bg-[#061120]"><img src="/matchup-logo.svg" alt="MatchUp" className="w-44 opacity-65" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/20 to-[#071426]/15" />
           <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
@@ -130,20 +130,20 @@ export function TournamentCard({
           </div>
         </div>
 
-        <div className="p-4 sm:p-5">
-          <h2 className="text-[22px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
-          <p className="mt-1 line-clamp-1 text-sm leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
+        <div className="p-3.5 sm:p-4">
+          <h2 className="text-[20px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
+          <p className="mt-0.5 line-clamp-1 text-sm leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
 
-          <div className="mt-3 inline-flex max-w-full items-center gap-4 rounded-xl border border-[#214a78] bg-[#08182b] px-3 py-2.5 text-xs font-bold text-[#b7c9da]">
+          <div className="mt-2.5 inline-flex max-w-full items-center gap-4 rounded-xl border border-[#214a78] bg-[#08182b] px-3 py-2 text-xs font-bold text-[#b7c9da]">
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><Users size={14} className="text-[#70c1ff]" />{row.max_players} teams</span>
             <span className="h-4 w-px bg-[#214a78]" />
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap"><Gamepad2 size={14} className="text-[#70c1ff]" />{row.game_title || "Football"}</span>
           </div>
 
-          <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2">
-            <div className="rounded-xl border border-[#214a78] bg-[#08182b] px-3 py-2">
+          <div className="mt-2.5 grid grid-cols-[1fr_auto] items-center gap-2">
+            <div className="rounded-xl border border-[#214a78] bg-[#08182b] px-3 py-1.5">
               <p className="text-[10px] font-bold uppercase tracking-[.08em] text-[#7892ac]">Prize</p>
-              <p className="mt-0.5 text-base font-black text-white">{money(Number(row.prize_pool || 0))}</p>
+              <p className="mt-0.5 text-[15px] font-black text-white">{money(Number(row.prize_pool || 0))}</p>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-3 py-2 text-xs font-bold text-[#a9bdd5]">
               <CalendarDays size={14} className="text-[#70c1ff]" />
@@ -151,12 +151,12 @@ export function TournamentCard({
             </span>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-2.5 flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-8 shrink-0 rounded-full" />
               <span className="truncate text-sm font-black text-white">{creator}</span>
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-2 text-[11px] font-black capitalize text-[#9bd3ff]">
+            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1.5 text-[11px] font-black capitalize text-[#9bd3ff]">
               {formatName(row.status)}
             </span>
           </div>
