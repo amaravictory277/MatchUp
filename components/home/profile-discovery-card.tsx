@@ -171,12 +171,12 @@ export function ProfileDiscoveryCard({
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
   const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
   const rotation = Math.max(-5, Math.min(5, dragX / 70));
-  const transition = animating ? "transform 340ms cubic-bezier(.16,1,.3,1), opacity 280ms ease" : "none";
+  const transition = animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none";
 
   const renderProfile = (profile: HomePerson, layer: number) => {
     const name = nameOf(profile);
     const isActive = layer === 0;
-    const scale = isActive ? 1 : 0.94 - (layer - 1) * 0.04 + progress * (0.06 - (layer - 1) * 0.02);
+    const scale = isActive ? 1 : Math.max(0.18, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
     const translateY = isActive ? 0 : 8 + (layer - 1) * 8;
     return (
       <article
@@ -192,7 +192,7 @@ export function ProfileDiscoveryCard({
           transform: isActive
             ? `translate3d(${dragX}px,0,0) rotate(${rotation}deg)`
             : `translate3d(0,${translateY}px,0) scale(${scale})`,
-          opacity: isActive ? 1 - Math.min(0.22, Math.abs(dragX) / 1300) : 0.78,
+          opacity: 1,
           transition: isActive ? transition : "transform 340ms cubic-bezier(.16,1,.3,1)",
           willChange: "transform",
         }}
@@ -202,7 +202,7 @@ export function ProfileDiscoveryCard({
           <div className="absolute -right-16 -top-20 size-48 rounded-full border border-[#2497ff]/25" />
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[145px] -translate-x-1/2 -translate-y-1/2 opacity-[.16] sm:w-[180px]" />
           <span className="absolute left-3 top-3 rounded-full border border-[#2c76b5] bg-[#061a2d]/85 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">MatchUp Player</span>
-          <span className="absolute bottom-0 left-1/2 z-30 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)]">
+          <span className="absolute bottom-0 right-3 z-[60] inline-flex translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)]">
             <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
           </span>
         </div>
