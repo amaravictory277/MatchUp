@@ -54,8 +54,12 @@ export function ProfileDiscoveryCard({
   const stack = people.slice(index, index + 3);
 
   useEffect(() => {
-    if (index > people.length) setIndex(people.length);
+    if (index >= people.length && people.length > 0) setIndex(people.length - 1);
   }, [index, people.length]);
+
+  useEffect(() => {
+    if (!person && peopleHasMore && !peopleLoading) void requestMore();
+  }, [person, peopleHasMore, peopleLoading]);
 
   const requestMore = async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
@@ -147,7 +151,6 @@ export function ProfileDiscoveryCard({
 
   if (!person) {
     if (peopleLoading || peopleHasMore) {
-      if (peopleHasMore && !peopleLoading) void requestMore();
       return (
         <div className="surface-card rounded-[24px] border-[#153c68] p-6 text-center">
           <div className="mx-auto size-8 animate-spin rounded-full border-2 border-[#245b91] border-t-[#47a8ff]" />
