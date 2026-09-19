@@ -123,7 +123,7 @@ export function TournamentCard({
           {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="grid h-full place-items-center bg-[#061120]"><img src="/matchup-logo.svg" alt="MatchUp" className="w-44 opacity-65" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/20 to-[#071426]/15" />
           <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
-            {badge}
+            {formatName(row.format)}
           </span>
           <div className="absolute right-3 top-3 grid size-10 place-items-center rounded-full border border-[#2b8ee6]/60 bg-[#071426]/75 text-[#70c1ff] backdrop-blur-sm">
             <Trophy size={21} strokeWidth={2.2} />
