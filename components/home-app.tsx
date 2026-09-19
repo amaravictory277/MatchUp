@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Navigation } from "./navigation";
 import { MatchUpAvatar } from "./ui/matchup-avatar";
-import { MatchUpVerificationBadge } from "./feeds/matchup-verification-badge";
 import { FeedCard } from "./feeds/feed-card";
 import { ProfileDiscoveryCard } from "./home/profile-discovery-card";
 import { TournamentSwipeCard } from "./home/tournament-swipe-card";
@@ -64,8 +63,6 @@ type GroupPreview = {
   memberCount: number;
 };
 
-const fallbackMedia = "/matchup-logo.svg";
-
 function nameOf(p?: Profile | null) {
   return p?.display_name?.trim() || p?.username || "MatchUp Player";
 }
@@ -87,32 +84,6 @@ function relativeTime(value: string) {
   const weeks = Math.floor(days / 7);
   if (weeks < 5) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
   return new Date(value).toLocaleDateString();
-}
-
-function formatDate(value: string | null) {
-  if (!value) return null;
-  return new Date(value).toLocaleDateString("en-NG", { month: "short", day: "numeric" });
-}
-
-function formatMoney(value: number | null | undefined) {
-  const amount = Number(value || 0);
-  return amount > 0 ? `₦${amount.toLocaleString("en-NG", { maximumFractionDigits: 2 })}` : null;
-}
-
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function countdown(value: string | null) {
-  if (!value) return "Date TBA";
-  const diff = new Date(value).getTime() - Date.now();
-  if (diff <= 0) return "Started";
-  const minutes = Math.floor(diff / 60000);
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  if (days > 0) return `Starts in ${days}d ${hours}h`;
-  if (hours > 0) return `Starts in ${hours}h`;
-  return `Starts in ${Math.max(1, minutes)}m`;
 }
 
 function publicStorageUrl(
@@ -466,8 +437,6 @@ export function HomeApp() {
       }
     }
   };
-
-  const followPerson = async (id: string) => toggleFollow(id);
 
   const challengeReady = async (id: string) => {
     if (!userId) { notify("Sign in to challenge players."); return; }
