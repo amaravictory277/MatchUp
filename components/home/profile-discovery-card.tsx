@@ -50,22 +50,19 @@ export function ProfileDiscoveryCard({
   const cardRef = useRef<HTMLElement | null>(null);
   const loadingMoreRef = useRef(false);
 
-  const person = people[index] || null;
-  const stack = people.slice(index, index + 3);
-
-  useEffect(() => {
-    if (index >= people.length && people.length > 0) setIndex(people.length - 1);
-  }, [index, people.length]);
-
-  useEffect(() => {
-    if (!person && peopleHasMore && !peopleLoading) void requestMore();
-  }, [person, peopleHasMore, peopleLoading]);
+  const availablePeople = people.filter((profile) => !seenIdsRef.current.has(profile.id));
+  const person = availablePeople[0] || null;
+  const stack = availablePeople.slice(0, 3);
 
   const requestMore = useCallback(async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     try { await onNeedMore(); } finally { loadingMoreRef.current = false; }
   }, [onNeedMore]);
+
+  useEffect(() => {
+    if (!person && peopleHasMore && !peopleLoading) void requestMore();
+  }, [person, peopleHasMore, peopleLoading, requestMore]);
 
   const finishExit = (direction: "left" | "right") => {
     if (direction === "left") {
