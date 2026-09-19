@@ -34,7 +34,7 @@ export function TournamentCard({
   const start = useRef<{ x: number; y: number } | null>(null);
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
-  const bannerUrl = storageUrl(supabase, row.banner_path);
+  const bannerUrl = storageUrl(supabase, row.banner_path || null);
   const creatorProfile = {
     id: row.organizer_id,
     display_name: creator,
