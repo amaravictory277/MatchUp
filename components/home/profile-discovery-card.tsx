@@ -47,15 +47,21 @@ export function ProfileDiscoveryCard({
 
   const moveNext = () => {
     if (!people.length) return;
-    setDragX(0);
-    setIndex((value) => (value + 1) % people.length);
+    setDragX(-520);
+    window.setTimeout(() => {
+      setDragX(0);
+      setIndex((value) => (value + 1) % people.length);
+    }, 180);
   };
 
   const openQuickChat = () => {
     if (!person) return;
-    setDragX(0);
-    setMessage("");
-    setQuickChatOpen(true);
+    setDragX(180);
+    window.setTimeout(() => {
+      setDragX(0);
+      setMessage("");
+      setQuickChatOpen(true);
+    }, 120);
   };
 
   const pointerDown = (event: React.PointerEvent<HTMLElement>) => {
