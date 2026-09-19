@@ -634,10 +634,17 @@ export function HomeApp() {
 
       <section className="mt-8">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div> : people.length ? (
-          <ProfileDiscoveryCard people={people} onFriend={addFriend} notify={notify} onNeedMore={loadMorePeople} peopleLoading={peopleLoading} peopleHasMore={peopleHasMoreRef.current} />
+        {loading ? (
+          <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div>
         ) : (
-          <EmptyState icon={<UsersRound size={23} />} title="No new player suggestions" text="There are no suitable player profiles to preview right now." href="/friends" action="Find Players" />
+          <ProfileDiscoveryCard
+            people={people}
+            onFriend={addFriend}
+            notify={notify}
+            onNeedMore={loadMorePeople}
+            peopleLoading={peopleLoading}
+            peopleHasMore={peopleHasMoreRef.current}
+          />
         )}
       </section>
 
