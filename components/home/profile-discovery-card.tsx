@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
@@ -21,18 +21,22 @@ export type HomePerson = {
 };
 
 const nameOf = (person: HomePerson) => person.display_name?.trim() || person.username || "MatchUp Player";
-const gameLabel = (value?: string | null) => !value || /football/i.test(value) ? "Football" : value;
+const gameLabel = (value?: string | null) => value?.trim() || "Football";
 
 export function ProfileDiscoveryCard({
   people,
   onFriend,
   notify,
   onNeedMore,
+  peopleLoading = false,
+  peopleHasMore = false,
 }: {
   people: HomePerson[];
   onFriend: (id: string) => Promise<void> | void;
   notify: (message: string) => void;
   onNeedMore?: () => Promise<void> | void;
+  peopleLoading?: boolean;
+  peopleHasMore?: boolean;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -48,6 +52,10 @@ export function ProfileDiscoveryCard({
 
   const person = people[index] || null;
   const stack = people.slice(index, index + 3);
+
+  useEffect(() => {
+    if (index > people.length) setIndex(people.length);
+  }, [index, people.length]);
 
   const requestMore = async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
@@ -138,6 +146,16 @@ export function ProfileDiscoveryCard({
   };
 
   if (!person) {
+    if (peopleLoading || peopleHasMore) {
+      if (peopleHasMore && !peopleLoading) void requestMore();
+      return (
+        <div className="surface-card rounded-[24px] border-[#153c68] p-6 text-center">
+          <div className="mx-auto size-8 animate-spin rounded-full border-2 border-[#245b91] border-t-[#47a8ff]" />
+          <p className="mt-3 font-black text-white">Finding more MatchUp players…</p>
+          <p className="mt-1 text-sm text-[#7892ac]">Loading the next available profiles.</p>
+        </div>
+      );
+    }
     return (
       <div className="surface-card rounded-[24px] border-[#153c68] p-6 text-center">
         <div className="mx-auto grid size-14 place-items-center rounded-full border border-[#245b91] bg-[#0b3154] p-3">
@@ -182,16 +200,16 @@ export function ProfileDiscoveryCard({
           <div className="absolute -right-16 -top-20 size-48 rounded-full border border-[#2497ff]/25" />
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[145px] -translate-x-1/2 -translate-y-1/2 opacity-[.16] sm:w-[180px]" />
           <span className="absolute left-3 top-3 rounded-full border border-[#2c76b5] bg-[#061a2d]/85 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">MatchUp Player</span>
+          <span className="absolute bottom-0 left-1/2 z-30 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)]">
+            <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
+          </span>
         </div>
 
-        <div className="relative px-4 pb-3 sm:px-5 sm:pb-4">
+        <div className="relative px-4 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-3">
           <div className="-mt-8 flex items-end justify-between gap-3">
             <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-[64px] shrink-0 border-[3px] border-[#071426] shadow-[0_8px_20px_rgba(0,0,0,.34)] sm:!size-[70px]" />
             <div className="mb-0.5 flex items-center gap-1.5">
               {profile.is_verified ? <MatchUpVerificationBadge /> : null}
-              <span className="inline-flex items-center gap-1 rounded-full border border-[#245b91] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff]">
-                <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
-              </span>
             </div>
           </div>
 
