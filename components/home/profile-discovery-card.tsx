@@ -202,10 +202,10 @@ export function ProfileDiscoveryCard({
           <div className="absolute -right-16 -top-20 size-48 rounded-full border border-[#2497ff]/25" />
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[145px] -translate-x-1/2 -translate-y-1/2 opacity-[.16] sm:w-[180px]" />
           <span className="absolute left-3 top-3 rounded-full border border-[#2c76b5] bg-[#061a2d]/85 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">MatchUp Player</span>
-          <span className="absolute bottom-0 right-3 z-[60] inline-flex translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)]">
-            <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
-          </span>
         </div>
+        <span className="pointer-events-none absolute right-3 top-[96px] z-[100] inline-flex translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)] sm:top-[112px]">
+          <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
+        </span>
 
         <div className="relative px-4 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-3">
           <div className="-mt-8 flex items-end justify-between gap-3">
