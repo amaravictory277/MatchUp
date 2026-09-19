@@ -149,7 +149,7 @@ export function ProfileDiscoveryCard({
     );
   }
 
-  const progress = Math.min(1, Math.abs(dragX) / Math.max(window.innerWidth || 360, 420));
+  const progress = Math.min(1, Math.abs(dragX) / (typeof window === "undefined" ? 360 : window.innerWidth) > 420 ? (typeof window === "undefined" ? 360 : window.innerWidth) : 420);
   const rotation = Math.max(-5, Math.min(5, dragX / 70));
   const transition = animating ? "transform 340ms cubic-bezier(.16,1,.3,1), opacity 280ms ease" : "none";
 
