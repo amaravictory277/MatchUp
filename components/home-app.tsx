@@ -463,13 +463,14 @@ export function HomeApp() {
 
     const rawPosts = postsResult.data || [];
     const postIds = rawPosts.map((p: any) => p.id);
-    const commentAuthorIds = Array.from(new Set((commentRows || []).map((r: any) => r.author_id)));\n    const authorIds = Array.from(new Set([...rawPosts.map((p: any) => p.author_id), ...commentAuthorIds]));
     const [{ data: mediaRows }, { data: likeRows }, { data: commentRows }, { data: savedRows }] = await Promise.all([
       postIds.length ? supabase.from("post_media").select("post_id,storage_path,media_type,position").in("post_id", postIds).order("position") : Promise.resolve({ data: [] }),
       postIds.length ? supabase.from("post_likes").select("post_id,user_id,created_at").in("post_id", postIds).order("created_at", { ascending: true }) : Promise.resolve({ data: [] }),
       postIds.length ? supabase.from("post_comments").select("id,post_id,author_id,body,created_at").in("post_id", postIds).order("created_at",{ascending:true}) : Promise.resolve({ data: [] }),
       uid && postIds.length ? supabase.from("saved_posts").select("post_id").eq("user_id", uid).in("post_id", postIds) : Promise.resolve({ data: [] }),
     ]);
+    const commentAuthorIds = Array.from(new Set((commentRows || []).map((r: any) => r.author_id)));
+    const authorIds = Array.from(new Set([...rawPosts.map((p: any) => p.author_id), ...commentAuthorIds]));
     const likeUserIds = Array.from(new Set((likeRows || []).map((r: any) => r.user_id)));
     const profileIds = Array.from(new Set([...authorIds, ...likeUserIds]));
     const { data: postProfiles } = profileIds.length
@@ -487,7 +488,8 @@ export function HomeApp() {
     });
 
     const commentCounts = new Map<string, number>();
-    (commentRows || []).forEach((r: any) => commentCounts.set(r.post_id, (commentCounts.get(r.post_id) || 0) + 1));
+    const commentsByPost = new Map<string, any[]>();
+    (commentRows || []).forEach((r: any) => { commentCounts.set(r.post_id, (commentCounts.get(r.post_id) || 0) + 1); const list = commentsByPost.get(r.post_id) || []; list.push(r); commentsByPost.set(r.post_id, list); });
     const likedIds = new Set((likeRows || []).filter((r: any) => r.user_id === uid).map((r: any) => r.post_id));
     const savedIds = new Set((savedRows || []).map((r: any) => r.post_id));
     const likesByPost = new Map<string, any[]>();
