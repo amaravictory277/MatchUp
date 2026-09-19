@@ -307,10 +307,12 @@ export function HomeApp() {
     let discoveryHasMore = allProfiles.length === 40;
     const discovered = new Map<string, PersonPreview>();
 
-    while (discovered.size < 10 && discoveryHasMore) {
+    // Always evaluate the first fetched page, even when fewer than 40 profiles exist.
+    // Only fetch another page after the current page has been filtered.
+    while (true) {
       const eligible = await hydratePeople(discoveryRows);
       eligible.forEach((p) => discovered.set(p.id, p));
-      if (discovered.size >= 10) break;
+      if (discovered.size >= 10 || !discoveryHasMore) break;
 
       const { data: nextRows, error: nextError } = await supabase
         .from("profiles")
