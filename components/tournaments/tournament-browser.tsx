@@ -145,7 +145,7 @@ export function TournamentCard({
             </span>
           </div>
 
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+          <div className="relative mt-2.5 flex items-center justify-between gap-2 before:pointer-events-none before:absolute before:-top-[5px] before:left-0 before:right-0 before:border-t before:border-[#214a78]">
             <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1.5">
               <p className="text-[9px] font-bold uppercase tracking-[.08em] text-white/80">Prize</p>
               <p className="mt-0.5 text-[15px] font-black leading-tight text-white">{money(Number(row.prize_pool || 0))}</p>
