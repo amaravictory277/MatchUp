@@ -5,26 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
-  CalendarDays,
-  Check,
-  Clock3,
   Gamepad2,
   Heart,
-  MessageCircle,
-  Save,
   Search,
-  Share2,
   Swords,
   Trophy,
-  Users,
   UsersRound,
-  UserPlus,
   Zap,
 } from "lucide-react";
 import { Navigation } from "./navigation";
 import { MatchUpAvatar } from "./ui/matchup-avatar";
 import { MatchUpVerificationBadge } from "./feeds/matchup-verification-badge";
 import { FeedCard } from "./feeds/feed-card";
+import { ProfileDiscoveryCard } from "./home/profile-discovery-card";
+import { TournamentSwipeCard } from "./home/tournament-swipe-card";
 import { createBrowserSupabaseClient } from "../lib/supabase/client";
 import type { Author, Post } from "./feeds/data";
 
@@ -183,145 +177,6 @@ function EmptyState({
         </Link>
       ) : null}
     </div>
-  );
-}
-
-function PersonCard({ person, onFollow, onFriend }: {
-  person: PersonPreview;
-  onFollow: (id: string) => void;
-  onFriend: (id: string) => void;
-}) {
-  const name = nameOf(person);
-  const friendLabel = person.friendship === "friends" ? "Friends" : person.friendship === "pending" ? "Request Sent" : "Add Friend";
-  return (
-    <article className="min-w-[292px] overflow-hidden rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 shadow-[0_16px_45px_rgba(0,35,70,.16)] sm:min-w-[320px]">
-      <div className="flex items-start gap-3">
-        <div className="relative shrink-0">
-          <MatchUpAvatar profile={person} size="lg" alt={name} className="!size-[68px] !rounded-full border-2 border-[#2497ff]" />
-          {person.is_verified ? <span className="absolute -bottom-1 -right-1"><MatchUpVerificationBadge /></span> : null}
-        </div>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <div className="flex items-center gap-1.5">
-            <p className="truncate text-base font-black text-white">{name}</p>
-            {person.is_verified ? <MatchUpVerificationBadge /> : null}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[#7892ac]">
-            {person.country ? <span>{person.country}</span> : null}
-            <span className="inline-flex items-center gap-1 rounded-full border border-[#214a78] bg-[#0a2139] px-2 py-0.5 font-bold text-[#9bd3ff]">
-              <Gamepad2 size={11} />{gameLabel(person.supported_game)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {person.bio?.trim() ? <p className="mt-3 line-clamp-2 text-xs leading-5 text-[#b7c9da]">{person.bio.trim()}</p> : null}
-
-      <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-[#153c68] bg-[#08182b] p-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[.1em] text-[#7892ac]">Followers</p>
-          <p className="mt-1 text-sm font-black text-white">{person.followerCount ?? 0}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[.1em] text-[#7892ac]">Posts</p>
-          <p className="mt-1 text-sm font-black text-white">{person.postCount ?? 0}</p>
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onFollow(person.id)}
-          className={`rounded-xl px-3 py-2.5 text-xs font-black ${person.following ? "border border-[#285277] bg-[#0a2139] text-[#b7c9da]" : "bg-[#167bd1] text-white"}`}
-        >
-          {person.following ? "Unfollow" : "Follow"}
-        </button>
-        <button
-          type="button"
-          disabled={person.friendship !== "none"}
-          onClick={() => onFriend(person.id)}
-          className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-black ${person.friendship === "none" ? "border-[#285b91] bg-[#0a2946] text-[#9bd3ff]" : "border-[#18365f] bg-[#071426] text-[#6f89a1]"}`}
-        >
-          {person.friendship === "friends" ? <Check size={14} /> : <UserPlus size={14} />}
-          {friendLabel}
-        </button>
-      </div>
-    </article>
-  );
-}
-
-function TournamentCard({ tournament, supabase }: { tournament: Tournament; supabase: ReturnType<typeof createBrowserSupabaseClient> }) {
-  const prize = formatMoney(tournament.prize_pool);
-  const date = formatDate(tournament.starts_at);
-  const banner = publicStorageUrl(supabase, "tournament-media", tournament.banner_path);
-  const format = formatLabel(tournament.format);
-  const status = tournament.status === "open" ? "Registration Open" : formatLabel(tournament.status);
-  return (
-    <Link href={`/tournaments/${tournament.id}`} className="group block min-w-[300px] sm:min-w-0">
-      <article className="overflow-hidden rounded-[26px] border border-[#1b4775] bg-[#071426] shadow-[0_18px_55px_rgba(0,45,90,.18)] transition hover:-translate-y-0.5 hover:border-[#2497ff]">
-        <div className="relative h-40 overflow-hidden bg-[#061120]">
-          {banner ? (
-            <img src={banner} alt="" className="absolute inset-0 size-full object-cover transition duration-500 group-hover:scale-105" />
-          ) : (
-            <div className="absolute inset-0 grid place-items-center bg-[#071426] p-10">
-              <img src={fallbackMedia} alt="MatchUp" className="max-h-full max-w-[230px] object-contain opacity-90" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,22,.08),rgba(3,12,22,.9))]" />
-          <span className="absolute left-3 top-3 rounded-full border border-[#2497ff] bg-[#061a2d]/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
-            FEATURED
-          </span>
-          <div className="absolute inset-x-4 bottom-3">
-            <p className="truncate text-lg font-black text-white">{tournament.name}</p>
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="grid gap-2 sm:grid-cols-3">
-            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#0a2139] px-3 py-2 text-[10px] font-black text-[#b7c9da]">
-              <Users size={13} className="shrink-0 text-[#70c1ff]" />{tournament.max_players} Players
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#0a2139] px-3 py-2 text-[10px] font-black text-[#b7c9da]">
-              <Trophy size={13} className="shrink-0 text-[#70c1ff]" />{format}
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#0a2139] px-3 py-2 text-[10px] font-black text-[#b7c9da]">
-              <CalendarDays size={13} className="shrink-0 text-[#70c1ff]" />{countdown(tournament.starts_at)}
-            </span>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">
-              ⚽ {gameLabel(tournament.game_title)}
-            </span>
-            <span className="rounded-full border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">
-              {status}
-            </span>
-            {tournament.teams ? (
-              <span className="rounded-full border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">
-                {tournament.teams} Teams
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-[#245b91] bg-[linear-gradient(135deg,#0a2946,#071a2d)] px-4 py-3.5">
-            <div className="flex items-center gap-2 text-[10px] font-black tracking-[.15em] text-[#70c1ff]">
-              <Trophy size={14} /> PRIZE POOL
-            </div>
-            <p className="mt-1 text-2xl font-black text-white">{prize || "No Prize Pool"}</p>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold text-[#86a1bb]">
-            <span className="flex min-w-0 items-center gap-1.5 truncate">
-              {date ? <><CalendarDays size={13} />{date}</> : "Date TBA"}
-            </span>
-            {tournament.venue ? <span className="max-w-[48%] truncate">{tournament.venue}</span> : null}
-          </div>
-
-          <div className="mt-4 flex items-center justify-between rounded-xl bg-[#167bd1] px-4 py-3 text-xs font-black text-white">
-            <span>View Tournament</span><ArrowRight size={16} />
-          </div>
-        </div>
-      </article>
-    </Link>
   );
 }
 
@@ -730,18 +585,16 @@ export function HomeApp() {
       <section className="mt-8">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div> : people.length ? (
-          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2">{people.map((person) => <PersonCard key={person.id} person={person} onFollow={followPerson} onFriend={addFriend} />)}</div>
+          <ProfileDiscoveryCard people={people.slice(0, 10)} onFriend={addFriend} notify={notify} />
         ) : (
-          <EmptyState icon={<Users size={23} />} title="No new player suggestions" text="There are no suitable player profiles to preview right now." href="/friends" action="Find Players" />
+          <EmptyState icon={<UsersRound size={23} />} title="No new player suggestions" text="There are no suitable player profiles to preview right now." href="/friends" action="Find Players" />
         )}
       </section>
 
       <section className="mt-9">
         <SectionHeading eyebrow="Competition" title="Featured Tournaments" description="A quick look at public MatchUp competitions." href="/tournaments" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading tournaments…</div> : tournaments.length ? (
-          <div className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((tournament) => <div key={tournament.id} className="snap-start sm:min-w-0"><TournamentCard tournament={tournament} supabase={supabase} /></div>)}
-          </div>
+          <TournamentSwipeCard tournaments={tournaments.slice(0, 3)} />
         ) : (
           <EmptyState icon={<Trophy size={23} />} title="No featured tournaments yet" text="Public competitions will appear here when they are available." href="/tournaments" action="Explore Tournaments" />
         )}
