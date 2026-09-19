@@ -344,9 +344,9 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
         </span>
         <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">READY</span>
       </div>
-      <Link href="/ready-players" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black text-white">
-        <Swords size={14} />Challenge
-      </Link>
+      <button type="button" disabled={busy} onClick={()=>onChallenge(player.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black text-white disabled:opacity-60">
+        <Swords size={14} />{busy?"Sending…":"Challenge"}
+      </button>
     </article>
   );
 }
