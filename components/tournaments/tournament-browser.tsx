@@ -119,10 +119,10 @@ export function TournamentCard({
       onContextMenu={e => e.preventDefault()}
     >
       <div role="button" tabIndex={0} onClick={e => { if (swipeMode && e.detail > 0) { e.stopPropagation(); return; } open(); }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
-        <div className="relative h-[145px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[175px]">
+        <div className="relative h-[112px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[132px]">
           {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="absolute inset-0 bg-[#061120]" />}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.5),transparent_42%),linear-gradient(135deg,rgba(10,41,70,.88),rgba(6,17,32,.9)_55%,rgba(11,49,84,.92))]" />
-          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 z-10 w-[150px] -translate-x-1/2 -translate-y-1/2 opacity-[.2] sm:w-[185px]" />
+          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 z-10 w-[130px] -translate-x-1/2 -translate-y-1/2 opacity-[.2] sm:w-[160px]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/15 to-transparent" />
           <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
             {formatName(row.format)}
@@ -132,12 +132,12 @@ export function TournamentCard({
           </div>
         </div>
 
-        <div className="p-3.5 sm:p-4">
+        <div className="p-3 sm:p-3.5">
           <h2 className="text-[20px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
-          <p className="mt-0.5 line-clamp-1 text-sm leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
+          <p className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
 
-          <div className="mt-2.5 flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.5 text-[11px] font-bold text-[#b7c9da]">
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.25 text-[11px] font-bold text-[#b7c9da]">
               <Users size={14} className="text-[#70c1ff]" />{row.max_players} Teams
             </span>
             <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.5 text-[11px] font-bold text-[#b7c9da]">
@@ -145,8 +145,8 @@ export function TournamentCard({
             </span>
           </div>
 
-          <div className="relative mt-2.5 flex items-center justify-between gap-2 before:pointer-events-none before:absolute before:-top-[5px] before:left-0 before:right-0 before:border-t before:border-[#214a78]">
-            <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1.5">
+          <div className="relative mt-3 flex items-center justify-between gap-2 pt-3 before:pointer-events-none before:absolute before:top-0 before:left-0 before:right-0 before:border-t before:border-[#214a78]">
+            <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1.25">
               <p className="text-[9px] font-bold uppercase tracking-[.08em] text-white/80">Prize</p>
               <p className="mt-0.5 text-[15px] font-black leading-tight text-white">{money(Number(row.prize_pool || 0))}</p>
             </div>
@@ -156,12 +156,12 @@ export function TournamentCard({
             </span>
           </div>
 
-          <div className="mt-2.5 flex items-center justify-between gap-3">
+          <div className="mt-2 flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-8 shrink-0 rounded-full" />
               <span className="truncate text-sm font-black text-white">{creator}</span>
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1.5 text-[11px] font-black capitalize text-[#9bd3ff]">
+            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1.25 text-[11px] font-black capitalize text-[#9bd3ff]">
               {formatName(row.status)}
             </span>
           </div>
