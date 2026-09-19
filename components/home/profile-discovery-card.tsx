@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
@@ -61,11 +61,11 @@ export function ProfileDiscoveryCard({
     if (!person && peopleHasMore && !peopleLoading) void requestMore();
   }, [person, peopleHasMore, peopleLoading]);
 
-  const requestMore = async () => {
+  const requestMore = useCallback(async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     try { await onNeedMore(); } finally { loadingMoreRef.current = false; }
-  };
+  }, [onNeedMore]);
 
   const finishExit = (direction: "left" | "right") => {
     if (direction === "left") {
