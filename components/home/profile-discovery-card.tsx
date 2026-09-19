@@ -81,6 +81,7 @@ export function ProfileDiscoveryCard({
     const dx = event.clientX - startRef.current.x;
     const wasHorizontal = Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(event.clientY - startRef.current.y) * 1.15;
     startRef.current = null;
+    draggingRef.current = false;
     if (!wasHorizontal) {
       setDragX(0);
       return;
