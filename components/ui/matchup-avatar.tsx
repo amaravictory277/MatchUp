@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
-import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 type AvatarProfile = { id?: string; display_name?: string | null; username?: string | null; avatar_path?: string | null };
 type Props = { profile?: AvatarProfile | null; size?: "sm" | "md" | "lg"; alt?: string; className?: string; group?: boolean };
