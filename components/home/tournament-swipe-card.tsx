@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowRight, CalendarDays, Check, Trophy, Users, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Trophy, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
@@ -122,7 +122,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
           style={{ transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 35))}deg)`, transition: dragging ? "none" : "transform 300ms cubic-bezier(.22,1,.36,1)" }}
         >
           <div className="relative h-44 overflow-hidden bg-[#061120] sm:h-52">
-            {current.banner_path && storageUrl(supabase, current.banner_path) ? <img src={storageUrl(current.banner_path)!} alt="" className="absolute inset-0 size-full object-cover" /> : <div className="absolute inset-0 grid place-items-center"><img src={fallbackMedia} alt="MatchUp" className="w-44 opacity-70" /></div>}
+            {current.banner_path && storageUrl(supabase, current.banner_path) ? <img src={storageUrl(supabase, current.banner_path)!} alt="" className="absolute inset-0 size-full object-cover" /> : <div className="absolute inset-0 grid place-items-center"><img src={fallbackMedia} alt="MatchUp" className="w-44 opacity-70" /></div>}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,22,.06),rgba(3,12,22,.92))]" />
             <span className="absolute left-4 top-4 rounded-full border border-[#2497ff] bg-[#061a2d]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">FEATURED</span>
             <div className="absolute inset-x-4 bottom-4">
