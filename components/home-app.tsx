@@ -283,13 +283,16 @@ export function HomeApp() {
       if (r.status !== "accepted" && r.status !== "pending") return;
       const other = r.user_id === uid ? r.friend_id : r.user_id;
       if (r.status === "accepted") relationMap.set(other, "friends");
-      else relationMap.set(other, "pending");
+      else if (!relationMap.has(other)) relationMap.set(other, "pending");
     });
 
     peopleExclusionsRef.current = { uid, followedIds, relationMap };
 
     const hydratePeople = async (profiles: Profile[]) => {
-      const eligible = profiles.filter((p) => p.id !== uid && !relationMap.has(p.id) && !followedIds.has(p.id));
+      // People You May Know excludes only the current user and accepted friends.
+      // Pending requests remain visible until they are accepted, so they can still
+      // be discovered and handled by the existing friend-request flow.
+      const eligible = profiles.filter((p) => p.id !== uid && relationMap.get(p.id) !== "friends");
       return Promise.all(eligible.map(async (p) => {
         const [{ count: followerCount }, { count: postCount }] = await Promise.all([
           supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
@@ -455,7 +458,7 @@ export function HomeApp() {
         peopleHasMoreRef.current = rows.length === 40;
         if (!rows.length) break;
 
-        const eligible = rows.filter((p) => p.id !== uid && !relationMap.has(p.id) && !followedIds.has(p.id) && !existing.has(p.id));
+        const eligible = rows.filter((p) => p.id !== uid && relationMap.get(p.id) !== "friends" && !existing.has(p.id));
         const hydrated = await Promise.all(eligible.map(async (p) => {
           const [{ count: followerCount }, { count: postCount }] = await Promise.all([
             supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
