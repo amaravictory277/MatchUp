@@ -379,7 +379,8 @@ export function HomeApp() {
   const [readyPlayers, setReadyPlayers] = useState<Profile[]>([]);
   const [groups, setGroups] = useState<GroupPreview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState("");\n  const [challengeBusy, setChallengeBusy] = useState("");
+  const [toast, setToast] = useState("");
+  const [challengeBusy, setChallengeBusy] = useState("");
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -613,7 +614,16 @@ export function HomeApp() {
 
   const followPerson = async (id: string) => toggleFollow(id);
 
-  const challengeReady = async (id: string) => {\n    if (!userId) { notify("Sign in to challenge players."); return; }\n    setChallengeBusy(id);\n    const { error } = await supabase.rpc("send_match_request", { p_opponent_id: id });\n    if (error) notify(error.message || "Could not send challenge.");\n    else notify("Challenge sent.");\n    setChallengeBusy("");\n  };\n\n  const addFriend = async (id: string) => {
+  const challengeReady = async (id: string) => {
+    if (!userId) { notify("Sign in to challenge players."); return; }
+    setChallengeBusy(id);
+    const { error } = await supabase.rpc("send_match_request", { p_opponent_id: id });
+    if (error) notify(error.message || "Could not send challenge.");
+    else notify("Challenge sent.");
+    setChallengeBusy("");
+  };
+
+  const addFriend = async (id: string) => {
     if (!userId) { notify("Sign in to add friends."); return; }
     const { error } = await supabase.rpc("send_friend_request", { p_target: id });
     if (error) {
