@@ -24,13 +24,38 @@ async function getValidAccessToken(request: NextRequest): Promise<ValidSession |
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const needsAuth = protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const isRoot = pathname === '/';
+  const isAuthEntry = pathname === '/auth';
+  const needsAuth = isRoot || isAuthEntry || protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
   if (!needsAuth) return NextResponse.next();
 
   const session = await getValidAccessToken(request);
   const isHome = pathname === '/home' || pathname.startsWith('/home/');
   const guestAllowed = isHome && request.cookies.get('matchup-guest')?.value === '1';
-  if (!session && !guestAllowed) return NextResponse.redirect(new URL(`/auth?next=${encodeURIComponent(pathname)}`, request.url));
+
+  if (isRoot) {
+    if (session || guestAllowed) {
+      const response = NextResponse.redirect(new URL('/home', request.url));
+      if (session?.refresh_token) {
+        response.cookies.set('matchup-access-token', session.access_token, { ...cookieOptions, maxAge: session.expires_in || 3600 });
+        response.cookies.set('matchup-refresh-token', session.refresh_token, { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 });
+      }
+      return response;
+    }
+    if (request.cookies.get('matchup-entry-seen')?.value === '1') return NextResponse.redirect(new URL('/auth', request.url));
+    return NextResponse.next();
+  }
+
+  if (isAuthEntry && session) {
+    const response = NextResponse.redirect(new URL('/home', request.url));
+    if (session.refresh_token) {
+      response.cookies.set('matchup-access-token', session.access_token, { ...cookieOptions, maxAge: session.expires_in || 3600 });
+      response.cookies.set('matchup-refresh-token', session.refresh_token, { ...cookieOptions, maxAge: 60 * 60 * 24 * 30 });
+    }
+    return response;
+  }
+
+  if (!session && !guestAllowed && !isAuthEntry) return NextResponse.redirect(new URL('/auth?next=' + encodeURIComponent(pathname), request.url));
 
   const response = NextResponse.next();
   if (session?.refresh_token) {
@@ -39,5 +64,4 @@ export async function middleware(request: NextRequest) {
   }
   return response;
 }
-
-export const config = { matcher: ['/home/:path*', '/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*', '/friends/:path*', '/admin/:path*'] };
+export const config = { matcher: ['/', '/auth', '/home/:path*', '/tournaments/new/:path*', '/notifications/:path*', '/leaderboard/:path*', '/friends/:path*', '/admin/:path*'] };
