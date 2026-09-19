@@ -2,7 +2,7 @@ import { Camera, Trophy, UserPlus, Video, type LucideIcon } from "lucide-react";
 export type FeedTab="for-you"|"following"|"reels";
 export type Author={id:string;name:string;handle:string;avatar?:string|null;initials:string;game?:string|null;verified?:boolean};
 export type Comment={id:string;author:string;authorId:string;text:string;time:string;isOwn?:boolean};
-export type Post={id:string;author:Author;time:string;caption:string;media:string[];videoUrl?:string;hasVideo:boolean;likes:number;comments:number;commentList:Comment[];shares:number;liked:boolean;saved:boolean;following:boolean;isOwn?:boolean;category:"sports"|"community"};
+export type Post={id:string;author:Author;time:string;caption:string;media:string[];videoUrl?:string;hasVideo:boolean;likes:number;comments:number;commentList:Comment[];shares:number;liked:boolean;saved:boolean;following:boolean;isOwn?:boolean;category:"sports"|"community";likeAvatars?:Author[]};
 export type FeedAction={id:string;title:string;subtitle:string;icon:LucideIcon;tile:string};
 export const feedActions:FeedAction[]=[
  {id:"post-squad",title:"Post squad / gameplay",subtitle:"Share your squad or gameplay with the community.",icon:Camera,tile:"bg-[#0b3154] text-[#70c1ff]"},
