@@ -40,7 +40,7 @@ export function ProfileDiscoveryCard({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [index, setIndex] = useState(0);
+  const seenIdsRef = useRef(new Set<string>());
   const [quickChatPerson, setQuickChatPerson] = useState<HomePerson | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -69,13 +69,14 @@ export function ProfileDiscoveryCard({
 
   const finishExit = (direction: "left" | "right") => {
     if (direction === "left") {
-      setIndex((value) => value + 1);
+      if (person) seenIdsRef.current.add(person.id);
       setDragX(0);
       setAnimating(false);
-      if (people.length - index <= 5) void requestMore();
+      if (availablePeople.length <= 6) void requestMore();
       return;
     }
     const exited = person;
+    if (exited) seenIdsRef.current.add(exited.id);
     setDragX(0);
     setAnimating(false);
     if (exited) {
@@ -241,7 +242,7 @@ export function ProfileDiscoveryCard({
             </button>
           </div>
 
-          {isActive && people.length > index + 1 ? (
+          {isActive && availablePeople.length > 1 ? (
             <div className="mt-1.5 flex items-center justify-center gap-2 text-[9px] font-bold text-[#66809a]">
               <span className="inline-flex items-center gap-1"><ArrowRight size={11} className="rotate-180" /> Swipe left</span>
               <span className="size-1 rounded-full bg-[#2b5d87]" />
