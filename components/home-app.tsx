@@ -325,7 +325,7 @@ function TournamentCard({ tournament, supabase }: { tournament: Tournament; supa
   );
 }
 
-function ReadyCard({ player }: { player: Profile }) {
+function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge: (id: string) => void; busy: boolean }) {
   return (
     <article className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 sm:min-w-0">
       <div className="flex items-center gap-3">
@@ -379,7 +379,7 @@ export function HomeApp() {
   const [readyPlayers, setReadyPlayers] = useState<Profile[]>([]);
   const [groups, setGroups] = useState<GroupPreview[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState("");\n  const [challengeBusy, setChallengeBusy] = useState("");
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -613,7 +613,7 @@ export function HomeApp() {
 
   const followPerson = async (id: string) => toggleFollow(id);
 
-  const addFriend = async (id: string) => {
+  const challengeReady = async (id: string) => {\n    if (!userId) { notify("Sign in to challenge players."); return; }\n    setChallengeBusy(id);\n    const { error } = await supabase.rpc("send_match_request", { p_opponent_id: id });\n    if (error) notify(error.message || "Could not send challenge.");\n    else notify("Challenge sent.");\n    setChallengeBusy("");\n  };\n\n  const addFriend = async (id: string) => {
     if (!userId) { notify("Sign in to add friends."); return; }
     const { error } = await supabase.rpc("send_friend_request", { p_target: id });
     if (error) {
@@ -768,7 +768,7 @@ export function HomeApp() {
       <section className="mt-9">
         <SectionHeading eyebrow="Quick Match" title="Ready Players" description="Players who are ready to connect and play." href="/ready-players" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Checking Ready Players…</div> : readyPlayers.length ? (
-          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{readyPlayers.map((player) => <ReadyCard key={player.id} player={player} />)}</div>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{readyPlayers.map((player) => <ReadyCard key={player.id} player={player} onChallenge={challengeReady} busy={challengeBusy===player.id} />)}</div>
         ) : (
           <EmptyState icon={<Zap size={23} />} title="No ready players right now" text="Ready Player availability is live. Open Ready Players to see the current pool or enable your own availability." href="/ready-players" action="Open Ready Players" />
         )}
