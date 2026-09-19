@@ -239,7 +239,7 @@ export function HomeApp() {
     ] = await Promise.all([
       supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
       supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true }),
-      supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at").neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
+      supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
       uid ? supabase.from("user_follows").select("following_id").eq("follower_id", uid) : Promise.resolve({ data: [] as { following_id: string }[] }),
       uid ? supabase.from("friendships").select("user_id,friend_id,status").or(`user_id.eq.${uid},friend_id.eq.${uid}`).limit(500) : Promise.resolve({ data: [] as any[] }),
       supabase.from("posts").select("id,author_id,body,created_at").order("created_at", { ascending: false }).limit(40),
@@ -304,7 +304,8 @@ export function HomeApp() {
 
     let discoveryRows = allProfiles;
     let discoveryCursor = allProfiles.length;
-    let discoveryHasMore = allProfiles.length === 40;
+    const profileTotal = profilesResult.count ?? allProfiles.length;
+    let discoveryHasMore = discoveryCursor < profileTotal;
     const discovered = new Map<string, PersonPreview>();
 
     // Always evaluate the first fetched page, even when fewer than 40 profiles exist.
@@ -323,7 +324,7 @@ export function HomeApp() {
 
       discoveryRows = (nextRows || []) as Profile[];
       discoveryCursor += discoveryRows.length;
-      discoveryHasMore = discoveryRows.length === 40;
+      discoveryHasMore = discoveryCursor < profileTotal;
       if (!discoveryRows.length) break;
     }
 
@@ -442,22 +443,22 @@ export function HomeApp() {
     peopleLoadingRef.current = true;
     setPeopleLoading(true);
     try {
-      const { uid, followedIds, relationMap } = peopleExclusionsRef.current;
+      const { uid, relationMap } = peopleExclusionsRef.current;
       const existing = new Set(people.map((p) => p.id));
       let additions: PersonPreview[] = [];
 
       while (peopleHasMoreRef.current && additions.length < 10) {
         const start = peopleCursorRef.current;
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
           .from("profiles")
-          .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
+          .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" })
           .order("created_at", { ascending: false })
           .range(start, start + 39);
 
         if (error) throw error;
         const rows = (data || []) as Profile[];
         peopleCursorRef.current = start + rows.length;
-        peopleHasMoreRef.current = rows.length === 40;
+        peopleHasMoreRef.current = peopleCursorRef.current < (count ?? peopleCursorRef.current);
         if (!rows.length) break;
 
         const eligible = rows.filter((p) => p.id !== uid && relationMap.get(p.id) !== "friends" && !existing.has(p.id));
