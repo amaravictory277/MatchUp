@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -119,7 +119,7 @@ function formatLabel(value: string) {
 
 function publicStorageUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, bucket: string, path: string | null) {
   if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path) || path.startsWith("/")) return path;
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
@@ -148,7 +148,7 @@ function SectionHeading({
   );
 }
 
-function EmptyState({ icon, title, text, href, action }: { icon: React.ReactNode; title: string; text: string; href?: string; action?: string }) {
+function EmptyState({ icon, title, text, href, action }: { icon: ReactNode; title: string; text: string; href?: string; action?: string }) {
   return (
     <div className="rounded-[24px] border border-dashed border-[#214a78] bg-[#071426] p-7 text-center">
       <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#0b3154] text-[#70c1ff]">{icon}</span>
