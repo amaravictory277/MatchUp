@@ -10,6 +10,11 @@ import { ContentForwarder } from "../share/content-forwarder";
 type Category="boosted"|"featured"|"discover";
 type TournamentRow={id:string;tournament_id:string;name:string;description?:string|null;format:string;status:string;starts_at?:string|null;visibility:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
 function profileName(row:TournamentRow){const p=Array.isArray(row.profiles)?row.profiles[0]:row.profiles;return p?.display_name||p?.username||"MatchUp Organizer";}function formatName(v:string){return v.replaceAll("_"," ");}function money(v:number){return v>0?`₦${v.toLocaleString("en-NG",{maximumFractionDigits:2})}`:"No prize";}
+function storageUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, path: string | null){
+  if(!path)return null;
+  if(/^https?:\\/\\//i.test(path)||path.startsWith("/"))return path;
+  return supabase.storage.from("tournament-media").getPublicUrl(path).data.publicUrl;
+}
 export function TournamentCard({
   row,
   category,
@@ -32,7 +37,7 @@ export function TournamentCard({
   const badge = category === "boosted" ? "Pinned" : category === "featured" ? "Featured" : "League";
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
-  const creatorProfile = {
+  const bannerUrl = storageUrl(supabase, row.banner_path);\n  const creatorProfile = {
     id: row.organizer_id,
     display_name: creator,
     username: profile?.username || null,
@@ -117,7 +122,7 @@ export function TournamentCard({
     >
       <div role="button" tabIndex={0} onClick={open} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
         <div className="relative h-[182px] overflow-hidden bg-[#061120] sm:h-[220px]">
-          <MatchUpImage src={row.banner_path || "/1002371685.jpg"} className="h-full bg-[#0b223c]" />
+          {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="grid h-full place-items-center bg-[#061120]"><img src="/matchup-logo.svg" alt="MatchUp" className="w-44 opacity-65" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/20 to-[#071426]/15" />
           <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
             {badge}
