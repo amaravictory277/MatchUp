@@ -93,7 +93,7 @@ export function InstallPrompt() {
     <div className="install-overlay" role="dialog" aria-modal="true" aria-label="Install MatchUp">
       <div className="install-sheet">
         <button className="install-close" onClick={handleDismiss} aria-label="Close install prompt"><X size={18} /></button>
-        <div className="install-icon"><span>M</span></div>
+        <div className="install-icon"><img src="/icon-192.svg" alt="MatchUp" className="size-full rounded-[18px] object-cover" /></div>
         <div className="install-body">
           <h3>Install MatchUp</h3>
           <p>{ios ? "Add MatchUp to your Home Screen for the full tournament experience." : "Get the full tournament experience right from your Home Screen."}</p>
