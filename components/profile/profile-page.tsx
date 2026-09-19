@@ -73,9 +73,18 @@ export function ProfilePage(){
   };
   const logout=async()=>{
     if(loggingOut)return; setLoggingOut(true);
-    const {error}=await supabase.auth.signOut(); await clearAuthSession();
-    if(error){console.error("MatchUp logout failed:",error);notify(error.message);setLoggingOut(false);return}
-    router.replace("/auth"); router.refresh();
+    try{
+      const {error}=await supabase.auth.signOut({scope:"local"});
+      try{await clearAuthSession()}catch(sessionError){console.error("MatchUp secure logout cookie cleanup failed:",sessionError)}
+      if(error)console.error("MatchUp logout warning:",error);
+    }catch(error){
+      console.error("MatchUp logout failed:",error);
+      try{await clearAuthSession()}catch(sessionError){console.error("MatchUp secure logout cookie cleanup failed:",sessionError)}
+    }finally{
+      router.replace("/auth");
+      router.refresh();
+      setLoggingOut(false);
+    }
   };
   if(loading)return <main className="profile-page app-shell"><div className="surface-card p-10 text-center text-sm text-[#7892ac]">Loading profile…</div></main>;
   if(!profile)return <main className="profile-page app-shell"><div className="surface-card p-10 text-center text-sm text-[#7892ac]">Profile unavailable.</div></main>;
