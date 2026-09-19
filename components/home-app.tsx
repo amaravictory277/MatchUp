@@ -463,11 +463,11 @@ export function HomeApp() {
 
     const rawPosts = postsResult.data || [];
     const postIds = rawPosts.map((p: any) => p.id);
-    const authorIds = Array.from(new Set(rawPosts.map((p: any) => p.author_id)));
+    const commentAuthorIds = Array.from(new Set((commentRows || []).map((r: any) => r.author_id)));\n    const authorIds = Array.from(new Set([...rawPosts.map((p: any) => p.author_id), ...commentAuthorIds]));
     const [{ data: mediaRows }, { data: likeRows }, { data: commentRows }, { data: savedRows }] = await Promise.all([
       postIds.length ? supabase.from("post_media").select("post_id,storage_path,media_type,position").in("post_id", postIds).order("position") : Promise.resolve({ data: [] }),
       postIds.length ? supabase.from("post_likes").select("post_id,user_id,created_at").in("post_id", postIds).order("created_at", { ascending: true }) : Promise.resolve({ data: [] }),
-      postIds.length ? supabase.from("post_comments").select("post_id").in("post_id", postIds) : Promise.resolve({ data: [] }),
+      postIds.length ? supabase.from("post_comments").select("id,post_id,author_id,body,created_at").in("post_id", postIds).order("created_at",{ascending:true}) : Promise.resolve({ data: [] }),
       uid && postIds.length ? supabase.from("saved_posts").select("post_id").eq("user_id", uid).in("post_id", postIds) : Promise.resolve({ data: [] }),
     ]);
     const likeUserIds = Array.from(new Set((likeRows || []).map((r: any) => r.user_id)));
