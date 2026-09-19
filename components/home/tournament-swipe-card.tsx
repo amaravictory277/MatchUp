@@ -110,7 +110,6 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
         >
           <TournamentCard
             row={current}
-            category="featured"
             swipeMode
             onOpenOverride={() => setConfirmOpen(true)}
           />
