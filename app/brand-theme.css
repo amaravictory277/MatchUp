@@ -9,18 +9,3 @@ html,body{background:var(--background)!important;color:#fff}body{background:radi
 [class*="border-[#7843ee]"],[class*="border-[#3b315e]"],[class*="border-[#302553]"]{border-color:#194b7c!important}
 [class*="8df17d"]{color:#70c1ff!important}.matchup-chat aside button[class*="bg-[#126bc0]"]{font-size:0}.matchup-chat aside button[class*="bg-[#126bc0]"]::after{content:"CREATE GROUP";font-size:10px;font-weight:900}
 
-
-/* Profile/Feed theme support. These selectors are scoped to the two requested surfaces. */
-[data-theme="light"] body{background:#f4f8fc!important;color:#142437}
-[data-theme="light"] .bottom-nav{background:rgba(255,255,255,.94)!important;border-color:#d5e2ee!important}
-[data-theme="light"] .bottom-nav .nav-link{color:#5c7185!important}
-[data-theme="light"] .surface-card{box-shadow:0 10px 28px rgba(25,55,80,.08)!important}
-[data-theme="light"] .matchup-feed-card,[data-theme="light"] .profile-page{color:#142437}
-[data-theme="light"] .matchup-feed-card [class*="bg-[#071426]"],[data-theme="light"] .profile-page [class*="bg-[#071426]"]{background:#f4f8fc!important}
-[data-theme="light"] .matchup-feed-card [class*="bg-[#08182b]"],[data-theme="light"] .profile-page [class*="bg-[#08182b]"]{background:#fff!important}
-[data-theme="light"] .matchup-feed-card [class*="bg-[#0a2946]"],[data-theme="light"] .profile-page [class*="bg-[#0a2946]"]{background:#e9f4ff!important}
-[data-theme="light"] .matchup-feed-card [class*="text-white"],[data-theme="light"] .profile-page [class*="text-white"]{color:#142437!important}
-[data-theme="light"] .matchup-feed-card [class*="text-[#b7c9da]"],[data-theme="light"] .profile-page [class*="text-[#b7c9da]"]{color:#536c81!important}
-[data-theme="light"] .matchup-feed-card [class*="text-[#7892ac]"],[data-theme="light"] .profile-page [class*="text-[#7892ac]"]{color:#6a7f91!important}
-[data-theme="light"] .profile-page [class*="border-[#18365f]"],[data-theme="light"] .matchup-feed-card [class*="border-[#18365f]"]{border-color:#cbdbe8!important}
-[data-theme="light"] .profile-page [class*="border-[#153c68]"],[data-theme="light"] .matchup-feed-card [class*="border-[#153c68]"]{border-color:#d5e2ee!important}
