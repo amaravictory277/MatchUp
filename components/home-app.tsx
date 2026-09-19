@@ -78,7 +78,7 @@ function nameOf(p?: Profile | null) {
 
 function gameLabel(value?: string | null) {
   if (!value) return "Football";
-  return /efootball/i.test(value) ? "Football" : value;
+  return /football/i.test(value) ? "Football" : value;
 }
 
 function relativeTime(value: string) {
