@@ -223,7 +223,7 @@ export function ProfileDiscoveryCard({
 
         <div className="relative px-5 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-3">
           <div className="-mt-16 flex items-end justify-between gap-4">
-            <MatchUpAvatar profile={profile} size="xl" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
+            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
             <div className="mb-1 flex items-center gap-2">
               {profile.is_verified ? <MatchUpVerificationBadge /> : null}
             </div>
