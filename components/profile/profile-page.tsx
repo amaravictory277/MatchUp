@@ -75,7 +75,7 @@ export function ProfilePage(){
     if(loggingOut)return; setLoggingOut(true);
     const {error}=await supabase.auth.signOut(); await clearAuthSession();
     if(error){console.error("MatchUp logout failed:",error);notify(error.message);setLoggingOut(false);return}
-    router.replace("/"); router.refresh();
+    router.replace("/auth"); router.refresh();
   };
   if(loading)return <main className="profile-page app-shell"><div className="surface-card p-10 text-center text-sm text-[#7892ac]">Loading profile…</div></main>;
   if(!profile)return <main className="profile-page app-shell"><div className="surface-card p-10 text-center text-sm text-[#7892ac]">Profile unavailable.</div></main>;
