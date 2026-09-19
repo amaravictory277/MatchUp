@@ -137,7 +137,7 @@ export function TournamentCard({
           <p className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
 
           <div className="mt-2 flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.25 text-[11px] font-bold text-[#b7c9da]">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
               <Users size={14} className="text-[#70c1ff]" />{row.max_players} Teams
             </span>
             <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.5 text-[11px] font-bold text-[#b7c9da]">
@@ -146,7 +146,7 @@ export function TournamentCard({
           </div>
 
           <div className="relative mt-3 flex items-center justify-between gap-2 pt-3 before:pointer-events-none before:absolute before:top-0 before:left-0 before:right-0 before:border-t before:border-[#214a78]">
-            <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1.25">
+            <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1">
               <p className="text-[9px] font-bold uppercase tracking-[.08em] text-white/80">Prize</p>
               <p className="mt-0.5 text-[15px] font-black leading-tight text-white">{money(Number(row.prize_pool || 0))}</p>
             </div>
@@ -161,7 +161,7 @@ export function TournamentCard({
               <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-8 shrink-0 rounded-full" />
               <span className="truncate text-sm font-black text-white">{creator}</span>
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1.25 text-[11px] font-black capitalize text-[#9bd3ff]">
+            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1 text-[11px] font-black capitalize text-[#9bd3ff]">
               {formatName(row.status)}
             </span>
           </div>
