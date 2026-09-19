@@ -16,6 +16,7 @@ type Tournament = {
   starts_at: string | null;
   banner_path: string | null;
   status: string;
+  visibility?: string;
   organizer_id: string;
   profiles?: { display_name?: string | null; username?: string | null; avatar_path?: string | null } | null;
 };
