@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Bookmark, CalendarClock, ChevronLeft, ChevronRight, Clock3, Download, Forward, Gamepad2, Heart, MessageCircle, MoreHorizontal, Pencil, Send, Trash2, UsersRound, Volume2, VolumeX, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Clock3, Download, Forward, Gamepad2, Heart, MessageCircle, MoreHorizontal, Pencil, Send, Trash2, UsersRound, Volume2, VolumeX, X } from "lucide-react";
 import { formatCount, type Post } from "./data";
 import { ContentForwarder } from "../share/content-forwarder";
 import { MatchUpVerificationBadge } from "./matchup-verification-badge";
