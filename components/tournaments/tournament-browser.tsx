@@ -37,7 +37,8 @@ export function TournamentCard({
   const badge = category === "boosted" ? "Pinned" : category === "featured" ? "Featured" : "League";
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
-  const bannerUrl = storageUrl(supabase, row.banner_path);\n  const creatorProfile = {
+  const bannerUrl = storageUrl(supabase, row.banner_path);
+  const creatorProfile = {
     id: row.organizer_id,
     display_name: creator,
     username: profile?.username || null,
