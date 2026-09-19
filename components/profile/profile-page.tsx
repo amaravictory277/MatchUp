@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Camera, Check, ChevronRight, Gamepad2, Globe2, LogOut, Pencil, UserRound, Bell, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronRight, Gamepad2, Globe2, LogOut, Pencil, UserRound, Bell } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { clearAuthSession } from "../../lib/auth/session";
@@ -94,7 +94,7 @@ export function ProfilePage(){
   </main>;
   if(screen==="settings")return <main className="profile-page app-shell">
     <header className="flex items-center gap-3 pb-5"><button type="button" onClick={goBack} className="icon-button" aria-label="Back"><ArrowLeft size={18}/></button><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">MatchUp</p><h1 className="mt-1 text-3xl font-black text-white">Settings</h1></div></header>
-    <div className="space-y-4"><SettingsGroup title="ACCOUNT"><SettingsRow icon={Pencil} title="Edit Profile" detail="Update your picture, name, country or game" onClick={()=>openView("edit")}/><SettingsRow icon={UserRound} title="Account Information" detail={email || "Authentication account"}/></SettingsGroup><SettingsGroup title="NOTIFICATIONS"><SettingsRow icon={Bell} title="Notification Preferences" detail="Open your existing MatchUp notifications" onClick={()=>router.push("/notifications")}/></SettingsGroup><SettingsGroup title="SECURITY"><SettingsRow icon={LockKeyhole} title="Authentication" detail="Email and authentication remain managed by MatchUp"/></SettingsGroup></div>
+    <div className="space-y-4"><SettingsGroup title="ACCOUNT"><SettingsRow icon={Pencil} title="Edit Profile" detail="Update your picture, name, country or game" onClick={()=>openView("edit")}/><SettingsRow icon={UserRound} title="Account Information" detail={email || "Authentication account"}/></SettingsGroup><SettingsGroup title="NOTIFICATIONS"><SettingsRow icon={Bell} title="Notification Preferences" detail="Open your existing MatchUp notifications" onClick={()=>router.push("/notifications")}/></SettingsGroup></div>
     {toast?<Toast message={toast}/>:null}
   </main>;
   return <main className="profile-page app-shell">
