@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
+import { ArrowRight, Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { MatchUpVerificationBadge } from "../feeds/matchup-verification-badge";
