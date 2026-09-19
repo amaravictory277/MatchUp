@@ -17,12 +17,10 @@ function storageUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, pa
 }
 export function TournamentCard({
   row,
-  category,
   swipeMode = false,
   onOpenOverride,
 }: {
   row: TournamentRow;
-  category: Category;
   swipeMode?: boolean;
   onOpenOverride?: () => void;
 }) {
@@ -34,7 +32,6 @@ export function TournamentCard({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moved = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
-  const badge = category === "boosted" ? "Pinned" : category === "featured" ? "Featured" : "League";
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
   const bannerUrl = storageUrl(supabase, row.banner_path);
