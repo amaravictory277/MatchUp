@@ -1,4 +1,4 @@
-const CACHE_NAME = "matchup-shell-v6";
+const CACHE_NAME = "matchup-shell-v7";
 const SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/icon-192.svg", "/icon-512.svg", "/matchup-logo.svg"];
 
 self.addEventListener("install", event => {
