@@ -210,6 +210,7 @@ export function HomeApp() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
   const [challengeBusy, setChallengeBusy] = useState("");
+  const [peopleLoading, setPeopleLoading] = useState(false);
   const peopleCursorRef = useRef(0);
   const peopleHasMoreRef = useRef(true);
   const peopleLoadingRef = useRef(false);
@@ -286,8 +287,6 @@ export function HomeApp() {
     });
 
     peopleExclusionsRef.current = { uid, followedIds, relationMap };
-    peopleCursorRef.current = 40;
-    peopleHasMoreRef.current = allProfiles.length === 40;
 
     const hydratePeople = async (profiles: Profile[]) => {
       const eligible = profiles.filter((p) => p.id !== uid && !relationMap.has(p.id) && !followedIds.has(p.id));
@@ -300,7 +299,32 @@ export function HomeApp() {
       }));
     };
 
-    setPeople(await hydratePeople(allProfiles));
+    let discoveryRows = allProfiles;
+    let discoveryCursor = allProfiles.length;
+    let discoveryHasMore = allProfiles.length === 40;
+    const discovered = new Map<string, PersonPreview>();
+
+    while (discovered.size < 10 && discoveryHasMore) {
+      const eligible = await hydratePeople(discoveryRows);
+      eligible.forEach((p) => discovered.set(p.id, p));
+      if (discovered.size >= 10) break;
+
+      const { data: nextRows, error: nextError } = await supabase
+        .from("profiles")
+        .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
+        .order("created_at", { ascending: false })
+        .range(discoveryCursor, discoveryCursor + 39);
+      if (nextError) throw nextError;
+
+      discoveryRows = (nextRows || []) as Profile[];
+      discoveryCursor += discoveryRows.length;
+      discoveryHasMore = discoveryRows.length === 40;
+      if (!discoveryRows.length) break;
+    }
+
+    peopleCursorRef.current = discoveryCursor;
+    peopleHasMoreRef.current = discoveryHasMore;
+    setPeople(Array.from(discovered.values()));
 
     const rawPosts = postsResult.data || [];
     const postIds = rawPosts.map((p: any) => p.id);
@@ -411,6 +435,7 @@ export function HomeApp() {
   const loadMorePeople = useCallback(async () => {
     if (!peopleHasMoreRef.current || peopleLoadingRef.current) return;
     peopleLoadingRef.current = true;
+    setPeopleLoading(true);
     try {
       const { uid, followedIds, relationMap } = peopleExclusionsRef.current;
       const existing = new Set(people.map((p) => p.id));
@@ -446,6 +471,7 @@ export function HomeApp() {
       notify("Could not load more player suggestions.");
     } finally {
       peopleLoadingRef.current = false;
+      setPeopleLoading(false);
     }
   }, [notify, people, supabase]);
 
@@ -609,7 +635,7 @@ export function HomeApp() {
       <section className="mt-8">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div> : people.length ? (
-          <ProfileDiscoveryCard people={people} onFriend={addFriend} notify={notify} onNeedMore={loadMorePeople} />
+          <ProfileDiscoveryCard people={people} onFriend={addFriend} notify={notify} onNeedMore={loadMorePeople} peopleLoading={peopleLoading} peopleHasMore={peopleHasMoreRef.current} />
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No new player suggestions" text="There are no suitable player profiles to preview right now." href="/friends" action="Find Players" />
         )}
