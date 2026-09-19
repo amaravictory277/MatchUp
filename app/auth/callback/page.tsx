@@ -45,7 +45,7 @@ export default function AuthCallbackPage() {
         if (!data.session) throw new Error('Your authentication link is invalid or expired.');
 
         await syncAuthSession(data.session.access_token, data.session.refresh_token);
-        document.cookie = 'matchup-guest=; Max-Age=0; Path=/; SameSite=Lax';
+        document.cookie = 'matchup-guest=; Max-Age=0; Path=/; SameSite=Lax'; document.cookie = 'matchup-entry-seen=1; Max-Age=31536000; Path=/; SameSite=Lax';
 
         if (active) {
           router.replace(withSignedInNotice(nextPath));
