@@ -522,7 +522,7 @@ export function HomeApp() {
         hasVideo: Boolean((mediaMap.get(p.id) || []).some((m) => m.type === "video")),
         likes: (likesByPost.get(p.id) || []).length,
         comments: commentCounts.get(p.id) || 0,
-        commentList: [],
+        commentList: (commentsByPost.get(p.id) || []).map((comment: any) => { const cp = profileMap.get(comment.author_id); return { id: comment.id, author: nameOf(cp), authorId: comment.author_id, text: comment.body, time: relativeTime(comment.created_at), isOwn: uid ? comment.author_id === uid : false }; }),
         shares: 0,
         liked: likedIds.has(p.id),
         saved: savedIds.has(p.id),
