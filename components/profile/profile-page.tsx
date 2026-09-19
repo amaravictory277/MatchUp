@@ -66,7 +66,7 @@ export function ProfilePage(){
         const upload=await supabase.storage.from("profile-media").upload(path,avatarFile,{upsert:false,contentType:avatarFile.type});
         if(upload.error)throw upload.error; avatarPath=path;
       }
-      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath}).eq("id",profile.id).select("id,username,display_name,avatar_path,country,supported_game,is_verified,created_at").single();
+      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath}).eq("id",profile.id).select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,created_at").single();
       if(error)throw error;
       setProfile(data as Profile); setAvatarFile(null); setAvatarPreview(null); notify("Profile updated."); router.replace("/profile");
     }catch(error){console.error("MatchUp profile save failed:",error);notify(error instanceof Error ? error.message : "Settings couldn't be saved.")}finally{setSaving(false)}
