@@ -96,9 +96,9 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
         {stack.slice(1).reverse().map((tournament, reverseIndex) => {
           const layer = stack.length - reverseIndex - 1;
-          const scale = 0.94 - (layer - 1) * 0.04 + progress * (0.06 - (layer - 1) * 0.02);
+          const scale = Math.max(0.18, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
           return (
-            <div key={tournament.id} className="pointer-events-none absolute inset-0 z-10" style={{ transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`, opacity: 0.78, transition: "transform 340ms cubic-bezier(.16,1,.3,1)", willChange: "transform" }}>
+            <div key={tournament.id} className="pointer-events-none absolute inset-0 z-10" style={{ transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`, opacity: 1, transition: "transform 340ms cubic-bezier(.16,1,.3,1)", willChange: "transform" }}>
               <TournamentCard row={tournament} swipeMode />
             </div>
           );
@@ -113,8 +113,8 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
           onPointerCancel={pointerCancel}
           style={{
             transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
-            transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1), opacity 280ms ease" : "none",
-            opacity: 1 - Math.min(0.22, Math.abs(dragX) / 1300),
+            transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
+            opacity: 1,
             willChange: "transform",
           }}
         >
