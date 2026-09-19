@@ -16,7 +16,7 @@ export function PwaLaunchScreen() {
   return (
     <div className="pwa-launch-screen" role="status" aria-label="Opening MatchUp">
       <div className="pwa-launch-logo">
-        <img src="/icon-512.svg" alt="MatchUp" />
+        <img src="/matchup-logo.svg" alt="MatchUp" />
       </div>
       <div className="pwa-launch-bar" aria-hidden="true"><span /></div>
     </div>
