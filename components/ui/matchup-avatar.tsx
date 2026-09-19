@@ -6,19 +6,24 @@ import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 type AvatarProfile = { id?: string; display_name?: string | null; username?: string | null; avatar_path?: string | null };
 type Props = { profile?: AvatarProfile | null; size?: "sm" | "md" | "lg"; alt?: string; className?: string; group?: boolean };
 const sizeClass = { sm: "size-10", md: "size-12", lg: "size-16" };
-const ACCENT_CACHE=new Map<string,string>();
-const palettes = [["#123a63", "#43a8ff", "#d8f0ff"],["#183f35", "#35c58a", "#d8fff0"],["#49321c", "#ffb454", "#fff0d5"],["#3d244d", "#c87cff", "#f3ddff"],["#173b4b", "#48d1e5", "#dcfbff"]];
+const palettes = [["#0b3154", "#2497ff", "#d8f0ff"],["#0a2946", "#47a8ff", "#e3f4ff"],["#102f4d", "#70c1ff", "#eef9ff"]];
 function hash(value: string) { let h=0; for(let i=0;i<value.length;i++) h=(h*31+value.charCodeAt(i))|0; return Math.abs(h); }
 function label(profile?: AvatarProfile|null){return profile?.display_name||profile?.username||"MatchUp Player";}
-export function MatchUpAvatar({profile,size="md",alt,className="",group=false}:Props){
- const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [failed,setFailed]=useState(false);const [accent,setAccent]=useState<string|null>(null);const [avatarSrc,setAvatarSrc]=useState<string|null>(null);const key=profile?.id||profile?.avatar_path||"matchup-default";const palette=palettes[hash(key)%palettes.length];const name=label(profile);
- useEffect(()=>{setFailed(false);setAccent(null);const raw=profile?.avatar_path;if(!raw)return;const src=/^https?:\/\//i.test(raw)?raw:supabase.storage.from("profile-media").getPublicUrl(raw).data.publicUrl;if(!src)return;setAvatarSrc(src);const cached=ACCENT_CACHE.get(src);if(cached){setAccent(cached);return;}let cancelled=false;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>{if(cancelled)return;try{const canvas=document.createElement("canvas");const ctx=canvas.getContext("2d",{willReadFrequently:true});if(!ctx)return;canvas.width=24;canvas.height=24;ctx.drawImage(img,0,0,24,24);const pixels=ctx.getImageData(0,0,24,24).data;let best="";let score=0;for(let i=0;i<pixels.length;i+=4){const r=pixels[i],g=pixels[i+1],b=pixels[i+2],a=pixels[i+3],max=Math.max(r,g,b),min=Math.min(r,g,b);if(a<160||max-min<28)continue;const s=max-min;if(s>score){score=s;best=`rgb(${r}, ${g}, ${b})`;}}if(best){ACCENT_CACHE.set(src,best);if(!cancelled)setAccent(best);}}catch{}};img.onerror=()=>{if(!cancelled)setFailed(true)};img.src=src;return()=>{cancelled=true};},[profile?.avatar_path,supabase]);
+export function MatchUpAvatar({profile,size="md",alt,className=""}:Props){
+ const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);
+ const [failed,setFailed]=useState(false);
+ const key=profile?.id||profile?.avatar_path||"matchup-default";
+ const palette=palettes[hash(key)%palettes.length];
+ const name=label(profile);
+ const initials=name.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+ const [avatarSrc,setAvatarSrc]=useState<string|null>(null);
+ useEffect(()=>{
+   setFailed(false);
+   const raw=profile?.avatar_path;
+   if(!raw){setAvatarSrc(null);return;}
+   const src=/^https?:\/\//i.test(raw)?raw:supabase.storage.from("profile-media").getPublicUrl(raw).data.publicUrl;
+   setAvatarSrc(src||null);
+ },[profile?.avatar_path,supabase]);
  const background=useMemo(()=>`linear-gradient(145deg,${palette[0]},${palette[1]})`,[palette]);
- return <span className={`relative inline-grid shrink-0 overflow-hidden rounded-[24%] ${sizeClass[size]} ${className}`} style={{background,"--matchup-avatar-accent":accent||palette[1]} as React.CSSProperties}>{avatarSrc&&!failed?<img src={avatarSrc} alt={alt??name} className="size-full object-cover" loading="lazy" onError={()=>setFailed(true)}/>:<DefaultAvatar group={group} palette={palette} label={name}/>}</span>;
-}
-function DefaultAvatar({group,palette,label}:{group:boolean;palette:string[];label:string}){
- const n=hash(label),variant=n%5,skin=["#f4c7a1","#9d6545","#6b3e2a","#e5ad82"][n%4],shirt=["#eaf6ff","#42a8ff","#35c58a","#ffb454","#c87cff"][variant],hair=["#172231","#24170f","#5a301d","#e7d7bd","#18324e"][variant];
- if(group)return <svg viewBox="0 0 100 100" className="size-full" aria-label="MatchUp group avatar" role="img"><rect width="100" height="100" rx="24" fill={palette[0]}/><circle cx="31" cy="43" r="17" fill={skin}/><circle cx="69" cy="43" r="17" fill={skin}/><circle cx="50" cy="31" r="16" fill="#e9b28d"/><path d="M10 92c2-19 13-28 28-28s26 9 28 28" fill={shirt}/><path d="M38 92c2-19 13-28 28-28s24 9 26 28" fill={palette[1]}/><path d="M28 92c2-13 10-20 22-20s20 7 22 20" fill="#eaf6ff"/></svg>;
- const hairPath=["M27 36c2-18 13-28 23-28 14 0 24 11 22 30-7-8-14-11-23-11-8 0-15 3-22 9Z","M27 35c1-17 12-27 23-27 12 0 23 10 24 28l-8-5-5-12-8 9-8-8-8 10Z","M28 32c4-16 13-23 23-23s19 7 22 23c-6-4-12-6-22-6s-17 2-23 6Z","M26 38c0-22 11-31 24-31 12 0 24 10 24 31l-7-8-4 8-6-10-7 10-7-10-7 10Z","M25 37c2-20 13-30 25-30 13 0 24 10 25 31l-8-6-7-13-6 9-8-9-8 12Z"][variant];
- return <svg viewBox="0 0 100 100" className="size-full" aria-label="MatchUp default avatar" role="img"><rect width="100" height="100" rx="24" fill={palette[0]}/><circle cx="50" cy="40" r="23" fill={skin}/><path d={hairPath} fill={hair}/><circle cx="42" cy="42" r="3" fill="#172231"/><circle cx="58" cy="42" r="3" fill="#172231"/><path d="M39 53c7 6 15 6 22 0" fill="none" stroke="#172231" strokeWidth="3" strokeLinecap="round"/><path d="M22 100c1-25 12-35 28-35s27 10 28 35" fill={shirt}/>{variant===1?<path d="M39 67h22v11H39Z" fill="#fff" opacity=".9"/>:variant===2?<path d="M44 66l6 12 6-12" fill="#fff" opacity=".9"/>:variant===3?<circle cx="73" cy="72" r="6" fill="#fff" opacity=".85"/>:variant===4?<path d="M30 78c12-7 28-7 40 0" fill="none" stroke="#fff" strokeWidth="5" opacity=".8"/>:null}</svg>;
+ return <span className={`relative inline-grid shrink-0 overflow-hidden rounded-full ${sizeClass[size]} ${className}`} style={{background}}>{avatarSrc&&!failed?<img src={avatarSrc} alt={alt??name} className="size-full rounded-full object-cover" loading="lazy" onError={()=>setFailed(true)}/>:<span className="grid size-full place-items-center rounded-full text-xs font-black text-white">{initials}</span>}</span>;
 }
