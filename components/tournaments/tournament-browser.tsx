@@ -12,7 +12,7 @@ type TournamentRow={id:string;tournament_id:string;name:string;description?:stri
 function profileName(row:TournamentRow){const p=Array.isArray(row.profiles)?row.profiles[0]:row.profiles;return p?.display_name||p?.username||"MatchUp Organizer";}function formatName(v:string){return v.replaceAll("_"," ");}function money(v:number){return v>0?`₦${v.toLocaleString("en-NG",{maximumFractionDigits:2})}`:"No prize";}
 function storageUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, path: string | null){
   if(!path)return null;
-  if(/^https?:\\/\\//i.test(path)||path.startsWith("/"))return path;
+  if(path.startsWith("http://")||path.startsWith("https://")||path.startsWith("/"))return path;
   return supabase.storage.from("tournament-media").getPublicUrl(path).data.publicUrl;
 }
 export function TournamentCard({
