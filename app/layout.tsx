@@ -5,6 +5,7 @@ import "./ui-interaction.css";
 import "./chat-ui.css";
 import { ServiceWorker } from "../components/service-worker";
 import { InstallPrompt } from "../components/install-prompt";
+import { PwaLaunchScreen } from "../components/pwa-launch-screen";
 import { AuthNotice } from "../components/auth/auth-notice";
 import { RequestOverlays } from "../components/requests/request-overlays";
 import { RealtimeMatchOverlay } from "../components/realtime-match-overlay";
@@ -35,5 +36,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}<PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
+  return <html lang="en"><body>{children}<PwaLaunchScreen/><PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
 }
