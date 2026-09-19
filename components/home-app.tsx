@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -210,6 +210,10 @@ export function HomeApp() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
   const [challengeBusy, setChallengeBusy] = useState("");
+  const peopleCursorRef = useRef(0);
+  const peopleHasMoreRef = useRef(true);
+  const peopleLoadingRef = useRef(false);
+  const peopleExclusionsRef = useRef<{ uid: string; followedIds: Set<string>; relationMap: Map<string, "pending" | "friends"> }>({ uid: "", followedIds: new Set(), relationMap: new Map() });
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -234,7 +238,7 @@ export function HomeApp() {
     ] = await Promise.all([
       supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
       supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true }),
-      supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at").neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).limit(50),
+      supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at").neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
       uid ? supabase.from("user_follows").select("following_id").eq("follower_id", uid) : Promise.resolve({ data: [] as { following_id: string }[] }),
       uid ? supabase.from("friendships").select("user_id,friend_id,status").or(`user_id.eq.${uid},friend_id.eq.${uid}`).limit(500) : Promise.resolve({ data: [] as any[] }),
       supabase.from("posts").select("id,author_id,body,created_at").order("created_at", { ascending: false }).limit(40),
@@ -281,15 +285,22 @@ export function HomeApp() {
       else relationMap.set(other, "pending");
     });
 
-    const candidatePeople = allProfiles.filter((p) => !relationMap.has(p.id) && !followedIds.has(p.id)).slice(0, 10);
-    const peopleWithCounts = await Promise.all(candidatePeople.map(async (p) => {
-      const [{ count: followerCount }, { count: postCount }] = await Promise.all([
-        supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
-        supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", p.id),
-      ]);
-      return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: "none" as const };
-    }));
-    setPeople(peopleWithCounts);
+    peopleExclusionsRef.current = { uid, followedIds, relationMap };
+    peopleCursorRef.current = 40;
+    peopleHasMoreRef.current = allProfiles.length === 40;
+
+    const hydratePeople = async (profiles: Profile[]) => {
+      const eligible = profiles.filter((p) => p.id !== uid && !relationMap.has(p.id) && !followedIds.has(p.id));
+      return Promise.all(eligible.map(async (p) => {
+        const [{ count: followerCount }, { count: postCount }] = await Promise.all([
+          supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
+          supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", p.id),
+        ]);
+        return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: "none" as const };
+      }));
+    };
+
+    setPeople(await hydratePeople(allProfiles));
 
     const rawPosts = postsResult.data || [];
     const postIds = rawPosts.map((p: any) => p.id);
@@ -396,6 +407,47 @@ export function HomeApp() {
 
     setLoading(false);
   }, [supabase]);
+
+  const loadMorePeople = useCallback(async () => {
+    if (!peopleHasMoreRef.current || peopleLoadingRef.current) return;
+    peopleLoadingRef.current = true;
+    try {
+      const { uid, followedIds, relationMap } = peopleExclusionsRef.current;
+      const existing = new Set(people.map((p) => p.id));
+      let additions: PersonPreview[] = [];
+
+      while (peopleHasMoreRef.current && additions.length < 10) {
+        const start = peopleCursorRef.current;
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
+          .order("created_at", { ascending: false })
+          .range(start, start + 39);
+
+        if (error) throw error;
+        const rows = (data || []) as Profile[];
+        peopleCursorRef.current = start + rows.length;
+        peopleHasMoreRef.current = rows.length === 40;
+        if (!rows.length) break;
+
+        const eligible = rows.filter((p) => p.id !== uid && !relationMap.has(p.id) && !followedIds.has(p.id) && !existing.has(p.id));
+        const hydrated = await Promise.all(eligible.map(async (p) => {
+          const [{ count: followerCount }, { count: postCount }] = await Promise.all([
+            supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
+            supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", p.id),
+          ]);
+          return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: "none" as const };
+        }));
+        hydrated.forEach((p) => { existing.add(p.id); additions.push(p); });
+      }
+
+      if (additions.length) setPeople((current) => [...current, ...additions]);
+    } catch {
+      notify("Could not load more player suggestions.");
+    } finally {
+      peopleLoadingRef.current = false;
+    }
+  }, [notify, people, supabase]);
 
   useEffect(() => {
     void loadHome();
@@ -557,7 +609,7 @@ export function HomeApp() {
       <section className="mt-8">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div> : people.length ? (
-          <ProfileDiscoveryCard people={people.slice(0, 10)} onFriend={addFriend} notify={notify} />
+          <ProfileDiscoveryCard people={people} onFriend={addFriend} notify={notify} onNeedMore={loadMorePeople} />
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No new player suggestions" text="There are no suitable player profiles to preview right now." href="/friends" action="Find Players" />
         )}
