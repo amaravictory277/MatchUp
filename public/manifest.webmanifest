@@ -1,15 +1,14 @@
 {
-  "name": "MatchUp — eFootball tournaments",
+  "name": "MatchUp — Football tournaments and community",
   "short_name": "MatchUp",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#061120",
+  "background_color": "#030b16",
   "theme_color": "#167bd1",
-  "description": "Create, discover and compete in eFootball tournaments.",
+  "description": "Create, discover and compete in football tournaments with the MatchUp community.",
   "icons": [
     { "src": "/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
