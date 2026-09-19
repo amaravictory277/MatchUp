@@ -174,7 +174,7 @@ export function ProfileDiscoveryCard({
 
           <div className="relative px-5 pb-5 sm:px-7 sm:pb-7">
             <div className="-mt-16 flex items-end justify-between gap-4">
-              <MatchUpAvatar profile={person} size="xl" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
+              <MatchUpAvatar profile={person} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
               <div className="mb-1 flex items-center gap-2">
                 {person.is_verified ? <MatchUpVerificationBadge /> : null}
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#245b91] bg-[#0a2946] px-3 py-2 text-[11px] font-black text-[#9bd3ff]">
