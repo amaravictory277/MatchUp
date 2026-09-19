@@ -88,7 +88,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
     return <div className="surface-card rounded-[24px] border-[#153c68] p-6 text-center text-sm text-[#7892ac]">No more featured tournaments.</div>;
   }
 
-  const progress = Math.min(1, Math.abs(dragX) / Math.max(window.innerWidth || 360, 420));
+  const progress = Math.min(1, Math.abs(dragX) / (typeof window === "undefined" ? 360 : window.innerWidth) > 420 ? (typeof window === "undefined" ? 360 : window.innerWidth) : 420);
 
   return (
     <>
