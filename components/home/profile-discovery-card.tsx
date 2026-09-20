@@ -62,34 +62,39 @@ export function ProfileDiscoveryCard({
       const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextCtor) return;
       const context = new AudioContextCtor();
-      const duration = 0.11;
+      const now = context.currentTime;
+      const duration = 0.16;
+
+      // A short filtered-noise sweep gives a soft "swish" instead of a click/metallic burst.
       const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < data.length; i += 1) {
-        const envelope = Math.pow(1 - i / data.length, 2);
+        const t = i / data.length;
+        const envelope = Math.sin(Math.PI * t) * (1 - t * 0.18);
         data[i] = (Math.random() * 2 - 1) * envelope;
       }
+
       const source = context.createBufferSource();
       const filter = context.createBiquadFilter();
       const gain = context.createGain();
       source.buffer = buffer;
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(1700, context.currentTime);
-      filter.Q.setValueAtTime(0.7, context.currentTime);
-      gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(2600, now);
+      filter.frequency.exponentialRampToValueAtTime(850, now + duration);
+      filter.Q.setValueAtTime(0.55, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.075, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       source.connect(filter).connect(gain).connect(context.destination);
-      source.start();
-      source.stop(context.currentTime + duration);
-      window.setTimeout(() => void context.close(), 180);
+      source.start(now);
+      source.stop(now + duration);
+
+      window.setTimeout(() => void context.close(), 220);
     } catch {}
   };
 
   const availablePeople = people.filter((profile) => !seenIdsRef.current.has(profile.id));
   const person = availablePeople[0] || null;
-  const stack = availablePeople.slice(0, 3);
-
   const requestMore = useCallback(async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
@@ -102,7 +107,6 @@ export function ProfileDiscoveryCard({
 
   const finishExit = (direction: "left" | "right") => {
     if (direction === "left") {
-      playSwipeSound();
       if (person) seenIdsRef.current.add(person.id);
       setDragX(0);
       setAnimating(false);
@@ -121,6 +125,7 @@ export function ProfileDiscoveryCard({
 
   const commitExit = (direction: "left" | "right") => {
     if (!person || animating) return;
+    playSwipeSound();
     setAnimating(true);
     const width = cardRef.current?.getBoundingClientRect().width || 320;
     const distance = Math.max(window.innerWidth + 80, width + 180);
@@ -219,7 +224,7 @@ export function ProfileDiscoveryCard({
       <article
         key={profile.id}
         ref={isActive ? cardRef : undefined}
-        className={`relative mx-auto aspect-[1.045] w-full max-w-[760px] min-w-0 overflow-hidden rounded-[30px] border border-[#2388e8]/80 bg-[#061a34] text-left shadow-[0_24px_70px_rgba(0,32,78,.48)] ${isActive ? "z-20" : "pointer-events-none absolute inset-0 z-10"}`}
+        className={`relative mx-auto aspect-[1.01] w-full max-w-[760px] min-w-0 overflow-hidden rounded-[30px] border border-[#2388e8]/80 bg-[#061a34] text-left shadow-[0_24px_70px_rgba(0,32,78,.48)] ${isActive ? "z-20" : "pointer-events-none absolute inset-0 z-10"}`}
         aria-hidden={!isActive}
         onPointerDown={isActive ? pointerDown : undefined}
         onPointerMove={isActive ? pointerMove : undefined}
@@ -250,7 +255,7 @@ export function ProfileDiscoveryCard({
         </span>
 
         <div className="absolute left-[5%] top-[23%]">
-          <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-[78px] border-[4px] border-[#0b6dcc] shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:!size-[112px] sm:border-[5px]" />
+          <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-[88px] border-[4px] border-[#0b6dcc] shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:!size-[112px] sm:border-[5px]" />
         </div>
 
         <div className="absolute inset-x-[5%] top-[50%]">
@@ -271,19 +276,13 @@ export function ProfileDiscoveryCard({
 
         <div className="absolute inset-x-[5%] top-[65%]">
           <div className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-[#2766a0]/45 bg-[#0b3158]/92 shadow-inner">
-            <div className="flex items-center justify-center gap-2 px-2 py-2.5 sm:gap-3 sm:py-3.5">
-              <MessageCircle size={23} className="text-[#5cb8ff] sm:size-[27px]" />
-              <div>
-                <p className="text-[20px] font-black leading-none text-white sm:text-[24px]">{profile.postCount ?? 0}</p>
-                <p className="mt-1 text-[8px] font-black uppercase tracking-[.12em] text-[#9ec4e5] sm:text-[10px]">Posts</p>
-              </div>
+            <div className="flex flex-col items-center justify-center px-2 py-2.5 sm:py-3.5">
+              <p className="text-[22px] font-black leading-none text-white sm:text-[25px]">{profile.postCount ?? 0}</p>
+              <p className="mt-2 text-[9px] font-black uppercase tracking-[.16em] text-[#9ec4e5] sm:text-[10px]">Posts</p>
             </div>
-            <div className="flex items-center justify-center gap-2 border-l border-[#3475ad]/65 px-2 py-2.5 sm:gap-3 sm:py-3.5">
-              <UserPlus size={23} className="text-[#5cb8ff] sm:size-[27px]" />
-              <div>
-                <p className="text-[20px] font-black leading-none text-white sm:text-[24px]">{profile.followerCount ?? 0}</p>
-                <p className="mt-1 text-[8px] font-black uppercase tracking-[.12em] text-[#9ec4e5] sm:text-[10px]">Followers</p>
-              </div>
+            <div className="flex flex-col items-center justify-center border-l border-[#3475ad]/65 px-2 py-2.5 sm:py-3.5">
+              <p className="text-[22px] font-black leading-none text-white sm:text-[25px]">{profile.followerCount ?? 0}</p>
+              <p className="mt-2 text-[9px] font-black uppercase tracking-[.16em] text-[#9ec4e5] sm:text-[10px]">Followers</p>
             </div>
           </div>
         </div>
@@ -314,10 +313,6 @@ export function ProfileDiscoveryCard({
   return (
     <>
       <div className="relative block w-full min-w-0 overflow-visible" style={{ touchAction: "pan-y" }}>
-        {stack.slice(1).reverse().map((profile, reverseIndex) => {
-          const layer = stack.length - reverseIndex - 1;
-          return renderProfile(profile, layer);
-        })}
         {renderProfile(person, 0)}
       </div>
       {availablePeople.length > 1 ? (
