@@ -75,6 +75,14 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
   const commitExit = (direction: "left" | "right") => {
     if (!current || animating) return;
+    if (direction === "left" && index >= tournaments.length - 1) {
+      setDragX(0);
+      return;
+    }
+    if (direction === "right" && index === 0) {
+      setDragX(0);
+      return;
+    }
     setAnimating(true);
     clickGuardRef.current = true;
     const width = cardRef.current?.getBoundingClientRect().width || 320;
