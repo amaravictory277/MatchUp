@@ -27,6 +27,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const clickGuardRef = useRef(false);
@@ -54,15 +55,19 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const current = tournaments[index] || null;
   const stack = tournaments.slice(index, index + 3);
 
-  const finishExit = () => {
-    playSwipeSound();
-    setIndex((value) => value + 1);
+  const finishExit = (direction: "left" | "right") => {
+    if (direction === "left") {
+      playSwipeSound();
+      setIndex((value) => value + 1);
+    } else {
+      setConfirmOpen(true);
+    }
     setDragX(0);
     setAnimating(false);
   };
 
   const commitExit = (direction: "left" | "right") => {
-    if (!current || animating) return;
+    if (!current || animating || confirmOpen) return;
     setAnimating(true);
     clickGuardRef.current = true;
     const width = cardRef.current?.getBoundingClientRect().width || 320;
@@ -70,7 +75,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
     setDragX(direction === "left" ? -distance : distance);
     window.setTimeout(() => {
       clickGuardRef.current = false;
-      finishExit();
+      finishExit(direction);
     }, 340);
   };
 
@@ -160,6 +165,20 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
             Swipe right
             <ArrowRight size={11} />
           </span>
+        </div>
+      ) : null}
+
+      {confirmOpen && current ? (
+        <div className="fixed inset-0 z-[95] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setConfirmOpen(false)}>
+          <section className="w-full max-w-sm rounded-[26px] border border-[#245b91] bg-[#08182b] p-5 shadow-[0_24px_80px_rgba(0,0,0,.6)]" onClick={(event) => event.stopPropagation()}>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Tournament</p>
+            <h2 className="mt-1 text-xl font-black text-white">Do you want to open this tournament?</h2>
+            <p className="mt-2 truncate text-sm text-[#7892ac]">{current.name}</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm font-black text-[#b7c9da]">Cancel</button>
+              <button type="button" onClick={() => { setConfirmOpen(false); router.push(`/tournaments/${current.id}`); }} className="rounded-xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white">Yes / Open Tournament</button>
+            </div>
+          </section>
         </div>
       ) : null}
     </>
