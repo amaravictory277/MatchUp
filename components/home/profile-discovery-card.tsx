@@ -18,6 +18,7 @@ export type HomePerson = {
   is_verified?: boolean;
   followerCount?: number;
   postCount?: number;
+  friendship?: "none" | "pending" | "friends";
 };
 
 const nameOf = (person: HomePerson) => person.display_name?.trim() || person.username || "MatchUp Player";
@@ -50,6 +51,26 @@ export function ProfileDiscoveryCard({
   const cardRef = useRef<HTMLElement | null>(null);
   const loadingMoreRef = useRef(false);
 
+  const playSwipeSound = () => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(540, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(230, context.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.09);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.1);
+      window.setTimeout(() => void context.close(), 180);
+    } catch {}
+  };
+
   const availablePeople = people.filter((profile) => !seenIdsRef.current.has(profile.id));
   const person = availablePeople[0] || null;
   const stack = availablePeople.slice(0, 3);
@@ -65,6 +86,7 @@ export function ProfileDiscoveryCard({
   }, [person, peopleHasMore, peopleLoading, requestMore]);
 
   const finishExit = (direction: "left" | "right") => {
+    playSwipeSound();
     if (direction === "left") {
       if (person) seenIdsRef.current.add(person.id);
       setDragX(0);
@@ -240,13 +262,7 @@ export function ProfileDiscoveryCard({
             </button>
           </div>
 
-          {isActive && availablePeople.length > 1 ? (
-            <div className="mt-1.5 flex items-center justify-center gap-2 text-[9px] font-bold text-[#66809a]">
-              <span className="inline-flex items-center gap-1"><ArrowRight size={11} className="rotate-180" /> Swipe left</span>
-              <span className="size-1 rounded-full bg-[#2b5d87]" />
-              <span className="inline-flex items-center gap-1">Quick chat <ArrowRight size={11} /></span>
-            </div>
-          ) : null}
+
         </div>
       </article>
     );
@@ -261,6 +277,18 @@ export function ProfileDiscoveryCard({
         })}
         {renderProfile(person, 0)}
       </div>
+      {availablePeople.length > 1 ? (
+        <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-bold text-[#66809a]" aria-label="Profile swipe controls">
+          <span className="inline-flex items-center gap-1"><ArrowRight size={11} className="rotate-180" /> Swipe left</span>
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, dotIndex) => {
+              const activeDot = seenIdsRef.current.size % 3 === dotIndex;
+              return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
+            })}
+          </div>
+          <span className="inline-flex items-center gap-1">Quick chat <ArrowRight size={11} /></span>
+        </div>
+      ) : null>
 
       {quickChatPerson ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" onClick={() => !sending && setQuickChatPerson(null)}>
