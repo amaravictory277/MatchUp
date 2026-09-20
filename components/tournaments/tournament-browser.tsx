@@ -10,7 +10,7 @@ import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { ContentForwarder } from "../share/content-forwarder";
 type Category="boosted"|"featured"|"discover";
 type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
-function formatName(v:string){return v.replaceAll("_"," ");}function money(v:number){return v>0?`₦${v.toLocaleString("en-NG",{maximumFractionDigits:2})}`:"No prize";}
+function formatName(v:string){return v.replaceAll("_"," ");}
 export function TournamentCard({
   row,
   swipeMode = false,
