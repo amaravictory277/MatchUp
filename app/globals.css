@@ -133,3 +133,6 @@ button { font: inherit; }
 
 @keyframes profile-preview-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes profile-preview-grow { from { opacity: .7; transform: scale(.2); } to { opacity: 1; transform: scale(1); } }
+
+@keyframes profile-preview-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes profile-preview-shrink { from { opacity: 1; transform: scale(1); } to { opacity: .7; transform: scale(.2); } }
