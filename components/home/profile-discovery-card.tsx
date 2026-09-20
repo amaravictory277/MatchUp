@@ -209,16 +209,15 @@ export function ProfileDiscoveryCard({
   }
 
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
-  const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
 
   const renderProfileCard = (profile: HomePerson, swipeMode = false) => {
     const name = nameOf(profile);
     return (
-      <article className="relative w-full overflow-hidden rounded-[24px] border border-[#245b91] bg-[#061426] shadow-[0_18px_48px_rgba(0,40,90,.24)]">
-        <img src="/1002371685.jpg" alt="" className="absolute inset-x-0 top-0 h-[76px] w-full object-cover sm:h-[88px]" draggable={false} />
-        <div className="absolute inset-x-0 top-0 h-[105px] bg-[linear-gradient(180deg,rgba(3,20,39,.08)_0%,rgba(3,22,43,.18)_48%,#061426_100%)] sm:h-[120px]" />
-        <div className="absolute inset-x-0 top-0 h-[76px] bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.28),transparent_38%),radial-gradient(circle_at_88%_12%,rgba(31,94,154,.14),transparent_32%)] sm:h-[88px]" />
-        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[40px] w-[86px] -translate-x-1/2 -translate-y-1/2 opacity-[.12] sm:top-[46px] sm:w-[100px]" />
+      <article className="relative w-full overflow-hidden rounded-[24px] bg-[#061426] shadow-[0_18px_48px_rgba(0,40,90,.24)]">
+        <img src="/1002371685.jpg" alt="" className="absolute inset-x-0 top-0 h-[148px] w-full object-cover sm:h-[168px]" draggable={false} />
+        <div className="absolute inset-x-0 top-0 h-[190px] bg-[linear-gradient(180deg,rgba(3,20,39,.04)_0%,rgba(3,22,43,.10)_34%,rgba(4,21,41,.42)_64%,#061426_100%)] sm:h-[214px]" />
+        <div className="absolute inset-x-0 top-0 h-[148px] bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_12%,rgba(31,94,154,.16),transparent_32%)] sm:h-[168px]" />
+        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[62px] w-[108px] -translate-x-1/2 -translate-y-1/2 opacity-[.12] sm:top-[70px] sm:w-[124px]" />
 
         <div className="relative px-3 pb-3 pt-2.5 sm:px-3.5 sm:pb-3.5 sm:pt-3">
           <div className="flex items-start justify-between gap-3">
@@ -228,20 +227,23 @@ export function ProfileDiscoveryCard({
             </span>
           </div>
 
-          <div className="mt-[36px] flex items-center gap-2 sm:mt-[42px]">
-            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-12 shrink-0 border-2 border-[#071426] shadow-[0_7px_16px_rgba(0,0,0,.38)] sm:!size-14" />
-            {profile.is_verified ? <MatchUpVerificationBadge /> : null}
-          </div>
+          <div className="mt-[52px] grid grid-cols-[minmax(0,1fr)_minmax(132px,.82fr)] items-center gap-3 sm:mt-[60px] sm:grid-cols-[minmax(0,1fr)_minmax(160px,.82fr)] sm:gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-14 shrink-0 border-2 border-[#071426] shadow-[0_7px_18px_rgba(0,0,0,.42)] sm:!size-[68px]" />
+                {profile.is_verified ? <MatchUpVerificationBadge /> : null}
+              </div>
+              <div className="mt-1.5 min-w-0">
+                <h3 className="truncate text-[18px] font-black leading-none tracking-[-.025em] text-white sm:text-[20px]">{name}</h3>
+                <p className="mt-1 text-[11px] font-semibold text-[#a8c2d9] sm:text-[12px]">{profile.country || "Country not set"}</p>
+              </div>
+            </div>
 
-          <div className="mt-1.5 min-w-0">
-            <h3 className="text-[16px] font-black leading-none tracking-[-.025em] text-white sm:text-[18px]">{name}</h3>
-            <p className="mt-1 text-[9px] font-semibold text-[#9eb8cf] sm:text-[10px]">{profile.country || "Country not set"}</p>
-          </div>
-
-          <div className="relative mt-2 grid grid-cols-2 overflow-hidden rounded-[10px] border border-[#245b91]/70 bg-[#08203a]/90 shadow-[inset_0_0_0_1px_rgba(71,168,255,.03)]">
-            <span className="pointer-events-none absolute bottom-1.5 left-1/2 top-1.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
-            <div className="p-1.5 text-center"><p className="text-sm font-black leading-none text-white sm:text-base">{profile.postCount ?? 0}</p><p className="mt-0.5 text-[6px] font-black uppercase tracking-[.13em] text-[#8ca8c0]">Posts</p></div>
-            <div className="p-1.5 text-center"><p className="text-sm font-black leading-none text-white sm:text-base">{profile.followerCount ?? 0}</p><p className="mt-0.5 text-[6px] font-black uppercase tracking-[.13em] text-[#8ca8c0]">Followers</p></div>
+            <div className="relative grid grid-cols-2 overflow-hidden rounded-[12px] border border-[#245b91]/70 bg-[#08203a]/90 shadow-[inset_0_0_0_1px_rgba(71,168,255,.03)]">
+              <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
+              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3"><p className="text-base font-black leading-none text-white sm:text-lg">{profile.postCount ?? 0}</p><p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p></div>
+              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3"><p className="text-base font-black leading-none text-white sm:text-lg">{profile.followerCount ?? 0}</p><p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p></div>
+            </div>
           </div>
 
           <div className="mt-2 grid grid-cols-[1fr_auto] gap-1.5">
@@ -258,36 +260,32 @@ export function ProfileDiscoveryCard({
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
         {previous && dragX > 0 ? (
           <div
-            className="pointer-events-none absolute inset-0 z-10 flex justify-center"
+            className="pointer-events-none absolute inset-0 z-10 w-full"
             style={{
-              transform: `translate3d(0,8px,0) scale(${0.25 + Math.min(1, dragX / swipeViewport) * 0.75})`,
+              transform: "translate3d(0,0,0)",
               opacity: 1,
-              transition: "transform 340ms cubic-bezier(.16,1,.3,1)",
+              transition: "none",
               willChange: "transform",
             }}
           >
-            <div className="w-full">{renderProfileCard(previous, true)}</div>
+            {renderProfileCard(previous, true)}
           </div>
         ) : null}
 
-        {stack.slice(1).reverse().map((profile, reverseIndex) => {
-          const layer = stack.length - reverseIndex - 1;
-          const scale = Math.max(0.18, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
-          return (
-            <div
-              key={`${profile.id}-stack`}
-              className="pointer-events-none absolute inset-0 z-10 flex justify-center"
-              style={{
-                transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`,
-                opacity: 1,
-                transition: "transform 340ms cubic-bezier(.16,1,.3,1)",
-                willChange: "transform",
-              }}
-            >
-              <div className="w-[52%] min-w-[210px] max-w-[420px]">{renderProfileCard(profile, true)}</div>
-            </div>
-          );
-        })}
+        {stack.slice(1).reverse().map((profile) => (
+          <div
+            key={`${profile.id}-stack`}
+            className="pointer-events-none absolute inset-0 z-10 w-full"
+            style={{
+              transform: "translate3d(0,0,0)",
+              opacity: 1,
+              transition: "none",
+              willChange: "transform",
+            }}
+          >
+            {renderProfileCard(profile, true)}
+          </div>
+        ))}
 
         <div
           ref={cardRef}
