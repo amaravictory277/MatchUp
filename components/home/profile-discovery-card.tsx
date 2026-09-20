@@ -238,7 +238,7 @@ export function ProfileDiscoveryCard({
                 profile={profile}
                 size="lg"
                 alt={name}
-                className="!size-[76px] shrink-0 border-3 border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[84px]"
+                className="!size-[76px] shrink-0 border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[84px]"
               />
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -279,7 +279,7 @@ export function ProfileDiscoveryCard({
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => void onFriend(profile.id)}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-13 sm:text-sm"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-12 sm:text-sm"
             >
               {profile.friendship === "pending" ? null : <UserPlus size={17} />}
               <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
