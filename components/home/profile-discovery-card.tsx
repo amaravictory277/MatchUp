@@ -23,11 +23,6 @@ export type HomePerson = {
 
 const nameOf = (person: HomePerson) => person.display_name?.trim() || person.username || "MatchUp Player";
 
-function gameLabel(value?: string | null) {
-  const normalized = value?.trim() || "";
-  if (!normalized || /e[- ]?football/i.test(normalized) || /football/i.test(normalized)) return "Football";
-  return normalized;
-}
 
 export function ProfileDiscoveryCard({
   people,
@@ -54,7 +49,6 @@ export function ProfileDiscoveryCard({
   const [animating, setAnimating] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const clickGuardRef = useRef(false);
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
@@ -125,12 +119,10 @@ export function ProfileDiscoveryCard({
       return;
     }
     setAnimating(true);
-    clickGuardRef.current = true;
     const width = cardRef.current?.getBoundingClientRect().width || 320;
     const distance = Math.max(window.innerWidth + 80, width + 180);
     setDragX(direction === "left" ? -distance : distance);
     window.setTimeout(() => {
-      clickGuardRef.current = false;
       finishExit(direction);
     }, 340);
   };
