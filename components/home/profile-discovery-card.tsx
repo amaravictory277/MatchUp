@@ -208,8 +208,6 @@ export function ProfileDiscoveryCard({
     );
   }
 
-  const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
-
   const renderProfileCard = (profile: HomePerson) => {
     const name = nameOf(profile);
     return (
