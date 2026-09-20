@@ -50,6 +50,7 @@ export function ProfileDiscoveryCard({
   const [animating, setAnimating] = useState(false);
   const [endReached, setEndReached] = useState(false);
   const [profilePreview, setProfilePreview] = useState<HomePerson | null>(null);
+  const [profilePreviewClosing, setProfilePreviewClosing] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
@@ -63,6 +64,15 @@ export function ProfileDiscoveryCard({
   }, [people.length]);
 
   const current = people[index] || null;
+
+  const closeProfilePreview = useCallback(() => {
+    if (!profilePreview || profilePreviewClosing) return;
+    setProfilePreviewClosing(true);
+    window.setTimeout(() => {
+      setProfilePreview(null);
+      setProfilePreviewClosing(false);
+    }, 220);
+  }, [profilePreview, profilePreviewClosing]);
 
   const publicStorageUrl = useCallback((path: string | null | undefined) => {
     if (!path) return null;
@@ -264,7 +274,7 @@ export function ProfileDiscoveryCard({
               disabled={!avatarUrl}
               aria-label={avatarUrl ? "Preview profile picture" : undefined}
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => { event.stopPropagation(); if (avatarUrl) setProfilePreview(profile); }}
+              onClick={(event) => { event.stopPropagation(); if (avatarUrl) { setProfilePreviewClosing(false); setProfilePreview(profile); } }}
               className="relative block rounded-full disabled:cursor-default"
             >
               <MatchUpAvatar
@@ -396,14 +406,14 @@ export function ProfileDiscoveryCard({
         if (!previewUrl) return null;
         return (
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-[2px] animate-[profile-preview-fade_.22s_ease-out]"
+            className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-[2px] ${profilePreviewClosing ? "animate-[profile-preview-fade-out_.22s_ease-in_forwards]" : "animate-[profile-preview-fade_.22s_ease-out]"}`}
             role="dialog"
             aria-modal="true"
             aria-label="Profile picture preview"
-            onClick={() => setProfilePreview(null)}
+            onClick={closeProfilePreview}
           >
             <div
-              className="relative aspect-square w-[min(72vw,340px)] overflow-hidden rounded-full border-[5px] border-[#071426] bg-[#061426] shadow-[0_24px_80px_rgba(0,0,0,.62)] animate-[profile-preview-grow_.28s_cubic-bezier(.16,1,.3,1)]"
+              className={`relative aspect-square w-[min(72vw,340px)] overflow-hidden rounded-full border-[5px] border-[#071426] bg-[#061426] shadow-[0_24px_80px_rgba(0,0,0,.62)] ${profilePreviewClosing ? "animate-[profile-preview-shrink_.22s_cubic-bezier(.7,0,.84,0)_forwards]" : "animate-[profile-preview-grow_.28s_cubic-bezier(.16,1,.3,1)]"}`}
               onClick={(event) => event.stopPropagation()}
             >
               <img src={previewUrl} alt={nameOf(profilePreview)} className="size-full rounded-full object-cover" />
