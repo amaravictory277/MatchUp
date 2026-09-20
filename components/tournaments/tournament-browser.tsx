@@ -9,7 +9,19 @@ import { MatchUpImage } from "../matchup-image";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { ContentForwarder } from "../share/content-forwarder";
 type Category="boosted"|"featured"|"discover";
-type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
+type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
+function currencyForOrganizer(profile?:{country?:string|null;currency_code?:string|null}|null){
+  if(profile?.currency_code) return profile.currency_code;
+  const country=(profile?.country||"").trim().toLowerCase();
+  const fallback:Record<string,string>={nigeria:"NGN",ghana:"GHS",kenya:"KES","south africa":"ZAR","united kingdom":"GBP","united states":"USD"};
+  return fallback[country]||"USD";
+}
+function formatPrize(value:number, profile?:{country?:string|null;currency_code?:string|null}|null){
+  if(value<=0) return "No prize";
+  const currency=currencyForOrganizer(profile);
+  const locale=currency==="NGN"?"en-NG":currency==="GHS"?"en-GH":currency==="KES"?"en-KE":currency==="ZAR"?"en-ZA":currency==="GBP"?"en-GB":"en-US";
+  return new Intl.NumberFormat(locale,{style:"currency",currency,maximumFractionDigits:0}).format(value);
+}
 function formatName(v:string){return v.replaceAll("_"," ");}
 export function TournamentCard({
   row,
@@ -34,6 +46,7 @@ export function TournamentCard({
   const start = useRef<{ x: number; y: number } | null>(null);
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
+  const creatorAvatar = profile?.avatar_path || null;
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -144,9 +157,7 @@ export function TournamentCard({
     ? startsAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
     : "Time TBA";
   const prizeValue = Number(row.prize_pool || 0);
-  const prizeLabel = prizeValue > 0
-    ? `₦${prizeValue.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`
-    : "No prize";
+  const prizeLabel = formatPrize(prizeValue, profile);
 
   return (
     <article
@@ -180,7 +191,7 @@ export function TournamentCard({
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#071426] to-transparent" />
         </div>
 
-        <div className="relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="relative -mt-1 px-4 pb-3.5 sm:px-5 sm:pb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#47a8ff]">Football tournament</p>
@@ -219,16 +230,16 @@ export function TournamentCard({
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[#0b2139] px-3 py-2.5 text-right">
-              <p className="text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Prize</p>
-              <div className="mt-0.5 flex items-center justify-end gap-1.5">
-                <CircleDollarSign size={17} className="text-[#70c1ff]" />
-                <span className="text-[19px] font-black tracking-[-.02em] text-white">{prizeLabel}</span>
+            <div className="text-right">
+              <p className="mb-1 text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Price</p>
+              <div className="inline-flex min-w-[112px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2.5 shadow-inner">
+                <CircleDollarSign size={16} className="shrink-0 text-[#70c1ff]" />
+                <span className="text-[17px] font-black tracking-[-.02em] text-white sm:text-[19px]">{prizeLabel}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
@@ -241,8 +252,11 @@ export function TournamentCard({
             </button>
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-[#66809a]">
-            <span className="truncate">Organized by {creator}</span>
+          <div className="mt-2.5 flex items-center justify-between gap-3 text-[10px] text-[#66809a]">
+            <span className="flex min-w-0 items-center gap-1.5 truncate">
+              {creatorAvatar ? <MatchUpAvatar profile={{ id: row.organizer_id, display_name: creator, username: profile?.username || null, avatar_path: creatorAvatar }} size="sm" alt={creator} className="!size-[19px] shrink-0 border border-[#1d4d78]" /> : <span className="size-[19px] shrink-0 rounded-full bg-[#12385a]" />}
+              <span className="truncate">Organized by {creator}</span>
+            </span>
             <span className="shrink-0 font-bold capitalize text-[#86a1bb]">{formatName(row.status)}</span>
           </div>
         </div>
@@ -263,4 +277,4 @@ export function TournamentCard({
   );
 }
 
-export function TournamentListingPage({category,title}:{category:Category;title:string}){const router=useRouter();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [rows,setRows]=useState<TournamentRow[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [idMode,setIdMode]=useState(false);useEffect(()=>{setIdMode(new URLSearchParams(window.location.search).get("mode")==="id");},[]);useEffect(()=>{let mounted=true;const load=async()=>{const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,profiles:organizer_id(display_name,username)").eq("visibility","public").order("created_at",{ascending:false}).limit(100);if(mounted){setRows((data||[]) as TournamentRow[]);setLoading(false);}};void load();return()=>{mounted=false;};},[supabase]);const filtered=rows.filter(r=>!query.trim()||`${r.name} ${r.tournament_id} ${r.format} ${r.game_title||""} ${r.description||""}`.toLowerCase().includes(query.trim().toLowerCase()));return <main className="app-shell pb-28"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#47a8ff]">MatchUp Tournaments</p><h1 className="mt-1 text-3xl font-black text-white">{title}</h1><p className="mt-1 max-w-xl text-sm leading-6 text-[#86a1bb]">Browse real public tournaments and find your next competition.</p></div><Link href="/tournaments/new" className="hidden items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white sm:flex"><Plus size={15}/>Create</Link></div><div className="mt-5 flex gap-3"><label className="flex flex-1 items-center gap-2 rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3"><Search size={17} className="text-[#47a8ff]"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent text-sm text-white outline-none" placeholder={idMode?"Paste tournament ID":"Search tournaments"}/></label><button type="button" onClick={()=>router.push("/tournaments/new")} className="rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white">Create</button></div>{loading?<div className="surface-card mt-7 border-[#153c68] p-8 text-center text-sm text-[#7892ac]">Loading tournaments…</div>:filtered.length?<div className="mt-7 grid gap-4 sm:grid-cols-2">{filtered.map(row=><TournamentCard key={row.id} row={row}/>)}</div>:<div className="surface-card mt-7 border-[#153c68] p-8 text-center"><Search className="mx-auto text-[#47a8ff]"/><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-sm text-[#7892ac]">Try a different search.</p></div>}</main>;}
+export function TournamentListingPage({category,title}:{category:Category;title:string}){const router=useRouter();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [rows,setRows]=useState<TournamentRow[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [idMode,setIdMode]=useState(false);useEffect(()=>{setIdMode(new URLSearchParams(window.location.search).get("mode")==="id");},[]);useEffect(()=>{let mounted=true;const load=async()=>{const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility","public").order("created_at",{ascending:false}).limit(100);if(mounted){setRows((data||[]) as TournamentRow[]);setLoading(false);}};void load();return()=>{mounted=false;};},[supabase]);const filtered=rows.filter(r=>!query.trim()||`${r.name} ${r.tournament_id} ${r.format} ${r.game_title||""} ${r.description||""}`.toLowerCase().includes(query.trim().toLowerCase()));return <main className="app-shell pb-28"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#47a8ff]">MatchUp Tournaments</p><h1 className="mt-1 text-3xl font-black text-white">{title}</h1><p className="mt-1 max-w-xl text-sm leading-6 text-[#86a1bb]">Browse real public tournaments and find your next competition.</p></div><Link href="/tournaments/new" className="hidden items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white sm:flex"><Plus size={15}/>Create</Link></div><div className="mt-5 flex gap-3"><label className="flex flex-1 items-center gap-2 rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3"><Search size={17} className="text-[#47a8ff]"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent text-sm text-white outline-none" placeholder={idMode?"Paste tournament ID":"Search tournaments"}/></label><button type="button" onClick={()=>router.push("/tournaments/new")} className="rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white">Create</button></div>{loading?<div className="surface-card mt-7 border-[#153c68] p-8 text-center text-sm text-[#7892ac]">Loading tournaments…</div>:filtered.length?<div className="mt-7 grid gap-4 sm:grid-cols-2">{filtered.map(row=><TournamentCard key={row.id} row={row}/>)}</div>:<div className="surface-card mt-7 border-[#153c68] p-8 text-center"><Search className="mx-auto text-[#47a8ff]"/><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-sm text-[#7892ac]">Try a different search.</p></div>}</main>;}
