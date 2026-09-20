@@ -175,7 +175,7 @@ export function TournamentCard({
         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") open(); }}
         className="relative"
       >
-        <div className="relative h-[214px] overflow-hidden sm:h-[250px]">
+        <div className="relative h-[184px] overflow-hidden sm:h-[206px]">
           <MatchUpImage src="/1002371685.jpg" alt="Football players ready for a match" className="h-full w-full" brandPosition="center" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,24,.12)_0%,rgba(3,12,24,.08)_30%,rgba(7,20,38,.42)_62%,#071426_100%)]" />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
@@ -188,7 +188,7 @@ export function TournamentCard({
               {row.game_title || "Football"}
             </span>
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#071426] to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#071426] to-transparent" />
         </div>
 
         <div className="relative -mt-1 px-4 pb-3.5 sm:px-5 sm:pb-4">
@@ -199,13 +199,16 @@ export function TournamentCard({
               {row.description ? <p className="mt-2 line-clamp-2 max-w-[620px] text-[12px] leading-5 text-[#9db2c7] sm:text-[13px]">{row.description}</p> : null}
             </div>
 
-            <div className="shrink-0 rounded-2xl bg-[#0b2139] px-3 py-2 text-right shadow-inner">
-              <p className="text-[9px] font-black uppercase tracking-[.12em] text-[#66809a]">{dateLabel}</p>
-              <p className="mt-0.5 text-[11px] font-black text-white">{timeLabel}</p>
+            <div className="shrink-0 rounded-2xl bg-[#0b2139] px-3 py-2.5 shadow-inner">
+              <div className="flex items-center gap-2 whitespace-nowrap text-[10px] font-black text-white sm:text-[11px]">
+                <span>{dateLabel}</span>
+                <span className="h-4 w-px bg-[#31597f]" aria-hidden="true" />
+                <span>{timeLabel}</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1fr_auto] items-end gap-4">
+          <div className="mt-3.5 grid grid-cols-[1fr_auto] items-end gap-3 sm:mt-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Users size={15} className="shrink-0 text-[#70c1ff]" />
@@ -232,9 +235,9 @@ export function TournamentCard({
 
             <div className="text-right">
               <p className="mb-1 text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Price</p>
-              <div className="inline-flex min-w-[148px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2.5 shadow-inner">
+              <div className="inline-flex min-w-[132px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2 shadow-inner sm:min-w-[148px] sm:px-3 sm:py-2.5">
                 <CircleDollarSign size={16} className="shrink-0 text-[#70c1ff]" />
-                <span className="text-[32px] font-black leading-none tracking-[-.04em] text-white sm:text-[40px]">{prizeLabel}</span>
+                <span className="text-[28px] font-black leading-none tracking-[-.04em] text-white sm:text-[40px]">{prizeLabel}</span>
               </div>
             </div>
           </div>
