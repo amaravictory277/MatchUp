@@ -180,7 +180,7 @@ export function TournamentCard({
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#214a78] bg-[#08182b] px-2 py-1 text-[10px] font-bold text-[#a9bdd5]">
               <CalendarDays size={12} className="text-[#70c1ff]" />
-              {row.starts_at ? new Date(row.starts_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "TBA"}
+              {row.starts_at ? new Date(row.starts_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "TBA"}
             </span>
           </div>
 
