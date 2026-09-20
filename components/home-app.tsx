@@ -210,6 +210,7 @@ export function HomeApp() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
   const [challengeBusy, setChallengeBusy] = useState("");
+  const [cancelFriendId, setCancelFriendId] = useState("");
   const [peopleLoading, setPeopleLoading] = useState(false);
   const peopleCursorRef = useRef(0);
   const peopleHasMoreRef = useRef(true);
@@ -298,7 +299,7 @@ export function HomeApp() {
           supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
           supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", p.id),
         ]);
-        return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: "none" as const };
+        return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: (relationMap.get(p.id) || "none") as "pending" | "friends" | "none" };
       }));
     };
 
@@ -467,7 +468,7 @@ export function HomeApp() {
             supabase.from("user_follows").select("follower_id", { count: "exact", head: true }).eq("following_id", p.id),
             supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", p.id),
           ]);
-          return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: "none" as const };
+          return { ...p, followerCount: followerCount || 0, postCount: postCount || 0, following: false, friendship: (relationMap.get(p.id) || "none") as "pending" | "friends" | "none" };
         }));
         hydrated.forEach((p) => { existing.add(p.id); additions.push(p); });
       }
@@ -536,6 +537,11 @@ export function HomeApp() {
 
   const addFriend = async (id: string) => {
     if (!userId) { notify("Sign in to add friends."); return; }
+    const current = people.find((p) => p.id === id);
+    if (current?.friendship === "pending") {
+      setCancelFriendId(id);
+      return;
+    }
     const { error } = await supabase.rpc("send_friend_request", { p_target: id });
     if (error) {
       notify(error.message.includes("Already friends") ? "You are already friends." : "Could not send friend request.");
@@ -543,6 +549,19 @@ export function HomeApp() {
     }
     setPeople((items) => items.map((p) => p.id === id ? { ...p, friendship: "pending" } : p));
     notify("Friend request sent.");
+  };
+
+  const cancelFriendRequest = async () => {
+    if (!cancelFriendId) return;
+    const id = cancelFriendId;
+    setCancelFriendId("");
+    const { error } = await supabase.rpc("cancel_friend_request", { p_target: id });
+    if (error) {
+      notify("Could not cancel friend request.");
+      return;
+    }
+    setPeople((items) => items.map((p) => p.id === id ? { ...p, friendship: "none" } : p));
+    notify("Friend request cancelled.");
   };
 
   const toggleSave = async (id: string) => {
@@ -709,6 +728,19 @@ export function HomeApp() {
         )}
       </section>
 
+      {cancelFriendId ? (
+        <div className="fixed inset-0 z-[95] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setCancelFriendId("")}>
+          <section className="w-full max-w-sm rounded-[26px] border border-[#245b91] bg-[#08182b] p-5 shadow-[0_24px_80px_rgba(0,0,0,.6)]" onClick={(event) => event.stopPropagation()}>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Friend request</p>
+            <h2 className="mt-1 text-xl font-black text-white">Do you want to cancel request?</h2>
+            <p className="mt-2 text-sm leading-6 text-[#7892ac]">The pending request will be removed for both sides.</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setCancelFriendId("")} className="rounded-xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm font-black text-[#b7c9da]">Keep Request</button>
+              <button type="button" onClick={() => void cancelFriendRequest()} className="rounded-xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white">Cancel Request</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {toast ? <div role="status" className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[#1e6095] bg-[#0a2139] px-5 py-2.5 text-sm font-semibold text-white shadow-xl">{toast}</div> : null}
       <div className="h-6" />
     </main>
