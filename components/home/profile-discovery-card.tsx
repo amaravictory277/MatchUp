@@ -46,6 +46,7 @@ export function ProfileDiscoveryCard({
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [endReached, setEndReached] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
@@ -101,7 +102,8 @@ export function ProfileDiscoveryCard({
     if (direction === "left") {
       const isLastCard = index >= people.length - 1 && !peopleHasMore;
       if (isLastCard) {
-        notify("You've reached the end.");
+        setEndReached(true);
+        window.setTimeout(() => setEndReached(false), 1800);
       } else {
         setIndex((value) => Math.min(value + 1, Math.max(0, people.length - 1)));
         if (people.length - index <= 4) void requestMore();
@@ -113,7 +115,11 @@ export function ProfileDiscoveryCard({
       setMessage("");
     }
     setDragX(0);
-    setAnimating(false);
+    if (direction === "left" && index >= people.length - 1 && !peopleHasMore) {
+      window.setTimeout(() => setAnimating(false), 340);
+    } else {
+      setAnimating(false);
+    }
   };
 
   const commitExit = (direction: "left" | "right") => {
@@ -232,7 +238,7 @@ export function ProfileDiscoveryCard({
           </div>
         </div>
 
-        <div className="relative px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+        <div className="relative px-4 pb-2 pt-0 sm:px-5 sm:pb-3">
           <div className="relative -mt-2 flex flex-col items-center text-center">
             <MatchUpAvatar
               profile={profile}
@@ -240,15 +246,15 @@ export function ProfileDiscoveryCard({
               alt={name}
               className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
             />
-            <h3 className="mt-2 max-w-full whitespace-normal break-words text-[21px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[23px]">
+            <h3 className="mt-1.5 max-w-full whitespace-normal break-words text-[21px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[23px]">
               {name}
             </h3>
-            <p className="mt-1 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
+            <p className="mt-0.5 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
               {profile.country || "Country not set"}
             </p>
           </div>
 
-          <div className="relative mx-auto mt-3 grid w-full max-w-[290px] grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)]">
+          <div className="relative mx-auto mt-2 grid w-full max-w-[290px] grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)]">
             <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
             <div className="px-3 py-2.5 text-center sm:py-3">
               <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.postCount ?? 0}</p>
@@ -261,10 +267,10 @@ export function ProfileDiscoveryCard({
           </div>
 
           {profile.bio?.trim() ? (
-            <p className="mx-auto mt-3 max-w-[520px] line-clamp-2 text-center text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
+            <p className="mx-auto mt-2 max-w-[520px] line-clamp-2 text-center text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
           ) : null}
 
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_52px] gap-2.5 sm:mt-4 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-3">
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_52px] gap-2.5 sm:mt-3 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-3">
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
@@ -329,6 +335,12 @@ export function ProfileDiscoveryCard({
           {renderProfileCard(current)}
         </div>
       </div>
+
+      {endReached ? (
+        <div className="mt-3 w-full overflow-hidden rounded-2xl border border-[#3a99eb] bg-[#167bd1] px-2.5 py-3 text-center shadow-[0_10px_28px_rgba(22,123,209,.24)]" aria-live="polite">
+          <span className="block whitespace-nowrap text-[11px] font-black text-white sm:text-sm">You have reached the end</span>
+        </div>
+      ) : null}
 
       {people.length > 1 ? (
         <div
