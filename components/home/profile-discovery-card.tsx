@@ -130,7 +130,6 @@ export function ProfileDiscoveryCard({
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" || animating) return;
     startRef.current = { x: event.clientX, y: event.clientY };
-    clickGuardRef.current = false;
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
