@@ -78,7 +78,11 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
       setConfirmOpen(true);
     }
     setDragX(0);
-    setAnimating(false);
+    if (direction === "left" && index >= tournaments.length - 1) {
+      window.setTimeout(() => setAnimating(false), 340);
+    } else {
+      setAnimating(false);
+    }
   };
 
   const commitExit = (direction: "left" | "right") => {
@@ -187,15 +191,15 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
       {endReached ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[95] flex justify-center px-4" aria-live="polite">
-          <div className="rounded-full border border-[#245b91] bg-[#08182b]/95 px-5 py-3 text-sm font-black text-white shadow-[0_16px_40px_rgba(0,0,0,.45)] backdrop-blur-md">
-            You've reached the end.
+          <div className="w-full max-w-[640px] overflow-hidden rounded-2xl border border-[#3a99eb] bg-[#167bd1] px-2.5 py-3 text-center shadow-[0_10px_28px_rgba(22,123,209,.24)]">
+            <span className="block whitespace-nowrap text-[11px] font-black text-white sm:text-sm">You have reached the end</span>
           </div>
         </div>
       ) : null}
 
       {confirmOpen ? (
         <div
-          className="fixed inset-0 z-[95] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-0 z-[95] flex items-center justify-center bg-black/65 p-3 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => setConfirmOpen(false)}
