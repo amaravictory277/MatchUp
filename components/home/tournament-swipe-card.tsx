@@ -26,6 +26,8 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [endReached, setEndReached] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const clickGuardRef = useRef(false);
@@ -65,23 +67,22 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const finishExit = (direction: "left" | "right") => {
     playSwipeSound();
     if (direction === "left") {
-      setIndex((value) => Math.min(value + 1, tournaments.length - 1));
-      setDragX(0);
+      const isLastTournament = index >= tournaments.length - 1;
+      if (isLastTournament) {
+        setEndReached(true);
+        window.setTimeout(() => setEndReached(false), 1800);
+      } else {
+        setIndex((value) => Math.min(value + 1, tournaments.length - 1));
+      }
     } else {
-      // Preserve the existing right-swipe exit animation, then open the
-      // tournament that was on the surface.
-      router.push(`/tournaments/${current.id}`);
-      setDragX(0);
+      setConfirmOpen(true);
     }
+    setDragX(0);
     setAnimating(false);
   };
 
   const commitExit = (direction: "left" | "right") => {
     if (!current || animating) return;
-    if (direction === "left" && index >= tournaments.length - 1) {
-      setDragX(0);
-      return;
-    }
     setAnimating(true);
     clickGuardRef.current = true;
     const width = cardRef.current?.getBoundingClientRect().width || 320;
@@ -128,11 +129,11 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
   const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
-  const nextTournament = dragX < 0 ? tournaments[index + 1] : dragX > 0 ? tournaments[index - 1] : null;
+  const nextTournament = dragX < 0 ? tournaments[index + 1] : null;
 
   return (
     <>
-      <div className="relative w-full overflow-hidden rounded-[28px]" style={{ touchAction: "pan-y" }}>
+      <div className="relative w-full overflow-visible rounded-[28px]" style={{ touchAction: "pan-y" }}>
         {nextTournament ? (
           <div
             className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
@@ -169,22 +170,62 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
       {tournaments.length > 1 ? (
         <div
-          className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1"
+          className="mt-3 flex items-center justify-center gap-1.5"
           aria-label={`Featured tournaments, card ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}
         >
-          <span className="justify-self-start whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">← Swipe left for next</span>
-          <div className="flex items-center justify-center gap-1.5">
-            {tournaments.map((tournament, dotIndex) => (
-              <span
-                key={tournament.id}
-                className={`rounded-full transition-all duration-200 ${
-                  dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
-                }`}
-                aria-hidden="true"
-              />
-            ))}
+          {tournaments.map((tournament, dotIndex) => (
+            <span
+              key={tournament.id}
+              className={`rounded-full transition-all duration-200 ${
+                dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
+              }`}
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {endReached ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[95] flex justify-center px-4" aria-live="polite">
+          <div className="rounded-full border border-[#245b91] bg-[#08182b]/95 px-5 py-3 text-sm font-black text-white shadow-[0_16px_40px_rgba(0,0,0,.45)] backdrop-blur-md">
+            You've reached the end.
           </div>
-          <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right to open tournament →</span>
+        </div>
+      ) : null}
+
+      {confirmOpen ? (
+        <div
+          className="fixed inset-0 z-[95] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmOpen(false)}
+        >
+          <section
+            className="w-full max-w-sm rounded-[28px] border border-[#245b91] bg-[#08182b] p-5 shadow-[0_24px_80px_rgba(0,0,0,.6)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="text-lg font-black text-white">View tournament details?</p>
+            <p className="mt-2 text-sm leading-5 text-[#7892ac]">Open the details for {current.name}?</p>
+            <div className="mt-5 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="min-h-12 rounded-2xl border border-[#214a78] px-4 py-3 text-sm font-black text-[#b7c9da]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmOpen(false);
+                  router.push(`/tournaments/${current.id}`);
+                }}
+                className="min-h-12 rounded-2xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white"
+              >
+                Yes
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </>
