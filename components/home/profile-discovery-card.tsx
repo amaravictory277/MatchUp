@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Crown, Gamepad2, MapPin, Send, UserPlus, X } from "lucide-react";
+import { ArrowRight, Crown, Gamepad2, MapPin, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
@@ -219,7 +219,7 @@ export function ProfileDiscoveryCard({
       <article
         key={profile.id}
         ref={isActive ? cardRef : undefined}
-        className={`relative aspect-[1.045] w-full overflow-hidden rounded-[30px] border border-[#2388e8]/80 bg-[#061a34] text-left shadow-[0_24px_70px_rgba(0,32,78,.48)] ${isActive ? "z-20" : "pointer-events-none absolute inset-0 z-10"}`}
+        className={`relative mx-auto aspect-[1.045] w-full max-w-[760px] min-w-0 overflow-hidden rounded-[30px] border border-[#2388e8]/80 bg-[#061a34] text-left shadow-[0_24px_70px_rgba(0,32,78,.48)] ${isActive ? "z-20" : "pointer-events-none absolute inset-0 z-10"}`}
         aria-hidden={!isActive}
         onPointerDown={isActive ? pointerDown : undefined}
         onPointerMove={isActive ? pointerMove : undefined}
@@ -233,8 +233,8 @@ export function ProfileDiscoveryCard({
         }}
       >
         <div className="absolute inset-0">
-          <img src="/hero-crowd-flipped.svg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
-          <div className="absolute inset-0 bg-[#061c3a]/14" />
+          <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+          <div className="absolute inset-0 bg-[#061c3a]/18" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,30,61,.12)_0%,rgba(5,31,62,.10)_34%,rgba(5,24,49,.34)_59%,rgba(6,26,52,.96)_100%)]" />
         </div>
 
@@ -272,7 +272,7 @@ export function ProfileDiscoveryCard({
         <div className="absolute inset-x-[5%] top-[65%]">
           <div className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-[#2766a0]/45 bg-[#0b3158]/92 shadow-inner">
             <div className="flex items-center justify-center gap-2 px-2 py-2.5 sm:gap-3 sm:py-3.5">
-              <span className="text-[20px] font-black leading-none text-[#5cb8ff] sm:text-[25px]">▤</span>
+              <MessageCircle size={23} className="text-[#5cb8ff] sm:size-[27px]" />
               <div>
                 <p className="text-[20px] font-black leading-none text-white sm:text-[24px]">{profile.postCount ?? 0}</p>
                 <p className="mt-1 text-[8px] font-black uppercase tracking-[.12em] text-[#9ec4e5] sm:text-[10px]">Posts</p>
@@ -288,21 +288,32 @@ export function ProfileDiscoveryCard({
           </div>
         </div>
 
-        <button
-          type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => void onFriend(profile.id)}
-          className="absolute inset-x-[5%] top-[84%] flex min-h-11 items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(100deg,#1684e8,#2099ff)] px-4 py-2.5 text-[14px] font-black text-white shadow-[0_10px_26px_rgba(22,132,232,.3)] transition hover:brightness-105 active:scale-[.99] sm:min-h-12 sm:text-[17px]"
-        >
-          <UserPlus size={18} className="sm:size-[20px]" />
-          <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
-        </button>
+        <div className="absolute inset-x-[5%] top-[84%] flex items-stretch gap-3">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => void onFriend(profile.id)}
+            className="flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(100deg,#1684e8,#2099ff)] px-4 py-2.5 text-[14px] font-black text-white shadow-[0_10px_26px_rgba(22,132,232,.3)] transition hover:brightness-105 active:scale-[.99] sm:min-h-12 sm:text-[17px]"
+          >
+            <UserPlus size={18} className="shrink-0 sm:size-[20px]" />
+            <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
+          </button>
+          <button
+            type="button"
+            aria-label={`Message ${name}`}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setQuickChatPerson(profile)}
+            className="grid min-h-11 w-[70px] shrink-0 place-items-center rounded-[20px] border border-[#2388e8]/80 bg-[#0a3158]/88 text-white shadow-[0_10px_26px_rgba(0,32,78,.28)] transition hover:bg-[#0d3b68] active:scale-[.99] sm:min-h-12 sm:w-[76px]"
+          >
+            <MessageCircle size={27} strokeWidth={2.1} className="text-[#e7f5ff]" />
+          </button>
+        </div>
       </article>
     );
   };
   return (
     <>
-      <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
+      <div className="relative block w-full min-w-0 overflow-visible" style={{ touchAction: "pan-y" }}>
         {stack.slice(1).reverse().map((profile, reverseIndex) => {
           const layer = stack.length - reverseIndex - 1;
           return renderProfile(profile, layer);
