@@ -200,10 +200,10 @@ export function TournamentCard({
             </div>
 
             <div className="shrink-0 rounded-2xl bg-[#0b2139] px-3 py-2.5 shadow-inner">
-              <div className="flex items-center gap-2 whitespace-nowrap text-[10px] font-black text-white sm:text-[11px]">
-                <span>{dateLabel}</span>
+              <div className="grid min-w-[138px] grid-cols-[1fr_auto_1fr] items-center text-[10px] font-black text-white sm:min-w-[154px] sm:text-[11px]">
+                <span className="truncate pr-2 text-left">{dateLabel}</span>
                 <span className="h-4 w-px bg-[#31597f]" aria-hidden="true" />
-                <span>{timeLabel}</span>
+                <span className="truncate pl-2 text-right">{timeLabel}</span>
               </div>
             </div>
           </div>
