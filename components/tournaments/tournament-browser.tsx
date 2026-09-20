@@ -199,8 +199,8 @@ export function TournamentCard({
               {row.description ? <p className="mt-2 line-clamp-2 max-w-[620px] text-[12px] leading-5 text-[#9db2c7] sm:text-[13px]">{row.description}</p> : null}
             </div>
 
-            <div className="shrink-0 rounded-2xl bg-[#0b2139] px-3 py-2.5 shadow-inner">
-              <div className="grid min-w-[138px] grid-cols-[1fr_auto_1fr] items-center text-[10px] font-black text-white sm:min-w-[154px] sm:text-[11px]">
+            <div className="shrink-0 rounded-2xl bg-[#0b2139] px-2.5 py-2 shadow-inner sm:px-3">
+              <div className="grid min-w-[122px] grid-cols-[1fr_auto_1fr] items-center text-[10px] font-black text-white sm:min-w-[136px] sm:text-[11px]">
                 <span className="truncate pr-2 text-left">{dateLabel}</span>
                 <span className="h-4 w-px bg-[#31597f]" aria-hidden="true" />
                 <span className="truncate pl-2 text-right">{timeLabel}</span>
@@ -237,7 +237,7 @@ export function TournamentCard({
               <p className="mb-1 text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Price</p>
               <div className="inline-flex min-w-[132px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2 shadow-inner sm:min-w-[148px] sm:px-3 sm:py-2.5">
                 <CircleDollarSign size={16} className="shrink-0 text-[#70c1ff]" />
-                <span className="text-[28px] font-black leading-none tracking-[-.04em] text-white">{prizeLabel}</span>
+                <span className="text-[20px] font-black leading-none tracking-[-.03em] text-white sm:text-[23px]">{prizeLabel}</span>
               </div>
             </div>
           </div>
