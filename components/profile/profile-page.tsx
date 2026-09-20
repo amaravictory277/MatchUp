@@ -8,8 +8,19 @@ import { clearAuthSession } from "../../lib/auth/session";
 import { MatchUpVerificationBadge } from "../feeds/matchup-verification-badge";
 
 type Game = "eFootball" | "FIFA";
-type Profile = { id:string; username:string; display_name:string|null; avatar_path:string|null; country:string|null; bio:string|null; supported_game:Game|null; is_verified:boolean; created_at:string };
+type Profile = { id:string; username:string; display_name:string|null; avatar_path:string|null; cover_media_path:string|null; cover_media_type:"image"|"video"|null; country:string|null; currency_code:string|null; bio:string|null; supported_game:Game|null; is_verified:boolean; created_at:string };
 const countries = ["Nigeria","Ghana","Kenya","South Africa","United Kingdom","United States","Other"];
+const currencyOptions = [
+  { code:"NGN", label:"Nigerian Naira (₦)" },
+  { code:"GHS", label:"Ghanaian Cedi (GH₵)" },
+  { code:"KES", label:"Kenyan Shilling (KSh)" },
+  { code:"ZAR", label:"South African Rand (R)" },
+  { code:"GBP", label:"British Pound (£)" },
+  { code:"USD", label:"US Dollar ($)" },
+  { code:"CAD", label:"Canadian Dollar (CA$)" },
+  { code:"EUR", label:"Euro (€)" },
+];
+const currencyByCountry:Record<string,string>={Nigeria:"NGN",Ghana:"GHS",Kenya:"KES","South Africa":"ZAR","United Kingdom":"GBP","United States":"USD"};
 
 function publicAvatar(supabase:ReturnType<typeof createBrowserSupabaseClient>, path:string|null){
   if(!path)return null;
@@ -23,27 +34,27 @@ export function ProfilePage(){
   const view=searchParams.get("view");
   const screen=view==="edit" || view==="settings" ? view : "profile";
   const [profile,setProfile]=useState<Profile|null>(null),[email,setEmail]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[loggingOut,setLoggingOut]=useState(false),[toast,setToast]=useState<string|null>(null);
-  const [name,setName]=useState(""),[country,setCountry]=useState(""),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null);
+  const [name,setName]=useState(""),[country,setCountry]=useState(""),[currencyCode,setCurrencyCode]=useState("USD"),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null),[coverFile,setCoverFile]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState<string|null>(null),[coverType,setCoverType]=useState<"image"|"video"|null>(null);
   const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2600)};
   const load=async()=>{
     setLoading(true);
     const {data:auth,error:authError}=await supabase.auth.getUser();
     if(authError || !auth.user){router.replace("/");return}
     setEmail(auth.user.email || "");
-    const {data,error}=await supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,created_at").eq("id",auth.user.id).maybeSingle();
+    const {data,error}=await supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,is_verified,created_at").eq("id",auth.user.id).maybeSingle();
     if(error || !data){setProfile(null);setLoading(false);return}
-    const next=data as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setBio(next.bio || ""); setGame(next.supported_game || ""); setLoading(false);
+    const next=data as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || ""); setLoading(false);
   };
   useEffect(()=>{void load()},[]);
   useEffect(()=>{
     if(!profile?.id)return;
     const channel=supabase.channel("profile-"+profile.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:"id=eq."+profile.id},payload=>{
       if(payload.eventType==="DELETE")return;
-      const next=payload.new as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setBio(next.bio || ""); setGame(next.supported_game || "");
+      const next=payload.new as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || "");
     }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   },[profile?.id,supabase]);
-  useEffect(()=>()=>{if(avatarPreview?.startsWith("blob:"))URL.revokeObjectURL(avatarPreview)},[avatarPreview]);
+  useEffect(()=>()=>{if(avatarPreview?.startsWith("blob:"))URL.revokeObjectURL(avatarPreview);if(coverPreview?.startsWith("blob:"))URL.revokeObjectURL(coverPreview)},[avatarPreview,coverPreview]);
   const avatar=avatarPreview || publicAvatar(supabase,profile?.avatar_path || null);
   const displayName=profile ? nameOf(profile) : "MatchUp Player";
   const initial=displayName.charAt(0).toUpperCase();
@@ -56,6 +67,16 @@ export function ProfilePage(){
     if(avatarPreview?.startsWith("blob:"))URL.revokeObjectURL(avatarPreview);
     setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file));
   };
+  const selectCover=(file:File|null)=>{
+    if(!file)return;
+    const isImage=file.type.startsWith("image/");
+    const isVideo=file.type.startsWith("video/");
+    if(!isImage && !isVideo){notify("Choose a photo or video.");return}
+    const maxSize=isVideo?50*1024*1024:10*1024*1024;
+    if(file.size>maxSize){notify(isVideo?"Cover video must be 50MB or smaller.":"Cover photo must be 10MB or smaller.");return}
+    if(coverPreview?.startsWith("blob:"))URL.revokeObjectURL(coverPreview);
+    setCoverFile(file);setCoverType(isVideo?"video":"image");setCoverPreview(URL.createObjectURL(file));
+  };
   const saveProfile=async()=>{
     if(!profile || saving)return; setSaving(true);
     try{
@@ -66,9 +87,17 @@ export function ProfilePage(){
         const upload=await supabase.storage.from("profile-media").upload(path,avatarFile,{upsert:false,contentType:avatarFile.type});
         if(upload.error)throw upload.error; avatarPath=path;
       }
-      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath}).eq("id",profile.id).select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,created_at").single();
+      let coverPath=profile.cover_media_path;
+      let nextCoverType=profile.cover_media_type;
+      if(coverFile && coverType){
+        const extension=coverFile.name.split(".").pop()?.replace(/[^a-z0-9]/gi,"") || (coverType==="video"?"mp4":"jpg");
+        const path=profile.id+"/cover-"+crypto.randomUUID()+"."+extension;
+        const upload=await supabase.storage.from("profile-media").upload(path,coverFile,{upsert:false,contentType:coverFile.type});
+        if(upload.error)throw upload.error; coverPath=path;nextCoverType=coverType;
+      }
+      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,currency_code:currencyCode,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath,cover_media_path:coverPath,cover_media_type:nextCoverType}).eq("id",profile.id).select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,is_verified,created_at").single();
       if(error)throw error;
-      setProfile(data as Profile); setAvatarFile(null); setAvatarPreview(null); notify("Profile updated."); router.replace("/profile");
+      setProfile(data as Profile); setAvatarFile(null); setAvatarPreview(null); setCoverFile(null); setCoverPreview(null); setCoverType(null); notify("Profile updated."); router.replace("/profile");
     }catch(error){console.error("MatchUp profile save failed:",error);notify(error instanceof Error ? error.message : "Settings couldn't be saved.")}finally{setSaving(false)}
   };
   const logout=async()=>{
@@ -92,9 +121,21 @@ export function ProfilePage(){
     <header className="flex items-center gap-3 pb-5"><button type="button" onClick={goBack} className="icon-button" aria-label="Back"><ArrowLeft size={18}/></button><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">MatchUp</p><h1 className="mt-1 text-3xl font-black text-white">Edit Profile</h1></div></header>
     <section className="surface-card overflow-visible p-5">
       <div className="flex flex-col items-center"><div className="relative"><div className="grid size-28 place-items-center overflow-hidden rounded-full border-4 border-[#194b7c] bg-[#0b3154] text-3xl font-black text-[#70c1ff] shadow-[0_12px_35px_rgba(0,0,0,.3)]">{avatar?<img src={avatar} alt={displayName} className="size-full object-cover"/>:initial}</div><label className="absolute -bottom-1 -right-1 grid size-10 cursor-pointer place-items-center rounded-full border-2 border-[#071426] bg-[linear-gradient(145deg,#126bc0,#2497ff)] text-white shadow-lg" aria-label="Change profile picture"><Camera size={17}/><input type="file" accept="image/*" className="hidden" onChange={e=>selectAvatar(e.target.files?.[0] || null)}/></label></div><p className="mt-4 text-xs text-[#7892ac]">JPG, PNG or WebP · maximum 5MB</p></div>
+      <div className="mt-7 overflow-hidden rounded-2xl bg-[#071426]">
+        <div className="relative h-36 bg-[#061120]">
+          {coverPreview ? (coverType === "video" ? <video src={coverPreview} className="size-full object-cover" autoPlay muted loop playsInline /> : <img src={coverPreview} alt="" className="size-full object-cover" />) : profile.cover_media_path ? (profile.cover_media_type === "video" ? <video src={publicAvatar(supabase, profile.cover_media_path) || undefined} className="size-full object-cover" autoPlay muted loop playsInline /> : <img src={publicAvatar(supabase, profile.cover_media_path) || undefined} alt="" className="size-full object-cover" />) : <div className="size-full bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.55),transparent_42%),linear-gradient(135deg,#0a2946,#061120_55%,#0b3154)]" />}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-transparent to-transparent" />
+          <label className="absolute bottom-3 right-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#08182b]/90 px-3 py-2 text-xs font-black text-white backdrop-blur">
+            <Camera size={14}/> Change Cover
+            <input type="file" accept="image/*,video/*" className="hidden" onChange={e=>selectCover(e.target.files?.[0] || null)}/>
+          </label>
+        </div>
+        <div className="px-3 py-2 text-[10px] text-[#7892ac]">Cover photo or video · photo up to 10MB · video up to 50MB</div>
+      </div>
       <div className="mt-7 space-y-4">
         <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Display Name</span><input value={name} onChange={e=>setName(e.target.value)} maxLength={60} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white outline-none focus:border-[#2497ff]"/></label>
-        <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Bio</span><textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160} rows={3} placeholder="Tell players a little about you." className="w-full resize-none rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white outline-none focus:border-[#2497ff]"/><p className="mt-1 text-[11px] text-[#7892ac]">{bio.length}/160</p></label><label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Country</span><select value={country} onChange={e=>setCountry(e.target.value)} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white"><option value="">Select country</option>{countries.map(item=><option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Bio</span><textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160} rows={3} placeholder="Tell players a little about you." className="w-full resize-none rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white outline-none focus:border-[#2497ff]"/><p className="mt-1 text-[11px] text-[#7892ac]">{bio.length}/160</p></label><label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Country</span><select value={country} onChange={e=>{const next=e.target.value;setCountry(next);if(currencyByCountry[next])setCurrencyCode(currencyByCountry[next])}} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white"><option value="">Select country</option>{countries.map(item=><option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Tournament Currency</span><select value={currencyCode} onChange={e=>setCurrencyCode(e.target.value)} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white">{currencyOptions.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}</select><p className="mt-1 text-[11px] text-[#7892ac]">Tournament prices you create use this currency, not the viewer's location.</p></label>
         <div><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Supported Game</span><div className="grid grid-cols-2 gap-2">{(["eFootball","FIFA"] as Game[]).map(item=><button key={item} type="button" onClick={()=>setGame(item)} className={"rounded-2xl border p-3.5 text-left text-sm font-black "+(game===item?"border-[#2497ff] bg-[#0b3154] text-[#9bd3ff]":"border-[#18365f] bg-[#071426] text-[#b7c9da]")}><Gamepad2 size={16} className="mr-2 inline"/>{item}{game===item?<Check size={14} className="float-right mt-0.5"/>:null}</button>)}</div></div>
         <div className="rounded-2xl border border-[#18365f] bg-[#071426] p-4"><p className="text-xs font-bold text-[#9bb1c5]">Email / Gmail</p><p className="mt-1 break-all text-sm text-white">{email || "Not available"}</p><p className="mt-1 text-[11px] text-[#7892ac]">Email is managed by authentication and cannot be changed here.</p></div>
       </div>
