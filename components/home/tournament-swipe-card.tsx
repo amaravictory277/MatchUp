@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { TournamentCard } from "../tournaments/tournament-browser";
 
 type Tournament = {
@@ -26,7 +27,6 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
-  const [confirmTournament, setConfirmTournament] = useState<Tournament | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const clickGuardRef = useRef(false);
@@ -55,12 +55,10 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const stack = tournaments.slice(index, index + 3);
 
   const finishExit = (direction: "left" | "right") => {
-    const exited = current;
     playSwipeSound();
     setIndex((value) => value + 1);
     setDragX(0);
     setAnimating(false);
-    if (direction === "right" && exited) setConfirmTournament(exited);
   };
 
   const commitExit = (direction: "left" | "right") => {
@@ -141,31 +139,27 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
         >
           <TournamentCard row={current} swipeMode onOpenOverride={() => {
             if (clickGuardRef.current) return;
-            setConfirmTournament(current);
+            router.push(`/tournaments/${current.id}`);
           }} />
         </div>
       </div>
 
       {tournaments.length > 1 ? (
-        <div className="mt-3 flex items-center justify-center gap-1.5" aria-label={`Tournament ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}>
-          {Array.from({ length: Math.min(3, tournaments.length) }).map((_, dotIndex) => {
-            const activeDot = index % Math.min(3, tournaments.length) === dotIndex;
-            return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
-          })}
-        </div>
-      ) : null}
-
-      {confirmTournament ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setConfirmTournament(null)}>
-          <section className="w-full max-w-sm rounded-[26px] border border-[#245b91] bg-[#08182b] p-5 shadow-[0_24px_80px_rgba(0,0,0,.6)]" onClick={(event) => event.stopPropagation()}>
-            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Tournament</p>
-            <h2 className="mt-1 text-xl font-black text-white">Open Tournament?</h2>
-            <p className="mt-2 text-sm leading-6 text-[#86a1bb]">Open “{confirmTournament.name}” and view its full tournament details.</p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmTournament(null)} className="rounded-xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm font-black text-[#b7c9da]">Cancel</button>
-              <button type="button" onClick={() => { const id = confirmTournament.id; setConfirmTournament(null); router.push(`/tournaments/${id}`); }} className="rounded-xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white">Yes</button>
-            </div>
-          </section>
+        <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a]" aria-label={`Tournament swipe controls, ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <ArrowRight size={11} className="rotate-180" />
+            Swipe left
+          </span>
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {Array.from({ length: Math.min(3, tournaments.length) }).map((_, dotIndex) => {
+              const activeDot = index % Math.min(3, tournaments.length) === dotIndex;
+              return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
+            })}
+          </div>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            Swipe right
+            <ArrowRight size={11} />
+          </span>
         </div>
       ) : null}
     </>
