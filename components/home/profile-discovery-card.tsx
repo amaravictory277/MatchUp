@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
+import { Gamepad2, MessageCircle, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
-import { MatchUpVerificationBadge } from "../feeds/matchup-verification-badge";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 export type HomePerson = {
@@ -60,8 +59,6 @@ export function ProfileDiscoveryCard({
   }, [people.length]);
 
   const current = people[index] || null;
-  const previous = index > 0 ? people[index - 1] : null;
-  const stack = people.slice(index, index + 3);
 
   const requestMore = useCallback(async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
