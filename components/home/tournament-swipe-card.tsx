@@ -31,11 +31,32 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const cardRef = useRef<HTMLDivElement | null>(null);
   const clickGuardRef = useRef(false);
 
+  const playSwipeSound = () => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const context = new AudioContextCtor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(520, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(220, context.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.09);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.1);
+      window.setTimeout(() => void context.close(), 180);
+    } catch {}
+  };
+
   const current = tournaments[index] || null;
   const stack = tournaments.slice(index, index + 3);
 
   const finishExit = (direction: "left" | "right") => {
     const exited = current;
+    playSwipeSound();
     setIndex((value) => value + 1);
     setDragX(0);
     setAnimating(false);
@@ -124,6 +145,15 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
           }} />
         </div>
       </div>
+
+      {tournaments.length > 1 ? (
+        <div className="mt-3 flex items-center justify-center gap-1.5" aria-label={`Tournament ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}>
+          {Array.from({ length: Math.min(3, tournaments.length) }).map((_, dotIndex) => {
+            const activeDot = index % Math.min(3, tournaments.length) === dotIndex;
+            return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
+          })}
+        </div>
+      ) : null}
 
       {confirmTournament ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setConfirmTournament(null)}>
