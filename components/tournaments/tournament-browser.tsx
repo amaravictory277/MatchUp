@@ -92,7 +92,7 @@ export function TournamentCard({
     setParticipantIds((ids) => ids.includes(auth.user.id) ? ids : [...ids, auth.user.id]);
     setJoining(false);
   };
-  }, [row.id, supabase]);
+
 
   const save = async () => {
     const { data: a } = await supabase.auth.getUser();
