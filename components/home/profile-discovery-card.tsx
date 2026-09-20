@@ -213,43 +213,96 @@ export function ProfileDiscoveryCard({
   const renderProfileCard = (profile: HomePerson, swipeMode = false) => {
     const name = nameOf(profile);
     return (
-      <article className="relative w-full overflow-hidden rounded-[24px] bg-[#061426] shadow-[0_18px_48px_rgba(0,40,90,.24)]">
-        <img src="/1002371685.jpg" alt="" className="absolute inset-x-0 top-0 h-[148px] w-full object-cover sm:h-[168px]" draggable={false} />
-        <div className="absolute inset-x-0 top-0 h-[190px] bg-[linear-gradient(180deg,rgba(3,20,39,.04)_0%,rgba(3,22,43,.10)_34%,rgba(4,21,41,.42)_64%,#061426_100%)] sm:h-[214px]" />
-        <div className="absolute inset-x-0 top-0 h-[148px] bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_12%,rgba(31,94,154,.16),transparent_32%)] sm:h-[168px]" />
-        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[62px] w-[108px] -translate-x-1/2 -translate-y-1/2 opacity-[.12] sm:top-[70px] sm:w-[124px]" />
+      <article className="relative w-full overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
+        <div className="relative h-[178px] overflow-hidden bg-[#061120] sm:h-[192px]">
+          <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.06)_0%,rgba(3,22,43,.12)_34%,rgba(4,21,41,.34)_60%,rgba(6,20,38,.78)_82%,#061426_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_10%,rgba(31,94,154,.16),transparent_34%)]" />
+          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[48%] w-[150px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[175px]" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#061426] to-transparent" />
+        </div>
 
-        <div className="relative px-3 pb-3 pt-2.5 sm:px-3.5 sm:pb-3.5 sm:pt-3">
+        <div className="relative -mt-1 px-4 pb-4 pt-1.5 sm:px-5 sm:pb-5 sm:pt-2">
           <div className="flex items-start justify-between gap-3">
-            <span className="rounded-full bg-[#071426]/85 px-2.5 py-1 text-[7px] font-black uppercase tracking-[.13em] text-[#d7efff] sm:px-3 sm:py-1.5 sm:text-[8px]">MatchUp Player</span>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#071426]/85 px-2.5 py-1 text-[10px] font-black text-[#e0f4ff] sm:px-3 sm:py-1.5 sm:text-[11px]">
-              <Gamepad2 size={12} />Football
+            <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.15em] text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
+              MatchUp Player
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#3a99eb] bg-[#092a49]/92 px-3 py-1.5 text-[11px] font-black text-[#e0f4ff] shadow-[0_8px_20px_rgba(0,0,0,.22)]">
+              <Gamepad2 size={14} />Football
             </span>
           </div>
 
-          <div className="mt-[52px] grid grid-cols-[minmax(0,1fr)_minmax(132px,.82fr)] items-center gap-3 sm:mt-[60px] sm:grid-cols-[minmax(0,1fr)_minmax(160px,.82fr)] sm:gap-4">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-14 shrink-0 border-2 border-[#071426] shadow-[0_7px_18px_rgba(0,0,0,.42)] sm:!size-[68px]" />
-                {profile.is_verified ? <MatchUpVerificationBadge /> : null}
-              </div>
-              <div className="mt-1.5 min-w-0">
-                <h3 className="truncate text-[18px] font-black leading-none tracking-[-.025em] text-white sm:text-[20px]">{name}</h3>
-                <p className="mt-1 text-[11px] font-semibold text-[#a8c2d9] sm:text-[12px]">{profile.country || "Country not set"}</p>
+          <div className="mt-4 flex items-center justify-between gap-3 sm:mt-5 sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+              <MatchUpAvatar
+                profile={profile}
+                size="lg"
+                alt={name}
+                className="!size-[76px] shrink-0 border-3 border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[84px]"
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="min-w-0 whitespace-normal break-words text-[20px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[22px]">
+                    {name}
+                  </h3>
+                  {profile.friendship !== "friends" ? (
+                    <span className="shrink-0 rounded-full bg-[#164d7c]/90 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[.1em] text-[#bfe3ff] sm:text-[8px]">
+                      Not friends yet
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
+                  {profile.country || "Country not set"}
+                </p>
               </div>
             </div>
 
-            <div className="relative grid grid-cols-2 overflow-hidden rounded-[12px] border border-[#245b91]/70 bg-[#08203a]/90 shadow-[inset_0_0_0_1px_rgba(71,168,255,.03)]">
+            <div className="relative grid w-[142px] shrink-0 grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)] sm:w-[156px]">
               <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
-              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3"><p className="text-base font-black leading-none text-white sm:text-lg">{profile.postCount ?? 0}</p><p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p></div>
-              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3"><p className="text-base font-black leading-none text-white sm:text-lg">{profile.followerCount ?? 0}</p><p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p></div>
+              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3">
+                <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.postCount ?? 0}</p>
+                <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p>
+              </div>
+              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3">
+                <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.followerCount ?? 0}</p>
+                <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-2 grid grid-cols-[1fr_auto] gap-1.5">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[11px] bg-[#1680d8] px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(22,128,216,.22)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-10 sm:text-xs">{profile.friendship === "pending" ? null : <UserPlus size={14} />}<span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span></button>
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-10 min-w-10 place-items-center rounded-[11px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white" aria-label={`Message ${name}`}><MessageCircle size={16} /></button>
+          {profile.bio?.trim() ? (
+            <p className="mt-3 line-clamp-2 text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
+          ) : null}
+
+          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3">
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => void onFriend(profile.id)}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-13 sm:text-sm"
+            >
+              {profile.friendship === "pending" ? null : <UserPlus size={17} />}
+              <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
+            </button>
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => { setMessage(""); setQuickChatPerson(profile); }}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] border border-[#3a78ad] bg-[#082a49]/92 px-3 text-[12px] font-black text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white sm:min-h-13 sm:text-sm"
+              aria-label={`Message ${name}`}
+            >
+              <MessageCircle size={18} />
+              <span>Chat</span>
+            </button>
           </div>
+
+          {!swipeMode && people.length > 1 ? (
+            <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a] sm:text-[10px]">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap"><ArrowRight size={11} className="rotate-180" />Swipe left</span>
+              <div className="flex items-center gap-1.5" aria-hidden="true"><span className="h-1.5 w-5 rounded-full bg-[#70c1ff]" /><span className="size-1.5 rounded-full bg-[#31597f]" /><span className="size-1.5 rounded-full bg-[#31597f]" /></div>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">Swipe right<ArrowRight size={11} /></span>
+            </div>
+          ) : null}
         </div>
       </article>
     );
