@@ -1,5 +1,5 @@
 "use client";
-import { CalendarDays, Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark } from "lucide-react";
+import { CalendarDays, CircleDollarSign, Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,10 @@ export function TournamentCard({
   const [saved, setSaved] = useState(false);
   const [menu, setMenu] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
+  const [participantIds, setParticipantIds] = useState<string[]>([]);
+  const [participantProfiles, setParticipantProfiles] = useState<Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>>([]);
+  const [joined, setJoined] = useState(false);
+  const [joining, setJoining] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moved = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -45,13 +49,49 @@ export function TournamentCard({
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const { data: a } = await supabase.auth.getUser();
-      if (!a.user) return;
-      const { data } = await supabase.from("saved_tournaments").select("tournament_id").eq("user_id", a.user.id).eq("tournament_id", row.id).maybeSingle();
-      if (!cancelled) setSaved(Boolean(data));
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id || "";
+      const { data: players } = await supabase
+        .from("tournament_players")
+        .select("player_id,status")
+        .eq("tournament_id", row.id)
+        .eq("status", "joined")
+        .order("joined_at", { ascending: true })
+        .limit(128);
+      const ids = ((players || []) as Array<{player_id:string}>).map((p) => p.player_id);
+      const previewIds = ids.slice(0, 6);
+      const { data: profiles } = previewIds.length
+        ? await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", previewIds)
+        : { data: [] as any[] };
+      if (!cancelled) {
+        setParticipantIds(ids);
+        setParticipantProfiles((profiles || []) as Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>);
+        setJoined(Boolean(uid && ids.includes(uid)));
+      }
     };
     void load();
     return () => { cancelled = true; };
+  }, [row.id, supabase]);
+
+  const joinTournament = async (event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    if (joining || joined) return;
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      router.push("/auth");
+      return;
+    }
+    setJoining(true);
+    const { error } = await supabase.rpc("join_tournament", { p_tournament: row.id });
+    if (error) {
+      setJoining(false);
+      window.dispatchEvent(new CustomEvent("matchup-toast", { detail: error.message }));
+      return;
+    }
+    setJoined(true);
+    setParticipantIds((ids) => ids.includes(auth.user.id) ? ids : [...ids, auth.user.id]);
+    setJoining(false);
+  };
   }, [row.id, supabase]);
 
   const save = async () => {
@@ -121,9 +161,9 @@ export function TournamentCard({
       <div role="button" tabIndex={0} onClick={e => { if (swipeMode && e.detail > 0) { e.stopPropagation(); return; } open(); }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
         <div className="relative h-[112px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[132px]">
           {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="absolute inset-0 bg-[#061120]" />}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.5),transparent_42%),linear-gradient(135deg,rgba(10,41,70,.88),rgba(6,17,32,.9)_55%,rgba(11,49,84,.92))]" />
-          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 z-10 w-[130px] -translate-x-1/2 -translate-y-1/2 opacity-[.2] sm:w-[160px]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/15 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.5),transparent_42%),linear-gradient(135deg,rgba(10,41,70,.72),rgba(6,17,32,.94)_62%,rgba(11,49,84,.92))]" />
+          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 z-10 w-[130px] -translate-x-1/2 -translate-y-1/2 opacity-[.18] sm:w-[160px]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/10 to-transparent" />
           <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
             {formatName(row.format)}
           </span>
@@ -133,41 +173,61 @@ export function TournamentCard({
         </div>
 
         <div className="p-3 sm:p-3.5">
-          <h2 className="text-[20px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
-          <p className="mt-0.5 line-clamp-1 text-[13px] leading-5 text-[#86a1bb]">{row.description || "Open MatchUp football competition."}</p>
-
-          <div className="mt-2 flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
-              <Users size={14} className="text-[#70c1ff]" />{row.max_players} Teams
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.5 text-[11px] font-bold text-[#b7c9da]">
-              <Gamepad2 size={14} className="shrink-0 text-[#70c1ff]" /><span className="truncate">{row.game_title || "Football"}</span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[20px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
+              {row.description ? <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-[#86a1bb]">{row.description}</p> : null}
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#214a78] bg-[#08182b] px-2 py-1 text-[10px] font-bold text-[#a9bdd5]">
+              <CalendarDays size={12} className="text-[#70c1ff]" />
+              {row.starts_at ? new Date(row.starts_at).toLocaleDateString([], { month: "short", day: "numeric" }) : "TBA"}
             </span>
           </div>
 
-          <div className="relative mt-3 flex items-center justify-between gap-2 pt-3 before:pointer-events-none before:absolute before:top-0 before:left-0 before:right-0 before:border-t before:border-[#214a78]">
-            <div className="inline-flex w-fit shrink-0 flex-col rounded-xl border border-[#2497ff]/70 bg-[#126bc0] px-3 py-1">
-              <p className="text-[9px] font-bold uppercase tracking-[.08em] text-white/80">Prize</p>
-              <p className="mt-0.5 text-[15px] font-black leading-tight text-white">{money(Number(row.prize_pool || 0))}</p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
+                  <Users size={14} className="text-[#70c1ff]" />{participantIds.length}/{row.max_players} Teams
+                </span>
+                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
+                  <Gamepad2 size={14} className="shrink-0 text-[#70c1ff]" /><span className="truncate">{row.game_title || "Football"}</span>
+                </span>
+              </div>
+              <div className="mt-2 flex items-center">
+                {participantProfiles.map((p) => <MatchUpAvatar key={p.id} profile={p} size="sm" alt={p.display_name || p.username || "Player"} className="-ml-1.5 !size-7 border-2 border-[#071426] first:ml-0" />)}
+                {participantIds.length > participantProfiles.length ? <span className="-ml-1.5 grid size-7 place-items-center rounded-full border-2 border-[#071426] bg-[#0a2946] text-[9px] font-black text-[#9bd3ff]">+{participantIds.length - participantProfiles.length}</span> : null}
+                {!participantIds.length ? <span className="text-[10px] font-semibold text-[#66809a]">Be the first to join</span> : null}
+              </div>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1.5 text-[11px] font-bold text-[#a9bdd5]">
-              <CalendarDays size={14} className="text-[#70c1ff]" />
-              {row.starts_at ? new Date(row.starts_at).toLocaleDateString() : "Date TBA"}
-            </span>
+
+            <div className="shrink-0 text-right">
+              <p className="text-[9px] font-bold uppercase tracking-[.08em] text-[#7892ac]">Prize</p>
+              <div className="mt-0.5 inline-flex items-center gap-1.5">
+                <CircleDollarSign size={16} className="text-[#70c1ff]" />
+                <span className="text-[17px] font-black text-white">{money(Number(row.prize_pool || 0))}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-[#214a78] pt-3">
+            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => void joinTournament(event)} disabled={joining || joined || row.status === "full"} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black text-white shadow-[0_8px_22px_rgba(22,123,209,.18)] transition active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-65">
+              {joined ? <Check size={15} /> : null}
+              {joining ? "Joining…" : joined ? "Joined Tournament" : row.status === "full" ? "Tournament Full" : "Join Tournament"}
+            </button>
           </div>
 
           <div className="mt-2 flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
-              <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-8 shrink-0 rounded-full" />
-              <span className="truncate text-sm font-black text-white">{creator}</span>
+              <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-7 shrink-0 rounded-full" />
+              <span className="truncate text-[11px] font-black text-white">{creator}</span>
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-3 py-1 text-[11px] font-black capitalize text-[#9bd3ff]">
+            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-2.5 py-1 text-[10px] font-black capitalize text-[#9bd3ff]">
               {formatName(row.status)}
             </span>
           </div>
         </div>
       </div>
-
       {!swipeMode && menu ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setMenu(false)}>
           <div className="w-full max-w-sm rounded-3xl border border-[#194b7c] bg-[#08182b] p-3" onClick={e => e.stopPropagation()}>
