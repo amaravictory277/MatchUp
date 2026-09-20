@@ -100,12 +100,11 @@ export function ProfileDiscoveryCard({
   };
 
   const finishExit = (direction: "left" | "right") => {
+    playSwipeSound();
     if (direction === "left") {
-      playSwipeSound();
       setIndex((value) => Math.min(value + 1, Math.max(0, people.length - 1)));
       if (people.length - index <= 4) void requestMore();
     } else {
-      playSwipeSound();
       setIndex((value) => Math.max(0, value - 1));
     }
     setDragX(0);
@@ -219,47 +218,40 @@ export function ProfileDiscoveryCard({
         <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.08)_0%,rgba(3,22,43,.18)_27%,rgba(4,21,41,.52)_54%,rgba(3,17,33,.98)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.36),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(31,94,154,.18),transparent_30%)]" />
-        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[24%] w-[230px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[300px]" />
+        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[24%] w-[125px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[155px]" />
 
-        <div className="relative min-h-[560px] px-5 pb-5 pt-5 sm:min-h-[600px] sm:px-7 sm:pb-7 sm:pt-7">
+        <div className="relative min-h-[330px] px-3.5 pb-3.5 pt-3.5 sm:min-h-[360px] sm:px-4 sm:pb-4 sm:pt-4">
           <div className="flex items-start justify-between gap-4">
-            <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/85 px-4 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#d7efff] backdrop-blur-md sm:text-[11px]">MatchUp Player</span>
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#3a99eb] bg-[#092a49]/90 px-4 py-2.5 text-sm font-black text-[#e0f4ff] shadow-[0_8px_24px_rgba(0,0,0,.25)] backdrop-blur-md sm:px-5 sm:py-3 sm:text-base">
-              <Gamepad2 size={18} />Football
+            <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/85 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.14em] text-[#d7efff] sm:px-3 sm:py-1.5 sm:text-[9px]">MatchUp Player</span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#3a99eb] bg-[#092a49]/90 px-2.5 py-1.5 text-[11px] font-black text-[#e0f4ff] shadow-[0_8px_24px_rgba(0,0,0,.25)] backdrop-blur-md sm:px-3 sm:py-2 sm:text-xs">
+              <Gamepad2 size={14} />Football
             </span>
           </div>
 
-          <div className="mt-[150px] flex items-end justify-between gap-3 sm:mt-[175px]">
-            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_40px_rgba(0,0,0,.48)] sm:!size-32" />
+          <div className="mt-[72px] flex items-end justify-between gap-2 sm:mt-[82px]">
+            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-16 shrink-0 border-2 border-[#071426] shadow-[0_10px_24px_rgba(0,0,0,.42)] sm:!size-[72px]" />
             {profile.is_verified ? <MatchUpVerificationBadge /> : null}
           </div>
 
-          <div className="mt-4 min-w-0">
+          <div className="mt-2.5 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-[30px] font-black leading-none tracking-[-.035em] text-white sm:text-4xl">{name}</h3>
-              {profile.friendship !== "friends" ? <span className="rounded-full bg-[#164d7c]/90 px-3 py-2 text-[9px] font-black uppercase tracking-[.12em] text-[#bfe3ff] backdrop-blur-sm sm:text-[10px]">Not friends yet</span> : null}
+              <h3 className="text-[21px] font-black leading-none tracking-[-.035em] text-white sm:text-2xl">{name}</h3>
+              {profile.friendship !== "friends" ? <span className="rounded-full bg-[#164d7c]/90 px-2 py-1 text-[7px] font-black uppercase tracking-[.1em] text-[#bfe3ff] backdrop-blur-sm sm:text-[8px]">Not friends yet</span> : null}
             </div>
-            <p className="mt-2 text-base font-semibold text-[#a8c2d9]">{profile.country || "Country not set"}</p>
+            <p className="mt-1 text-[11px] font-semibold text-[#a8c2d9] sm:text-xs">{profile.country || "Country not set"}</p>
           </div>
 
-          <div className="relative mt-5 grid grid-cols-2 overflow-hidden rounded-[22px] border border-[#245b91]/80 bg-[#08203a]/90 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)] backdrop-blur-md sm:mt-6">
-            <span className="pointer-events-none absolute bottom-3 left-1/2 top-3 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
-            <div className="p-3.5 text-center sm:p-4"><p className="text-2xl font-black text-white sm:text-3xl">{profile.postCount ?? 0}</p><p className="mt-1 text-[10px] font-black uppercase tracking-[.17em] text-[#8ca8c0]">Posts</p></div>
-            <div className="p-3.5 text-center sm:p-4"><p className="text-2xl font-black text-white sm:text-3xl">{profile.followerCount ?? 0}</p><p className="mt-1 text-[10px] font-black uppercase tracking-[.17em] text-[#8ca8c0]">Followers</p></div>
+          <div className="relative mt-3 grid grid-cols-2 overflow-hidden rounded-[14px] border border-[#245b91]/75 bg-[#08203a]/90 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)] backdrop-blur-md sm:mt-3.5">
+            <span className="pointer-events-none absolute bottom-2 left-1/2 top-2 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
+            <div className="p-2 text-center sm:p-2.5"><p className="text-lg font-black text-white sm:text-xl">{profile.postCount ?? 0}</p><p className="mt-0.5 text-[7px] font-black uppercase tracking-[.14em] text-[#8ca8c0]">Posts</p></div>
+            <div className="p-2 text-center sm:p-2.5"><p className="text-lg font-black text-white sm:text-xl">{profile.followerCount ?? 0}</p><p className="mt-0.5 text-[7px] font-black uppercase tracking-[.14em] text-[#8ca8c0]">Followers</p></div>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-14 items-center justify-center gap-3 rounded-[22px] bg-[#1680d8] px-4 text-base font-black text-white shadow-[0_12px_30px_rgba(22,128,216,.28)] transition hover:bg-[#218fe8] active:scale-[.99] sm:text-lg">{profile.friendship === "pending" ? null : <UserPlus size={21} />}<span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span></button>
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-14 min-w-14 place-items-center rounded-[22px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] backdrop-blur-md transition hover:border-[#59acfa] hover:text-white" aria-label={`Message ${name}`}><MessageCircle size={23} /></button>
+          <div className="mt-2.5 grid grid-cols-[1fr_auto] gap-2">
+            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-10 items-center justify-center gap-2 rounded-[14px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_22px_rgba(22,128,216,.25)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-11 sm:text-sm">{profile.friendship === "pending" ? null : <UserPlus size={16} />}<span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span></button>
+            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-10 min-w-10 place-items-center rounded-[14px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] backdrop-blur-md transition hover:border-[#59acfa] hover:text-white sm:min-h-11 sm:min-w-11" aria-label={`Message ${name}`}><MessageCircle size={18} /></button>
           </div>
 
-          {!swipeMode && people.length > 1 ? (
-            <div className="mt-4 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a] sm:text-[10px]">
-              <span className="inline-flex items-center gap-1 whitespace-nowrap"><ArrowRight size={11} className="rotate-180" />Swipe left</span>
-              <div className="flex items-center gap-1.5" aria-hidden="true"><span className="h-1.5 w-5 rounded-full bg-[#70c1ff]" /><span className="size-1.5 rounded-full bg-[#31597f]" /><span className="size-1.5 rounded-full bg-[#31597f]" /></div>
-              <span className="inline-flex items-center gap-1 whitespace-nowrap">Swipe right<ArrowRight size={11} /></span>
-            </div>
-          ) : null}
         </div>
       </article>
     );
@@ -272,7 +264,7 @@ export function ProfileDiscoveryCard({
           <div
             className="pointer-events-none absolute inset-0 z-10"
             style={{
-              transform: `translate3d(0,8px,0) scale(${0.94 + Math.min(1, dragX / swipeViewport) * 0.06})`,
+              transform: `translate3d(0,8px,0) scale(${0.25 + Math.min(1, dragX / swipeViewport) * 0.75})`,
               opacity: 1,
               transition: "transform 340ms cubic-bezier(.16,1,.3,1)",
               willChange: "transform",
@@ -284,15 +276,13 @@ export function ProfileDiscoveryCard({
 
         {stack.slice(1).reverse().map((profile, reverseIndex) => {
           const layer = stack.length - reverseIndex - 1;
-          const baseScale = layer === 1 ? 0.94 : 0.90;
-          const growth = layer === 1 ? 0.06 : 0.10;
-          const scale = baseScale + progress * growth;
+          const scale = Math.max(0.18, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
           return (
             <div
               key={`${profile.id}-stack`}
               className="pointer-events-none absolute inset-0 z-10"
               style={{
-                transform: `translate3d(0,${6 + (layer - 1) * 6}px,0) scale(${scale})`,
+                transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`,
                 opacity: 1,
                 transition: "transform 340ms cubic-bezier(.16,1,.3,1)",
                 willChange: "transform",
