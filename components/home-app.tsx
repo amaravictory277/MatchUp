@@ -454,7 +454,7 @@ export function HomeApp() {
         const start = peopleCursorRef.current;
         const { data, error, count } = await supabase
           .from("profiles")
-          .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" })
+          .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" })
           .order("created_at", { ascending: false })
           .range(start, start + 39);
 
