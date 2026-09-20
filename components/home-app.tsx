@@ -52,7 +52,7 @@ type Tournament = {
   banner_path: string | null;
   status: string;
   organizer_id: string;
-  profiles?: { display_name?: string | null; username?: string | null; avatar_path?: string | null } | null;
+  profiles?: { display_name?: string | null; username?: string | null; avatar_path?: string | null; country?: string | null; currency_code?: string | null } | null;
   entry_information?: string | null;
   promotion_kind?: string | null;
   teams?: number;
@@ -238,7 +238,7 @@ export function HomeApp() {
       groupsResult,
       groupMembersResult,
     ] = await Promise.all([
-      supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
+      supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
       supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true }),
       supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
       uid ? supabase.from("user_follows").select("following_id").eq("follower_id", uid) : Promise.resolve({ data: [] as { following_id: string }[] }),
