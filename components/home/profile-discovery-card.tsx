@@ -12,6 +12,8 @@ export type HomePerson = {
   username: string | null;
   display_name: string | null;
   avatar_path: string | null;
+  cover_media_path?: string | null;
+  cover_media_type?: "image" | "video" | null;
   country: string | null;
   bio: string | null;
   supported_game?: string | null;
@@ -23,6 +25,11 @@ export type HomePerson = {
 
 const nameOf = (person: HomePerson) => person.display_name?.trim() || person.username || "MatchUp Player";
 const gameLabel = (value?: string | null) => value?.trim() || "Football";
+function publicCoverUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, path?: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path) || path.startsWith("/")) return path;
+  return supabase.storage.from("profile-media").getPublicUrl(path).data.publicUrl;
+}
 
 export function ProfileDiscoveryCard({
   people,
@@ -204,7 +211,7 @@ export function ProfileDiscoveryCard({
       <article
         key={profile.id}
         ref={isActive ? cardRef : undefined}
-        className={`w-full rounded-[24px] border border-[#245b91] bg-[#071426] shadow-[0_18px_55px_rgba(0,40,90,.22)] ${isActive ? "relative z-20" : "pointer-events-none absolute inset-0 z-10"}`}
+        className={`w-full overflow-hidden rounded-[26px] bg-[#071426] shadow-[0_22px_60px_rgba(0,25,55,.30)] ${isActive ? "relative z-20" : "pointer-events-none absolute inset-0 z-10"}`}
         aria-hidden={!isActive}
         onPointerDown={isActive ? pointerDown : undefined}
         onPointerMove={isActive ? pointerMove : undefined}
@@ -219,11 +226,22 @@ export function ProfileDiscoveryCard({
           willChange: "transform",
         }}
       >
-        <div className="relative h-[96px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[112px]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.55),transparent_42%),linear-gradient(135deg,#0a2946,#061120_55%,#0b3154)]" />
-          <div className="absolute -right-16 -top-20 size-48 rounded-full border border-[#2497ff]/25" />
-          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[145px] -translate-x-1/2 -translate-y-1/2 opacity-[.16] sm:w-[180px]" />
-          <span className="absolute left-3 top-3 rounded-full border border-[#2c76b5] bg-[#061a2d]/85 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">MatchUp Player</span>
+        <div className="relative h-[118px] overflow-hidden bg-[#061120] sm:h-[138px]">
+          {profile.cover_media_path ? (
+            profile.cover_media_type === "video" ? (
+              <video src={publicCoverUrl(supabase, profile.cover_media_path) || undefined} className="absolute inset-0 size-full object-cover" autoPlay muted loop playsInline preload="metadata" />
+            ) : (
+              <img src={publicCoverUrl(supabase, profile.cover_media_path) || undefined} alt="" className="absolute inset-0 size-full object-cover" />
+            )
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.55),transparent_42%),linear-gradient(135deg,#0a2946,#061120_55%,#0b3154)]" />
+              <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[145px] -translate-x-1/2 -translate-y-1/2 opacity-[.16] sm:w-[180px]" />
+            </>
+          )}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,24,.08)_0%,rgba(7,20,38,.12)_48%,#071426_100%)]" />
+          <div className="absolute -right-16 -top-20 size-48 rounded-full border border-white/10" />
+          <span className="absolute left-3 top-3 rounded-full bg-[#061a2d]/78 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#d7edff] shadow-lg backdrop-blur-md">MatchUp Player</span>
         </div>
         <span className="pointer-events-none absolute right-3 top-[96px] z-[100] inline-flex translate-y-1/2 items-center gap-1 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-2.5 py-1.5 text-[10px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)] sm:top-[112px]">
           <Gamepad2 size={12} /> {gameLabel(profile.supported_game)}
@@ -238,16 +256,19 @@ export function ProfileDiscoveryCard({
           </div>
 
           <div className="mt-1.5 min-w-0">
-            <h3 className="truncate text-[18px] font-black tracking-[-.02em] text-white sm:text-[20px]">{name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="min-w-0 truncate text-[18px] font-black tracking-[-.02em] text-white sm:text-[20px]">{name}</h3>
+              {profile.friendship !== "friends" ? <span className="shrink-0 rounded-full bg-[#102c46] px-2 py-1 text-[8px] font-black uppercase tracking-[.08em] text-[#89b7d9]">Not friends yet</span> : null}
+            </div>
             <p className="mt-0.5 truncate text-xs font-semibold text-[#86a1bb]">{profile.country || "Country not set"}</p>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-2 overflow-hidden rounded-xl border border-[#183f68] bg-[#08182b]">
+          <div className="mt-2.5 grid grid-cols-2 overflow-hidden rounded-2xl bg-[#0b2139] shadow-inner">
             <div className="px-3 py-2 text-center">
               <p className="text-base font-black leading-none text-white">{profile.postCount ?? 0}</p>
               <p className="mt-1 text-[9px] font-black uppercase tracking-[.12em] text-[#7892ac]">Posts</p>
             </div>
-            <div className="border-l border-[#183f68] px-3 py-2 text-center">
+            <div className="border-l border-[#284965] px-3 py-2 text-center">
               <p className="text-base font-black leading-none text-white">{profile.followerCount ?? 0}</p>
               <p className="mt-1 text-[9px] font-black uppercase tracking-[.12em] text-[#7892ac]">Followers</p>
             </div>
