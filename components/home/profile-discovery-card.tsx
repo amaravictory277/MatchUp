@@ -267,7 +267,7 @@ export function ProfileDiscoveryCard({
           </div>
         </div>
 
-        <div className="relative px-4 pb-2 pt-0 sm:px-5 sm:pb-3">
+        <div className="relative px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
           <div className="relative -mt-2 flex flex-col items-center text-center">
             <button
               type="button"
