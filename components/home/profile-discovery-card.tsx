@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Gamepad2, MapPin, MessageCircle, Send, UserPlus, X } from "lucide-react";
+import { ArrowRight, Crown, Gamepad2, MapPin, Send, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
-import { MatchUpVerificationBadge } from "../feeds/matchup-verification-badge";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 export type HomePerson = {
@@ -220,82 +219,69 @@ export function ProfileDiscoveryCard({
       <article
         key={profile.id}
         ref={isActive ? cardRef : undefined}
-        className={`w-full overflow-hidden rounded-[28px] border border-[#287bc0] bg-[#071a31] shadow-[0_22px_65px_rgba(0,25,55,.42)] ${isActive ? "relative z-20" : "pointer-events-none absolute inset-0 z-10"}`}
+        className={`w-full overflow-hidden rounded-[30px] border border-[#2388e8]/80 bg-[#061a34] text-left shadow-[0_24px_70px_rgba(0,32,78,.48)] ${isActive ? "relative z-20" : "pointer-events-none absolute inset-0 z-10"}`}
         aria-hidden={!isActive}
         onPointerDown={isActive ? pointerDown : undefined}
         onPointerMove={isActive ? pointerMove : undefined}
         onPointerUp={isActive ? pointerUp : undefined}
         onPointerCancel={isActive ? pointerCancel : undefined}
         style={{
-          transform: isActive
-            ? `translate3d(${dragX}px,0,0) rotate(${rotation}deg)`
-            : `translate3d(0,${translateY}px,0) scale(${scale})`,
+          transform: isActive ? `translate3d(${dragX}px,0,0) rotate(${rotation}deg)` : `translate3d(0,${translateY}px,0) scale(${scale})`,
           opacity: 1,
           transition: isActive ? transition : "transform 340ms cubic-bezier(.16,1,.3,1)",
           willChange: "transform",
         }}
       >
-        <div className="relative h-[178px] overflow-hidden bg-[#061120] sm:h-[204px]">
-          {profile.cover_media_path ? (
-            profile.cover_media_type === "video" ? (
-              <video src={publicCoverUrl(supabase, profile.cover_media_path) || undefined} className="absolute inset-0 size-full object-cover" autoPlay muted loop playsInline preload="metadata" />
-            ) : (
-              <img src={publicCoverUrl(supabase, profile.cover_media_path) || undefined} alt="" className="absolute inset-0 size-full object-cover" />
-            )
-          ) : (
-            <img src="/hero-crowd-flipped.svg" alt="" className="absolute inset-0 size-full object-cover" />
-          )}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,25,50,.18)_0%,rgba(6,27,52,.30)_42%,#071a31_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(65,164,255,.22),transparent_52%)]" />
-          <span className="absolute left-3 top-3 rounded-full border border-[#55aaf0]/55 bg-[#0a2946]/78 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white shadow-lg backdrop-blur-md">MatchUp Player</span>
-          <div className="absolute bottom-[-1px] left-0 right-0 h-20 bg-gradient-to-t from-[#071a31] to-transparent" />
+        <div className="relative aspect-[1.045] w-full overflow-hidden">
+          <img src="/hero-crowd-flipped.svg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+          <div className="absolute inset-0 bg-[#061c3a]/18" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,30,61,.18)_0%,rgba(5,31,62,.12)_34%,rgba(5,24,49,.46)_59%,#061a34_100%)]" />
+
+          <div className="absolute left-[5%] top-[5%] inline-flex items-center gap-2 rounded-full border border-[#58adff]/35 bg-[#1764ae]/55 px-3 py-1.5 shadow-[0_8px_20px_rgba(0,0,0,.18)] sm:px-4 sm:py-2">
+            <Crown size={18} className="text-white" fill="currentColor" />
+            <span className="text-[10px] font-black uppercase tracking-[.13em] text-white sm:text-[13px]">MatchUp Player</span>
+          </div>
+
+          <img src="/matchup-logo.svg" alt="MatchUp" className="absolute left-1/2 top-[11%] h-[25%] w-[38%] -translate-x-1/2 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,.25)]" draggable={false} />
+
+          <span className="absolute right-[5%] top-[36%] inline-flex items-center gap-2 rounded-full border border-[#4aa9ff] bg-[#07539b]/85 px-3 py-2 text-[11px] font-black text-white shadow-[0_8px_20px_rgba(0,0,0,.3)] sm:px-4 sm:py-2.5 sm:text-[13px]">
+            <Gamepad2 size={15} className="text-white" /> {gameLabel(profile.supported_game)}
+          </span>
+
+          <div className="absolute bottom-[39%] left-[5%]">
+            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-[78px] border-[4px] border-[#0b6dcc] shadow-[0_8px_24px_rgba(0,0,0,.45)] sm:!size-[112px] sm:border-[5px]" />
+          </div>
+
+          <div className="absolute bottom-[38%] left-[24%] right-[4%] flex items-center justify-end">
+            {profile.friendship !== "friends" ? <span className="rounded-full bg-[#1b5b98]/82 px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[.1em] text-[#e2f3ff] shadow-lg sm:px-3.5 sm:py-2 sm:text-[10px]">Not friends yet</span> : null}
+          </div>
+
+          <div className="absolute inset-x-[5%] bottom-[3.5%]">
+            <h3 className="text-[24px] font-black leading-none tracking-[-.035em] text-white sm:text-[31px]">{name}</h3>
+            {profile.country ? <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-[#c3e1fb] sm:text-[14px]"><MapPin size={14} className="text-[#62b7ff] sm:size-[16px]" />{profile.country}</p> : null}
+          </div>
         </div>
-        <span className="pointer-events-none absolute right-3 top-[156px] z-[100] inline-flex translate-y-1/2 items-center gap-1 rounded-full border border-[#55aaf0]/70 bg-[#0a2946]/95 px-3 py-2 text-[10px] font-black text-white shadow-[0_8px_18px_rgba(0,0,0,.35)] sm:top-[182px]">
-          <Gamepad2 size={12} className="text-[#70c1ff]" /> {gameLabel(profile.supported_game)}
-        </span>
 
-        <div className="relative px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
-          <div className="-mt-10 flex items-end justify-between gap-3">
-            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-[82px] shrink-0 border-[4px] border-[#071a31] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[90px]" />
-            <div className="mb-1 flex items-center gap-1.5">
-              {profile.is_verified ? <MatchUpVerificationBadge /> : null}
+        <div className="relative px-[5%] pb-[4.5%] pt-[3%]">
+          <div className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-[#2766a0]/45 bg-[#0b3158]/92 shadow-inner">
+            <div className="flex items-center justify-center gap-3 px-3 py-3 sm:py-3.5">
+              <span className="text-[20px] font-black leading-none text-[#5cb8ff]">▤</span>
+              <div><p className="text-[20px] font-black leading-none text-white sm:text-[24px]">{profile.postCount ?? 0}</p><p className="mt-1 text-[8px] font-black uppercase tracking-[.12em] text-[#9ec4e5] sm:text-[10px]">Posts</p></div>
+            </div>
+            <div className="flex items-center justify-center gap-3 border-l border-[#3475ad]/65 px-3 py-3 sm:py-3.5">
+              <UserPlus size={25} className="text-[#5cb8ff]" />
+              <div><p className="text-[20px] font-black leading-none text-white sm:text-[24px]">{profile.followerCount ?? 0}</p><p className="mt-1 text-[8px] font-black uppercase tracking-[.12em] text-[#9ec4e5] sm:text-[10px]">Followers</p></div>
             </div>
           </div>
 
-          <div className="mt-1.5 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="min-w-0 text-[22px] font-black tracking-[-.03em] text-white sm:text-[25px]">{name}</h3>
-              {profile.friendship !== "friends" ? <span className="shrink-0 rounded-full bg-[#17436a] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[.1em] text-[#d9efff]">Not friends yet</span> : null}
-            </div>
-            {profile.country ? (
-              <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-[#b8d9f4]"><MapPin size={13} className="text-[#70c1ff]" />{profile.country}</p>
-            ) : null}
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-[18px] bg-[#0c2a49]/90 shadow-inner">
-            <div className="px-3 py-3 text-center">
-              <p className="text-[19px] font-black leading-none text-white">{profile.postCount ?? 0}</p>
-              <p className="mt-1 text-[9px] font-black uppercase tracking-[.14em] text-[#8bb0cd]">Posts</p>
-            </div>
-            <div className="border-l border-[#3271a5] px-3 py-3 text-center">
-              <p className="text-[19px] font-black leading-none text-white">{profile.followerCount ?? 0}</p>
-              <p className="mt-1 text-[9px] font-black uppercase tracking-[.14em] text-[#8bb0cd]">Followers</p>
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#167bd1,#2497ff)] px-4 text-sm font-black text-white shadow-[0_9px_25px_rgba(22,123,209,.28)] transition hover:brightness-105 active:scale-[.99]">
-              <UserPlus size={17} /> {profile.friendship === "pending" ? "Request Sent" : "Add Friend"} <ArrowRight size={16} className="ml-auto" />
-            </button>
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid size-12 place-items-center rounded-2xl border border-[#3b82bd] bg-[#0b3154]/95 text-[#c9eaff] shadow-[0_8px_22px_rgba(0,0,0,.24)]" aria-label={`Message ${name}`}>
-              <MessageCircle size={20} />
-            </button>
-          </div>
+          <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="mt-[3%] flex min-h-11 w-full items-center justify-center gap-2 rounded-[20px] bg-[linear-gradient(100deg,#1684e8,#2099ff)] px-4 py-2.5 text-[14px] font-black text-white shadow-[0_10px_26px_rgba(22,132,232,.3)] transition hover:brightness-105 active:scale-[.99] sm:min-h-12 sm:text-[17px]">
+            <UserPlus size={18} className="sm:size-[20px]" />
+            <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
+          </button>
         </div>
       </article>
     );
   };
-
   return (
     <>
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
