@@ -261,7 +261,7 @@ export function ProfileDiscoveryCard({
             <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.15em] text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
               MatchUp Player
             </span>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#3a99eb] bg-[#092a49]/92 px-3 py-1.5 text-[11px] font-black text-[#e0f4ff] shadow-[0_8px_20px_rgba(0,0,0,.22)]">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
               <Gamepad2 size={14} />Football
             </span>
           </div>
