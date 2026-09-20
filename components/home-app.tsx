@@ -182,6 +182,50 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
   );
 }
 
+function ReelCard({ post }: { post: Post }) {
+  return (
+    <button
+      type="button"
+      onClick={() => window.location.assign(`/feeds/post/${post.id}`)}
+      className="group relative min-w-[190px] overflow-hidden rounded-[24px] border border-[#1b4775] bg-[#071426] text-left sm:min-w-0"
+    >
+      <div className="relative aspect-[9/13] overflow-hidden bg-[#061120]">
+        {post.videoUrl ? (
+          <video src={post.videoUrl} className="absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.03]" muted loop playsInline preload="metadata" />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#061426] via-transparent to-black/10" />
+        <div className="absolute inset-x-0 bottom-0 p-3">
+          <div className="flex items-center gap-2">
+            {post.author.avatar ? (
+              <img src={post.author.avatar} alt="" className="size-8 rounded-full object-cover ring-2 ring-[#061426]" />
+            ) : (
+              <div className="grid size-8 place-items-center rounded-full bg-[#0b3154] text-[10px] font-black text-white">{post.author.initials}</div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-xs font-black text-white">{post.author.name}</p>
+              <p className="text-[10px] text-[#a8c2d9]">{post.likes} likes · {post.comments} comments</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function TrendingCard({ title, label, value, icon }: { title: string; label: string; value: string; icon: ReactNode }) {
+  return (
+    <article className="min-w-[230px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 sm:min-w-0">
+      <div className="flex items-center justify-between gap-3">
+        <span className="grid size-10 place-items-center rounded-2xl bg-[#0b3154] text-[#70c1ff]">{icon}</span>
+        <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">Trending</span>
+      </div>
+      <p className="mt-4 text-[10px] font-black uppercase tracking-[.14em] text-[#47a8ff]">{label}</p>
+      <h3 className="mt-1 line-clamp-2 text-base font-black leading-5 text-white">{title}</h3>
+      <p className="mt-3 text-xs font-semibold text-[#7892ac]">{value}</p>
+    </article>
+  );
+}
+
 function GroupCard({ group }: { group: GroupPreview }) {
   return (
     <Link href={`/leaderboard?group=${group.id}`} className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 transition hover:border-[#47a8ff] sm:min-w-0">
@@ -200,6 +244,11 @@ function GroupCard({ group }: { group: GroupPreview }) {
   );
 }
 
+// DEVELOPMENT RULE — RESTORE means return the affected component to the exact approved design/state
+// that existed immediately before the change that caused the problem. Never reinterpret, redesign,
+// improve, approximate, or substitute a similar version when restoring.
+// PROTECTED HOMEPAGE AREAS: existing approved components keep their design; requested structural moves
+// must preserve the component itself. NEW HOMEPAGE AREAS are only the sections explicitly requested.
 export function HomeApp() {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
@@ -660,22 +709,6 @@ export function HomeApp() {
       </section>
 
       <section className="mt-8">
-        <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
-        {loading ? (
-          <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div>
-        ) : (
-          <ProfileDiscoveryCard
-            people={people}
-            onFriend={addFriend}
-            notify={notify}
-            onNeedMore={loadMorePeople}
-            peopleLoading={peopleLoading}
-            peopleHasMore={peopleHasMoreRef.current}
-          />
-        )}
-      </section>
-
-      <section className="mt-9">
         <SectionHeading eyebrow="Competition" title="Featured Tournaments" description="A quick look at public MatchUp competitions." href="/tournaments" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading tournaments…</div> : tournaments.length ? (
           <TournamentSwipeCard tournaments={tournaments.slice(0, 3)} />
@@ -685,7 +718,16 @@ export function HomeApp() {
       </section>
 
       <section className="mt-9">
-        <SectionHeading eyebrow="Community" title="From the MatchUp Community" description="See what's happening around MatchUp." href="/feeds" />
+        <SectionHeading eyebrow="Quick Match" title="Ready Players" description="Players who are ready to connect and play." href="/ready-players" />
+        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Checking Ready Players…</div> : readyPlayers.length ? (
+          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{readyPlayers.map((player) => <ReadyCard key={player.id} player={player} onChallenge={challengeReady} busy={challengeBusy===player.id} />)}</div>
+        ) : (
+          <EmptyState icon={<Zap size={23} />} title="No ready players right now" text="Ready Player availability is live. Open Ready Players to see the current pool or enable your own availability." href="/ready-players" action="Open Ready Players" />
+        )}
+      </section>
+
+      <section className="mt-9">
+        <SectionHeading eyebrow="Community" title="For You" description="Posts and football moments from the MatchUp community." href="/feeds" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading community posts…</div> : posts.length ? (
           <div className="space-y-4">
             {posts.map((post) => (
@@ -713,21 +755,58 @@ export function HomeApp() {
       </section>
 
       <section className="mt-9">
-        <SectionHeading eyebrow="Quick Match" title="Ready Players" description="Players who are ready to connect and play." href="/ready-players" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Checking Ready Players…</div> : readyPlayers.length ? (
-          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{readyPlayers.map((player) => <ReadyCard key={player.id} player={player} onChallenge={challengeReady} busy={challengeBusy===player.id} />)}</div>
+        <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
+        {loading ? (
+          <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div>
         ) : (
-          <EmptyState icon={<Zap size={23} />} title="No ready players right now" text="Ready Player availability is live. Open Ready Players to see the current pool or enable your own availability." href="/ready-players" action="Open Ready Players" />
+          <ProfileDiscoveryCard
+            people={people}
+            onFriend={addFriend}
+            notify={notify}
+            onNeedMore={loadMorePeople}
+            peopleLoading={peopleLoading}
+            peopleHasMore={peopleHasMoreRef.current}
+          />
         )}
       </section>
 
       <section className="mt-9">
-        <SectionHeading eyebrow="Community" title="Popular Groups" description="Find football communities and play together." href="/groups" />
+        <SectionHeading eyebrow="Watch" title="Reels" description="Short football moments from MatchUp players." href="/feeds" />
+        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading reels…</div> : posts.filter((post) => post.hasVideo && post.videoUrl).length ? (
+          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">
+            {posts.filter((post) => post.hasVideo && post.videoUrl).slice(0, 6).map((post) => <ReelCard key={post.id} post={post} />)}
+          </div>
+        ) : (
+          <EmptyState icon={<Zap size={23} />} title="No reels yet" text="Short football videos from MatchUp players will appear here." href="/feeds" action="Explore Feed" />
+        )}
+      </section>
+
+      <section className="mt-9">
+        <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/groups" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading groups…</div> : groups.length ? (
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} />)}</div>
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/groups" action="Open Groups" />
         )}
+      </section>
+
+      <section className="mt-9">
+        <SectionHeading eyebrow="What's Hot" title="Trending MatchUps" description="Popular activity happening across MatchUp right now." href="/tournaments" />
+        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">
+          {tournaments.slice(0, 2).map((tournament) => (
+            <Link key={tournament.id} href="/tournaments" className="block">
+              <TrendingCard title={tournament.name} label="Featured tournament" value={`${tournament.teams ?? 0} teams · ${tournament.max_players} player capacity`} icon={<Trophy size={19} />} />
+            </Link>
+          ))}
+          {readyPlayers.slice(0, 1).map((player) => (
+            <Link key={`ready-${player.id}`} href="/ready-players" className="block">
+              <TrendingCard title={nameOf(player)} label="Ready player" value={`${gameLabel(player.supported_game)} · Ready to play`} icon={<Swords size={19} />} />
+            </Link>
+          ))}
+          {!loading && !tournaments.length && !readyPlayers.length ? (
+            <EmptyState icon={<Zap size={23} />} title="Nothing trending yet" text="Popular MatchUp activity will appear here as it builds." />
+          ) : null}
+        </div>
       </section>
 
       {cancelFriendId ? (
