@@ -74,7 +74,7 @@ export function FeedCard({post,onToggleLike,onToggleFollow,onComment,onEditComme
           <MessageCircle size={19} />{formatCount(post.comments)}
         </button>
       </div>
-      <button type="button" onClick={() => onShare(post.id)} aria-label="Share post link" className="grid size-11 shrink-0 place-items-center rounded-full border border-[#214a78] bg-[#071426] text-[#c2d1df] transition hover:border-[#315f88] hover:text-white">
+      <button type="button" onClick={() => setForwardOpen(true)} aria-label="Forward post" className="grid size-11 shrink-0 place-items-center rounded-full border border-[#214a78] bg-[#071426] text-[#c2d1df] transition hover:border-[#315f88] hover:text-white">
         <Forward size={20} />
       </button>
     </div>
