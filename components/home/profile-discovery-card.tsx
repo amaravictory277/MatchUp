@@ -218,6 +218,7 @@ export function ProfileDiscoveryCard({
         <img src="/1002371685.jpg" alt="" className="absolute inset-x-0 top-0 h-[76px] w-full object-cover sm:h-[88px]" draggable={false} />
         <div className="absolute inset-x-0 top-0 h-[105px] bg-[linear-gradient(180deg,rgba(3,20,39,.08)_0%,rgba(3,22,43,.18)_48%,#061426_100%)] sm:h-[120px]" />
         <div className="absolute inset-x-0 top-0 h-[76px] bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.28),transparent_38%),radial-gradient(circle_at_88%_12%,rgba(31,94,154,.14),transparent_32%)] sm:h-[88px]" />
+        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[40px] w-[86px] -translate-x-1/2 -translate-y-1/2 opacity-[.12] sm:top-[46px] sm:w-[100px]" />
 
         <div className="relative px-3 pb-3 pt-2.5 sm:px-3.5 sm:pb-3.5 sm:pt-3">
           <div className="flex items-start justify-between gap-3">
@@ -244,8 +245,8 @@ export function ProfileDiscoveryCard({
           </div>
 
           <div className="mt-2 grid grid-cols-[1fr_auto] gap-1.5">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[11px] bg-[#1680d8] px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(22,128,216,.22)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-10.5 sm:text-xs">{profile.friendship === "pending" ? null : <UserPlus size={14} />}<span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span></button>
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-10 min-w-10 place-items-center rounded-[11px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white" aria-label={`Message ${name`}><MessageCircle size={16} /></button>
+            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-10 items-center justify-center gap-1.5 rounded-[11px] bg-[#1680d8] px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(22,128,216,.22)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-10 sm:text-xs">{profile.friendship === "pending" ? null : <UserPlus size={14} />}<span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span></button>
+            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-10 min-w-10 place-items-center rounded-[11px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white" aria-label={`Message ${name}`}><MessageCircle size={16} /></button>
           </div>
         </div>
       </article>
