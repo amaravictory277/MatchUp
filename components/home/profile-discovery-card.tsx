@@ -63,17 +63,26 @@ export function ProfileDiscoveryCard({
       const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextCtor) return;
       const context = new AudioContextCtor();
-      const oscillator = context.createOscillator();
+      const duration = 0.11;
+      const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        const envelope = Math.pow(1 - i / data.length, 2);
+        data[i] = (Math.random() * 2 - 1) * envelope;
+      }
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
       const gain = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(540, context.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(230, context.currentTime + 0.08);
+      source.buffer = buffer;
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1700, context.currentTime);
+      filter.Q.setValueAtTime(0.7, context.currentTime);
       gain.gain.setValueAtTime(0.0001, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.012);
-      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.09);
-      oscillator.connect(gain).connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+      source.connect(filter).connect(gain).connect(context.destination);
+      source.start();
+      source.stop(context.currentTime + duration);
       window.setTimeout(() => void context.close(), 180);
     } catch {}
   };
