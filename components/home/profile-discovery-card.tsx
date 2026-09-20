@@ -242,8 +242,8 @@ export function ProfileDiscoveryCard({
     const coverUrl = publicStorageUrl(profile.cover_media_path);
     const avatarUrl = publicStorageUrl(profile.avatar_path);
     return (
-      <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
-        <div className="relative h-[120px] overflow-hidden bg-[#061120] sm:h-[134px]">
+      <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91]/50 bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
+        <div className="relative h-[156px] overflow-hidden bg-[#061120] sm:h-[170px]">
           {coverUrl ? (
             profile.cover_media_type === "video" ? (
               <video src={coverUrl} className="absolute inset-0 size-full object-cover" autoPlay={active} muted loop playsInline preload={active ? "auto" : "metadata"} />
