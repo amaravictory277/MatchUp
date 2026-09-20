@@ -129,7 +129,9 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
         {stack.slice(1).reverse().map((tournament, reverseIndex) => {
           const layer = stack.length - reverseIndex - 1;
-          const scale = Math.max(0.18, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
+          const baseScale = layer === 1 ? 0.94 : 0.90;
+          const growth = layer === 1 ? 0.06 : 0.10;
+          const scale = baseScale + progress * growth;
           return (
             <div key={tournament.id} className="pointer-events-none absolute inset-0 z-10" style={{ transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`, opacity: 1, transition: "transform 340ms cubic-bezier(.16,1,.3,1)", willChange: "transform" }}>
               <TournamentCard row={tournament} swipeMode />
