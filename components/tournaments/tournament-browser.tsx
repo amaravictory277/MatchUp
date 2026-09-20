@@ -11,11 +11,6 @@ import { ContentForwarder } from "../share/content-forwarder";
 type Category="boosted"|"featured"|"discover";
 type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
 function formatName(v:string){return v.replaceAll("_"," ");}function money(v:number){return v>0?`₦${v.toLocaleString("en-NG",{maximumFractionDigits:2})}`:"No prize";}
-function storageUrl(supabase: ReturnType<typeof createBrowserSupabaseClient>, path: string | null){
-  if(!path)return null;
-  if(path.startsWith("http://")||path.startsWith("https://")||path.startsWith("/"))return path;
-  return supabase.storage.from("tournament-media").getPublicUrl(path).data.publicUrl;
-}
 export function TournamentCard({
   row,
   swipeMode = false,
@@ -39,13 +34,6 @@ export function TournamentCard({
   const start = useRef<{ x: number; y: number } | null>(null);
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
-  const creatorProfile = {
-    id: row.organizer_id,
-    display_name: creator,
-    username: profile?.username || null,
-    avatar_path: profile?.avatar_path || null,
-  };
-
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
