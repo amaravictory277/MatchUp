@@ -288,7 +288,7 @@ export function ProfileDiscoveryCard({
           </div>
           <span className="inline-flex items-center gap-1">Swipe right <ArrowRight size={11} /></span>
         </div>
-      ) : null>
+      ) : null}
 
       {quickChatPerson ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" onClick={() => !sending && setQuickChatPerson(null)}>
