@@ -1,5 +1,6 @@
 "use client";
-import { CalendarDays, CircleDollarSign, Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
+import { CircleDollarSign, Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
+import type { MouseEvent, PointerEvent } from "react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,7 +39,6 @@ export function TournamentCard({
   const start = useRef<{ x: number; y: number } | null>(null);
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
-  const bannerUrl = storageUrl(supabase, row.banner_path || null);
   const creatorProfile = {
     id: row.organizer_id,
     display_name: creator,
@@ -62,7 +62,7 @@ export function TournamentCard({
       const previewIds = ids.slice(0, 6);
       const { data: profiles } = previewIds.length
         ? await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", previewIds)
-        : { data: [] as any[] };
+        : { data: [] as Array<{id:string}> };
       if (!cancelled) {
         setParticipantIds(ids);
         setParticipantProfiles((profiles || []) as Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>);
@@ -73,7 +73,7 @@ export function TournamentCard({
     return () => { cancelled = true; };
   }, [row.id, supabase]);
 
-  const joinTournament = async (event?: React.MouseEvent) => {
+  const joinTournament = async (event?: MouseEvent) => {
     event?.stopPropagation();
     if (joining || joined) return;
     const { data: auth } = await supabase.auth.getUser();
@@ -92,7 +92,6 @@ export function TournamentCard({
     setParticipantIds((ids) => ids.includes(auth.user.id) ? ids : [...ids, auth.user.id]);
     setJoining(false);
   };
-
 
   const save = async () => {
     const { data: a } = await supabase.auth.getUser();
@@ -113,7 +112,7 @@ export function TournamentCard({
     }
   };
 
-  const down = (e: React.PointerEvent) => {
+  const down = (e: PointerEvent) => {
     if (swipeMode && e.pointerType === "mouse") return;
     start.current = { x: e.clientX, y: e.clientY };
     moved.current = false;
@@ -128,7 +127,7 @@ export function TournamentCard({
     }
   };
 
-  const move = (e: React.PointerEvent) => {
+  const move = (e: PointerEvent) => {
     if (!start.current) return;
     if (Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 14) {
       moved.current = true;
@@ -149,94 +148,128 @@ export function TournamentCard({
     router.push(`/tournaments/${row.id}`);
   };
 
+  const startsAt = row.starts_at ? new Date(row.starts_at) : null;
+  const dateLabel = startsAt && !Number.isNaN(startsAt.getTime())
+    ? startsAt.toLocaleDateString([], { month: "short", day: "numeric" })
+    : "Date TBA";
+  const timeLabel = startsAt && !Number.isNaN(startsAt.getTime())
+    ? startsAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : "Time TBA";
+  const prizeValue = Number(row.prize_pool || 0);
+  const prizeLabel = prizeValue > 0
+    ? `₦${prizeValue.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`
+    : "No prize";
+
   return (
     <article
-      className="group w-full rounded-[24px] border border-[#245b91] bg-[#071426] text-left shadow-[0_18px_50px_rgba(0,35,75,.22)]"
+      className="group relative w-full overflow-hidden rounded-[28px] bg-[#071426] text-left shadow-[0_24px_70px_rgba(0,25,55,.34)]"
       onPointerDown={swipeMode ? undefined : down}
       onPointerMove={swipeMode ? undefined : move}
       onPointerUp={swipeMode ? undefined : up}
       onPointerCancel={swipeMode ? undefined : () => { cancel(); moved.current = true; }}
-      onContextMenu={e => e.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
     >
-      <div role="button" tabIndex={0} onClick={e => { if (swipeMode && e.detail > 0) { e.stopPropagation(); return; } open(); }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") open(); }}>
-        <div className="relative h-[112px] overflow-hidden rounded-t-[24px] bg-[#061120] sm:h-[132px]">
-          {bannerUrl ? <MatchUpImage src={bannerUrl} className="h-full bg-[#0b223c]" /> : <div className="absolute inset-0 bg-[#061120]" />}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.5),transparent_42%),linear-gradient(135deg,rgba(10,41,70,.72),rgba(6,17,32,.94)_62%,rgba(11,49,84,.92))]" />
-          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 z-10 w-[130px] -translate-x-1/2 -translate-y-1/2 opacity-[.18] sm:w-[160px]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-[#071426]/10 to-transparent" />
-          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-[#2b8ee6]/70 bg-[#082a4b]/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.08em] text-[#9bd3ff]">
-            {formatName(row.format)}
-          </span>
-          <div className="absolute right-3 top-3 z-20 grid size-10 place-items-center rounded-full border border-[#2b8ee6]/60 bg-[#071426]/75 text-[#70c1ff] backdrop-blur-sm">
-            <Trophy size={21} strokeWidth={2.2} />
-          </div>
-        </div>
-
-        <div className="p-3 sm:p-3.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-[20px] font-black leading-tight tracking-[-.02em] text-white">{row.name}</h2>
-              {row.description ? <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-[#86a1bb]">{row.description}</p> : null}
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#214a78] bg-[#08182b] px-2 py-1 text-[10px] font-bold text-[#a9bdd5]">
-              <CalendarDays size={12} className="text-[#70c1ff]" />
-              {row.starts_at ? new Date(row.starts_at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "TBA"}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={(event) => { if (swipeMode && event.detail > 0) { event.stopPropagation(); return; } open(); }}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") open(); }}
+        className="relative"
+      >
+        <div className="relative h-[214px] overflow-hidden sm:h-[250px]">
+          <MatchUpImage src="/1002371685.jpg" alt="Football players ready for a match" className="h-full w-full" brandPosition="center" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,24,.12)_0%,rgba(3,12,24,.08)_30%,rgba(7,20,38,.42)_62%,#071426_100%)]" />
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#071426]/78 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.1em] text-[#d7edff] shadow-lg backdrop-blur-md">
+              <Trophy size={13} className="text-[#70c1ff]" />
+              {formatName(row.format)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#071426]/78 px-3 py-1.5 text-[10px] font-black text-[#d7edff] shadow-lg backdrop-blur-md">
+              <Gamepad2 size={13} className="text-[#70c1ff]" />
+              {row.game_title || "Football"}
             </span>
           </div>
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#071426] to-transparent" />
+        </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="relative -mt-1 px-4 pb-4 sm:px-5 sm:pb-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#47a8ff]">Football tournament</p>
+              <h2 className="mt-1 text-[23px] font-black leading-[1.05] tracking-[-.025em] text-white sm:text-[26px]">{row.name}</h2>
+              {row.description ? <p className="mt-2 line-clamp-2 max-w-[620px] text-[12px] leading-5 text-[#9db2c7] sm:text-[13px]">{row.description}</p> : null}
+            </div>
+
+            <div className="shrink-0 rounded-2xl bg-[#0b2139] px-3 py-2 text-right shadow-inner">
+              <p className="text-[9px] font-black uppercase tracking-[.12em] text-[#66809a]">{dateLabel}</p>
+              <p className="mt-0.5 text-[11px] font-black text-white">{timeLabel}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-[1fr_auto] items-end gap-4">
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
-                  <Users size={14} className="text-[#70c1ff]" />{participantIds.length}/{row.max_players} Teams
-                </span>
-                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-[#214a78] bg-[#08182b] px-2.5 py-1 text-[11px] font-bold text-[#b7c9da]">
-                  <Gamepad2 size={14} className="shrink-0 text-[#70c1ff]" /><span className="truncate">{row.game_title || "Football"}</span>
-                </span>
+              <div className="flex items-center gap-2">
+                <Users size={15} className="shrink-0 text-[#70c1ff]" />
+                <span className="text-[12px] font-black text-white">{participantIds.length}/{row.max_players} players</span>
               </div>
               <div className="mt-2 flex items-center">
-                {participantProfiles.map((p) => <MatchUpAvatar key={p.id} profile={p} size="sm" alt={p.display_name || p.username || "Player"} className="-ml-1.5 !size-7 border-2 border-[#071426] first:ml-0" />)}
-                {participantIds.length > participantProfiles.length ? <span className="-ml-1.5 grid size-7 place-items-center rounded-full border-2 border-[#071426] bg-[#0a2946] text-[9px] font-black text-[#9bd3ff]">+{participantIds.length - participantProfiles.length}</span> : null}
-                {!participantIds.length ? <span className="text-[10px] font-semibold text-[#66809a]">Be the first to join</span> : null}
+                {participantProfiles.map((participant) => (
+                  <MatchUpAvatar
+                    key={participant.id}
+                    profile={participant}
+                    size="sm"
+                    alt={participant.display_name || participant.username || "Player"}
+                    className="-ml-2 !size-8 border-2 border-[#071426] first:ml-0"
+                  />
+                ))}
+                {participantIds.length > participantProfiles.length ? (
+                  <span className="-ml-2 grid size-8 place-items-center rounded-full border-2 border-[#071426] bg-[#12385a] text-[9px] font-black text-[#bfe3ff]">
+                    +{participantIds.length - participantProfiles.length}
+                  </span>
+                ) : null}
+                {!participantIds.length ? <span className="ml-2 text-[10px] font-semibold text-[#66809a]">Be the first to join</span> : null}
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <p className="text-[9px] font-bold uppercase tracking-[.08em] text-[#7892ac]">Prize</p>
-              <div className="mt-0.5 inline-flex items-center gap-1.5">
-                <CircleDollarSign size={16} className="text-[#70c1ff]" />
-                <span className="text-[17px] font-black text-white">{money(Number(row.prize_pool || 0))}</span>
+            <div className="rounded-2xl bg-[#0b2139] px-3 py-2.5 text-right">
+              <p className="text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Prize</p>
+              <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                <CircleDollarSign size={17} className="text-[#70c1ff]" />
+                <span className="text-[19px] font-black tracking-[-.02em] text-white">{prizeLabel}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-3 border-t border-[#214a78] pt-3">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => void joinTournament(event)} disabled={joining || joined || row.status === "full"} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black text-white shadow-[0_8px_22px_rgba(22,123,209,.18)] transition active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-65">
+          <div className="mt-4">
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => void joinTournament(event)}
+              disabled={joining || joined || row.status === "full"}
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-5 py-3 text-[12px] font-black uppercase tracking-[.04em] text-white shadow-[0_10px_28px_rgba(36,151,255,.22)] transition active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-65"
+            >
               {joined ? <Check size={15} /> : null}
               {joining ? "Joining…" : joined ? "Joined Tournament" : row.status === "full" ? "Tournament Full" : "Join Tournament"}
             </button>
           </div>
 
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2">
-              <MatchUpAvatar profile={creatorProfile} size="sm" alt={creator} className="!size-7 shrink-0 rounded-full" />
-              <span className="truncate text-[11px] font-black text-white">{creator}</span>
-            </div>
-            <span className="inline-flex shrink-0 items-center rounded-xl border border-[#245b91] bg-[#0a2946] px-2.5 py-1 text-[10px] font-black capitalize text-[#9bd3ff]">
-              {formatName(row.status)}
-            </span>
+          <div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-[#66809a]">
+            <span className="truncate">Organized by {creator}</span>
+            <span className="shrink-0 font-bold capitalize text-[#86a1bb]">{formatName(row.status)}</span>
           </div>
         </div>
       </div>
+
       {!swipeMode && menu ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={() => setMenu(false)}>
-          <div className="w-full max-w-sm rounded-3xl border border-[#194b7c] bg-[#08182b] p-3" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-3xl bg-[#08182b] p-3 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <button type="button" onClick={() => { setForwardOpen(true); setMenu(false); }} className="flex w-full items-center gap-3 rounded-2xl p-4 text-left text-sm font-black text-white"><Forward size={18}/>Forward tournament</button>
             <button type="button" onClick={() => { void save(); setMenu(false); }} className="flex w-full items-center gap-3 rounded-2xl p-4 text-left text-sm font-black text-white"><Bookmark size={18}/>{saved ? "Remove saved tournament" : "Save tournament"}</button>
-            <button type="button" onClick={() => setMenu(false)} className="flex w-full items-center justify-center rounded-2xl border border-[#18365f] p-3 text-sm font-bold text-[#a9bdd5]">Cancel</button>
+            <button type="button" onClick={() => setMenu(false)} className="flex w-full items-center justify-center rounded-2xl p-3 text-sm font-bold text-[#a9bdd5]">Cancel</button>
           </div>
         </div>
       ) : null}
+
       <ContentForwarder open={forwardOpen} onClose={() => setForwardOpen(false)} title={`Tournament: ${row.name}`} contentUrl={`${typeof window !== "undefined" ? window.location.origin : ""}/tournaments/${row.id}`} />
     </article>
   );
