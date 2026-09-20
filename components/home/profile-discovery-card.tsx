@@ -46,6 +46,7 @@ export function ProfileDiscoveryCard({
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [endReached, setEndReached] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
@@ -99,11 +100,18 @@ export function ProfileDiscoveryCard({
   const finishExit = (direction: "left" | "right") => {
     playSwipeSound();
     if (direction === "left") {
-      setIndex((value) => Math.min(value + 1, Math.max(0, people.length - 1)));
-      if (people.length - index <= 4) void requestMore();
+      const isLastCard = index >= people.length - 1 && !peopleHasMore;
+      if (isLastCard) {
+        notify("You've reached the end.");
+        setEndReached(true);
+        window.setTimeout(() => setEndReached(false), 1800);
+      } else {
+        setIndex((value) => Math.min(value + 1, Math.max(0, people.length - 1)));
+        if (people.length - index <= 4) void requestMore();
+      }
     } else {
-      // A right swipe is the quick-message gesture. Keep the card/deck
-      // animation intact, then open the existing quick-chat UI.
+      // Right swipe is the quick-message gesture. The card completes its
+      // swipe response, then returns to the surface while the sheet opens.
       setQuickChatPerson(current);
       setMessage("");
     }
@@ -113,10 +121,8 @@ export function ProfileDiscoveryCard({
 
   const commitExit = (direction: "left" | "right") => {
     if (!current || animating) return;
-    if (direction === "left" && index >= people.length - 1) {
-      if (peopleHasMore) void requestMore();
-      setDragX(0);
-      return;
+    if (direction === "left" && index >= people.length - 1 && peopleHasMore) {
+      void requestMore();
     }
     setAnimating(true);
     const width = cardRef.current?.getBoundingClientRect().width || 320;
@@ -213,7 +219,7 @@ export function ProfileDiscoveryCard({
     const name = nameOf(profile);
     return (
       <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
-        <div className="relative h-[140px] overflow-hidden bg-[#061120] sm:h-[154px]">
+        <div className="relative h-[120px] overflow-hidden bg-[#061120] sm:h-[134px]">
           <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.06)_0%,rgba(3,22,43,.12)_34%,rgba(4,21,41,.34)_60%,rgba(6,20,38,.78)_82%,#061426_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_10%,rgba(31,94,154,.16),transparent_34%)]" />
@@ -288,12 +294,12 @@ export function ProfileDiscoveryCard({
 
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
   const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
-  const nextProfile = dragX < 0 ? people[index + 1] : dragX > 0 ? people[index - 1] : null;
+  const nextProfile = dragX < 0 ? people[index + 1] : null;
 
   return (
     <>
       <div
-        className="relative w-full overflow-hidden rounded-[28px]"
+        className="relative w-full overflow-visible rounded-[28px]"
         style={{ touchAction: "pan-y" }}
       >
         {nextProfile ? (
@@ -345,6 +351,14 @@ export function ProfileDiscoveryCard({
             ))}
           </div>
           <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right to message →</span>
+        </div>
+      ) : null}
+
+      {endReached ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[95] flex justify-center px-4" aria-live="polite">
+          <div className="rounded-full border border-[#245b91] bg-[#08182b]/95 px-5 py-3 text-sm font-black text-white shadow-[0_16px_40px_rgba(0,0,0,.45)] backdrop-blur-md">
+            You've reached the end.
+          </div>
         </div>
       ) : null}
 
