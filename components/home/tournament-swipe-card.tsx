@@ -54,7 +54,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const current = tournaments[index] || null;
   const stack = tournaments.slice(index, index + 3);
 
-  const finishExit = (direction: "left" | "right") => {
+  const finishExit = () => {
     playSwipeSound();
     setIndex((value) => value + 1);
     setDragX(0);
@@ -70,7 +70,7 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
     setDragX(direction === "left" ? -distance : distance);
     window.setTimeout(() => {
       clickGuardRef.current = false;
-      finishExit(direction);
+      finishExit();
     }, 340);
   };
 
