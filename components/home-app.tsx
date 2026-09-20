@@ -320,7 +320,7 @@ export function HomeApp() {
 
       const { data: nextRows, error: nextError } = await supabase
         .from("profiles")
-        .select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
+        .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
         .order("created_at", { ascending: false })
         .range(discoveryCursor, discoveryCursor + 39);
       if (nextError) throw nextError;
