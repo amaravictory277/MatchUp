@@ -34,7 +34,7 @@ export function ProfilePage(){
   const view=searchParams.get("view");
   const screen=view==="edit" || view==="settings" ? view : "profile";
   const [profile,setProfile]=useState<Profile|null>(null),[email,setEmail]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[loggingOut,setLoggingOut]=useState(false),[toast,setToast]=useState<string|null>(null);
-  const [name,setName]=useState(""),[country,setCountry]=useState(""),[currencyCode,setCurrencyCode]=useState("USD"),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null),[coverFile,setCoverFile]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState<string|null>(null),[coverType,setCoverType]=useState<"image"|"video"|null>(null);
+  const [name,setName]=useState(""),[country,setCountry]=useState(""),[currencyCode,setCurrencyCode]=useState("USD"),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null),[coverFile,setCoverFile]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState<string|null>(null),[coverType,setCoverType]=useState<"image"|"video"|null>(null),[deleteAvatar,setDeleteAvatar]=useState(false),[deleteCover,setDeleteCover]=useState(false);
   const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2600)};
   const load=async()=>{
     setLoading(true);
@@ -65,30 +65,70 @@ export function ProfilePage(){
     if(!file.type.startsWith("image/")){notify("Choose an image file.");return}
     if(file.size>5*1024*1024){notify("Profile picture must be 5MB or smaller.");return}
     if(avatarPreview?.startsWith("blob:"))URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file));
+    setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); setDeleteAvatar(false);
   };
-  const selectCover=(file:File|null)=>{
+  const selectCover=async(file:File|null)=>{
     if(!file)return;
     const isImage=file.type.startsWith("image/");
     const isVideo=file.type.startsWith("video/");
     if(!isImage && !isVideo){notify("Choose a photo or video.");return}
     const maxSize=isVideo?50*1024*1024:10*1024*1024;
     if(file.size>maxSize){notify(isVideo?"Cover video must be 50MB or smaller.":"Cover photo must be 10MB or smaller.");return}
+    if(isVideo){
+      const objectUrl=URL.createObjectURL(file);
+      const video=document.createElement("video");
+      video.preload="metadata";
+      video.onloadedmetadata=()=>{
+        const duration=video.duration;
+        URL.revokeObjectURL(objectUrl);
+        if(!Number.isFinite(duration) || duration < 10 || duration > 20){
+          notify("Cover videos must be between 10 and 20 seconds.");
+          return;
+        }
+        if(coverPreview?.startsWith("blob:"))URL.revokeObjectURL(coverPreview);
+        setCoverFile(file);setCoverType("video");setCoverPreview(URL.createObjectURL(file));setDeleteCover(false);
+      };
+      video.onerror=()=>{
+        URL.revokeObjectURL(objectUrl);
+        notify("Cover videos must be between 10 and 20 seconds.");
+      };
+      video.src=objectUrl;
+      return;
+    }
     if(coverPreview?.startsWith("blob:"))URL.revokeObjectURL(coverPreview);
-    setCoverFile(file);setCoverType(isVideo?"video":"image");setCoverPreview(URL.createObjectURL(file));
+    setCoverFile(file);setCoverType("image");setCoverPreview(URL.createObjectURL(file));setDeleteCover(false);
+  };
+  const removeCurrentMedia=async(path:string|null)=>{
+    if(!path)return;
+    const {error}=await supabase.storage.from("profile-media").remove([path]);
+    if(error)throw error;
+  };
+  const requestDeleteAvatar=()=>{
+    if(!profile?.avatar_path)return;
+    if(window.confirm("Remove profile picture?")){
+      if(avatarPreview?.startsWith("blob:"))URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(null);setAvatarPreview(null);setDeleteAvatar(true);
+    }
+  };
+  const requestDeleteCover=()=>{
+    if(!profile?.cover_media_path)return;
+    if(window.confirm("Remove cover photo/video?")){
+      if(coverPreview?.startsWith("blob:"))URL.revokeObjectURL(coverPreview);
+      setCoverFile(null);setCoverPreview(null);setCoverType(null);setDeleteCover(true);
+    }
   };
   const saveProfile=async()=>{
     if(!profile || saving)return; setSaving(true);
     try{
-      let avatarPath=profile.avatar_path;
+      let avatarPath=deleteAvatar?null:profile.avatar_path;
       if(avatarFile){
         const extension=avatarFile.name.split(".").pop()?.replace(/[^a-z0-9]/gi,"") || "jpg";
         const path=profile.id+"/avatar-"+crypto.randomUUID()+"."+extension;
         const upload=await supabase.storage.from("profile-media").upload(path,avatarFile,{upsert:false,contentType:avatarFile.type});
         if(upload.error)throw upload.error; avatarPath=path;
       }
-      let coverPath=profile.cover_media_path;
-      let nextCoverType=profile.cover_media_type;
+      let coverPath=deleteCover?null:profile.cover_media_path;
+      let nextCoverType=deleteCover?null:profile.cover_media_type;
       if(coverFile && coverType){
         const extension=coverFile.name.split(".").pop()?.replace(/[^a-z0-9]/gi,"") || (coverType==="video"?"mp4":"jpg");
         const path=profile.id+"/cover-"+crypto.randomUUID()+"."+extension;
@@ -97,7 +137,9 @@ export function ProfilePage(){
       }
       const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,currency_code:currencyCode,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath,cover_media_path:coverPath,cover_media_type:nextCoverType}).eq("id",profile.id).select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,is_verified,created_at").single();
       if(error)throw error;
-      setProfile(data as Profile); setAvatarFile(null); setAvatarPreview(null); setCoverFile(null); setCoverPreview(null); setCoverType(null); notify("Profile updated."); router.replace("/profile");
+      if(deleteAvatar && profile.avatar_path) await removeCurrentMedia(profile.avatar_path);
+      if(deleteCover && profile.cover_media_path) await removeCurrentMedia(profile.cover_media_path);
+      setProfile(data as Profile); setAvatarFile(null); setAvatarPreview(null); setCoverFile(null); setCoverPreview(null); setCoverType(null); setDeleteAvatar(false); setDeleteCover(false); notify("Profile updated."); router.replace("/profile");
     }catch(error){console.error("MatchUp profile save failed:",error);notify(error instanceof Error ? error.message : "Settings couldn't be saved.")}finally{setSaving(false)}
   };
   const logout=async()=>{
@@ -120,17 +162,17 @@ export function ProfilePage(){
   if(screen==="edit")return <main className="profile-page app-shell">
     <header className="flex items-center gap-3 pb-5"><button type="button" onClick={goBack} className="icon-button" aria-label="Back"><ArrowLeft size={18}/></button><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">MatchUp</p><h1 className="mt-1 text-3xl font-black text-white">Edit Profile</h1></div></header>
     <section className="surface-card overflow-visible p-5">
-      <div className="flex flex-col items-center"><div className="relative"><div className="grid size-28 place-items-center overflow-hidden rounded-full border-4 border-[#194b7c] bg-[#0b3154] text-3xl font-black text-[#70c1ff] shadow-[0_12px_35px_rgba(0,0,0,.3)]">{avatar?<img src={avatar} alt={displayName} className="size-full object-cover"/>:initial}</div><label className="absolute -bottom-1 -right-1 grid size-10 cursor-pointer place-items-center rounded-full border-2 border-[#071426] bg-[linear-gradient(145deg,#126bc0,#2497ff)] text-white shadow-lg" aria-label="Change profile picture"><Camera size={17}/><input type="file" accept="image/*" className="hidden" onChange={e=>selectAvatar(e.target.files?.[0] || null)}/></label></div><p className="mt-4 text-xs text-[#7892ac]">JPG, PNG or WebP · maximum 5MB</p></div>
+      <div className="flex flex-col items-center"><div className="relative"><div className="grid size-28 place-items-center overflow-hidden rounded-full border-4 border-[#194b7c] bg-[#0b3154] text-3xl font-black text-[#70c1ff] shadow-[0_12px_35px_rgba(0,0,0,.3)]">{avatar?<img src={avatar} alt={displayName} className="size-full object-cover"/>:initial}</div><label className="absolute -bottom-1 -right-1 grid size-10 cursor-pointer place-items-center rounded-full border-2 border-[#071426] bg-[linear-gradient(145deg,#126bc0,#2497ff)] text-white shadow-lg" aria-label="Change profile picture"><Camera size={17}/><input type="file" accept="image/*" className="hidden" onChange={e=>selectAvatar(e.target.files?.[0] || null)}/></label></div><p className="mt-4 text-xs text-[#7892ac]">JPG, PNG or WebP · maximum 5MB</p>{profile.avatar_path?<button type="button" onClick={requestDeleteAvatar} className="mt-2 text-xs font-bold text-[#ff9ca9]">Delete profile picture</button>:null}</div>
       <div className="mt-7 overflow-hidden rounded-2xl bg-[#071426]">
         <div className="relative h-36 bg-[#061120]">
           {coverPreview ? (coverType === "video" ? <video src={coverPreview} className="size-full object-cover" autoPlay muted loop playsInline /> : <img src={coverPreview} alt="" className="size-full object-cover" />) : profile.cover_media_path ? (profile.cover_media_type === "video" ? <video src={publicAvatar(supabase, profile.cover_media_path) || undefined} className="size-full object-cover" autoPlay muted loop playsInline /> : <img src={publicAvatar(supabase, profile.cover_media_path) || undefined} alt="" className="size-full object-cover" />) : <div className="size-full bg-[radial-gradient(circle_at_18%_12%,rgba(36,151,255,.55),transparent_42%),linear-gradient(135deg,#0a2946,#061120_55%,#0b3154)]" />}
           <div className="absolute inset-0 bg-gradient-to-t from-[#071426] via-transparent to-transparent" />
           <label className="absolute bottom-3 right-3 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#08182b]/90 px-3 py-2 text-xs font-black text-white backdrop-blur">
             <Camera size={14}/> Change Cover
-            <input type="file" accept="image/*,video/*" className="hidden" onChange={e=>selectCover(e.target.files?.[0] || null)}/>
+            <input type="file" accept="image/*,video/*" className="hidden" onChange={e=>void selectCover(e.target.files?.[0] || null)}/>
           </label>
         </div>
-        <div className="px-3 py-2 text-[10px] text-[#7892ac]">Cover photo or video · photo up to 10MB · video up to 50MB</div>
+        <div className="flex items-center justify-between gap-3 px-3 py-2 text-[10px] text-[#7892ac]"><span>Cover photo or video · photo up to 10MB · video 10–20 seconds, up to 50MB</span>{profile.cover_media_path?<button type="button" onClick={requestDeleteCover} className="shrink-0 font-bold text-[#ff9ca9]">Delete cover</button>:null}</div>
       </div>
       <div className="mt-7 space-y-4">
         <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Display Name</span><input value={name} onChange={e=>setName(e.target.value)} maxLength={60} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white outline-none focus:border-[#2497ff]"/></label>
