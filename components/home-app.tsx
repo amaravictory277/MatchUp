@@ -26,6 +26,8 @@ type Profile = {
   username: string | null;
   display_name: string | null;
   avatar_path: string | null;
+  cover_media_path?: string | null;
+  cover_media_type?: "image" | "video" | null;
   country: string | null;
   bio: string | null;
   supported_game?: string | null;
@@ -240,7 +242,7 @@ export function HomeApp() {
     ] = await Promise.all([
       supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
       supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true }),
-      supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
+      supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
       uid ? supabase.from("user_follows").select("following_id").eq("follower_id", uid) : Promise.resolve({ data: [] as { following_id: string }[] }),
       uid ? supabase.from("friendships").select("user_id,friend_id,status").or(`user_id.eq.${uid},friend_id.eq.${uid}`).limit(500) : Promise.resolve({ data: [] as any[] }),
       supabase.from("posts").select("id,author_id,body,created_at").order("created_at", { ascending: false }).limit(40),
