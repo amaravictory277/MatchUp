@@ -223,11 +223,11 @@ export function ProfileDiscoveryCard({
   const renderProfile = (profile: HomePerson, layer: number) => {
     const name = nameOf(profile);
     const isActive = layer === 0;
-    // The next card starts at 10% scale and grows toward 100% as the front card leaves.
+    const isPrevious = layer === -1;
     const scale = isActive
       ? 1
-      : Math.max(0.25, 0.25 - (layer - 1) * 0.04 + progress * (0.75 - (layer - 1) * 0.06));
-    const translateY = isActive ? 0 : 8 + (layer - 1) * 8;
+      : Math.max(0.25, 0.25 + progress * 0.75 - Math.max(0, layer - 1) * 0.04);
+    const translateY = isActive ? 0 : isPrevious ? 8 : 8 + (layer - 1) * 8;
 
     return (
       <article
@@ -315,6 +315,7 @@ export function ProfileDiscoveryCard({
   return (
     <>
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
+        {activeIndex > 0 ? renderProfile(availablePeople[activeIndex - 1], -1) : null}
         {stack.slice(1).reverse().map((profile, reverseIndex) => {
           const layer = stack.length - reverseIndex - 1;
           return renderProfile(profile, layer);
