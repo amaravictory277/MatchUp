@@ -3,6 +3,7 @@ import "./globals.css";
 import "./brand-theme.css";
 import "./ui-interaction.css";
 import "./chat-ui.css";
+import "./profile-discovery-refinement.css";
 import { ServiceWorker } from "../components/service-worker";
 import { InstallPrompt } from "../components/install-prompt";
 import { PwaLaunchScreen } from "../components/pwa-launch-screen";
