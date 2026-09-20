@@ -272,7 +272,7 @@ export function ProfileDiscoveryCard({
           </div>
         ) : null}
 
-        {stack.slice(1).reverse().map((profile) => (
+        {dragX <= 0 ? stack.slice(1).reverse().map((profile) => (
           <div
             key={`${profile.id}-stack`}
             className="pointer-events-none absolute inset-0 z-10 w-full"
@@ -285,7 +285,7 @@ export function ProfileDiscoveryCard({
           >
             {renderProfileCard(profile, true)}
           </div>
-        ))}
+        )) : null}
 
         <div
           ref={cardRef}
