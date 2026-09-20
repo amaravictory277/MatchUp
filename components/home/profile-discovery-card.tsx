@@ -22,7 +22,11 @@ export type HomePerson = {
 };
 
 const nameOf = (person: HomePerson) => person.display_name?.trim() || person.username || "MatchUp Player";
-const gameLabel = (value?: string | null) => value?.trim() || "Football";
+const gameLabel = (value?: string | null) => {
+  const normalized = value?.trim().toLowerCase() || "";
+  if (!normalized || normalized.includes("efootball") || normalized.includes("e-football")) return "Football";
+  return value!.trim();
+};
 
 export function ProfileDiscoveryCard({
   people,
@@ -46,9 +50,28 @@ export function ProfileDiscoveryCard({
   const [sending, setSending] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   const loadingMoreRef = useRef(false);
+
+  const availablePeople = people;
+  const person = availablePeople[activeIndex] || null;
+  const stack = availablePeople.slice(activeIndex, activeIndex + 3);
+
+  useEffect(() => {
+    if (activeIndex >= availablePeople.length && availablePeople.length > 0) setActiveIndex(availablePeople.length - 1);
+  }, [activeIndex, availablePeople.length]);
+
+  const requestMore = useCallback(async () => {
+    if (!onNeedMore || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    try { await onNeedMore(); } finally { loadingMoreRef.current = false; }
+  }, [onNeedMore]);
+
+  useEffect(() => {
+    if (!person && peopleHasMore && !peopleLoading) void requestMore();
+  }, [person, peopleHasMore, peopleLoading, requestMore]);
 
   const playSwipeSound = () => {
     try {
@@ -56,14 +79,10 @@ export function ProfileDiscoveryCard({
       if (!AudioContextCtor) return;
       const context = new AudioContextCtor();
       const now = context.currentTime;
-      const duration = 0.16;
+      const duration = 0.15;
       const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i += 1) {
-        const t = i / data.length;
-        const envelope = Math.sin(Math.PI * t) * (1 - t * 0.18);
-        data[i] = (Math.random() * 2 - 1) * envelope;
-      }
+      for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * (i / data.length));
       const source = context.createBufferSource();
       const filter = context.createBiquadFilter();
       const gain = context.createGain();
@@ -71,9 +90,8 @@ export function ProfileDiscoveryCard({
       filter.type = "lowpass";
       filter.frequency.setValueAtTime(2600, now);
       filter.frequency.exponentialRampToValueAtTime(850, now + duration);
-      filter.Q.setValueAtTime(0.55, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.075, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.065, now + 0.018);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
       source.connect(filter).connect(gain).connect(context.destination);
       source.start(now);
@@ -82,53 +100,22 @@ export function ProfileDiscoveryCard({
     } catch {}
   };
 
-  const availablePeople = people;
-  const [activeIndex, setActiveIndex] = useState(0);
-  const person = availablePeople[activeIndex] || null;
-  const stack = availablePeople.slice(activeIndex, activeIndex + 3);
-
-  useEffect(() => {
-    if (activeIndex >= availablePeople.length && availablePeople.length > 0) {
-      setActiveIndex(availablePeople.length - 1);
-    }
-  }, [activeIndex, availablePeople.length]);
-
-  const requestMore = useCallback(async () => {
-    if (!onNeedMore || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    try {
-      await onNeedMore();
-    } finally {
-      loadingMoreRef.current = false;
-    }
-  }, [onNeedMore]);
-
-  useEffect(() => {
-    if (!person && peopleHasMore && !peopleLoading) void requestMore();
-  }, [person, peopleHasMore, peopleLoading, requestMore]);
-
   const finishExit = (direction: "left" | "right") => {
     if (direction === "left") {
       setActiveIndex((value) => Math.min(value + 1, Math.max(0, availablePeople.length - 1)));
       if (availablePeople.length - activeIndex <= 4) void requestMore();
-    } else {
-      setActiveIndex((value) => Math.max(0, value - 1));
-    }
+    } else setActiveIndex((value) => Math.max(0, value - 1));
     setDragX(0);
     setAnimating(false);
   };
 
   const commitExit = (direction: "left" | "right") => {
     if (!person || animating) return;
-    if (direction === "right" && activeIndex === 0) {
-      setDragX(0);
-      return;
-    }
+    if (direction === "right" && activeIndex === 0) { setDragX(0); return; }
     playSwipeSound();
     setAnimating(true);
     const width = cardRef.current?.getBoundingClientRect().width || 320;
-    const distance = Math.max(window.innerWidth + 80, width + 180);
-    setDragX(direction === "left" ? -distance : distance);
+    setDragX(direction === "left" ? -Math.max(window.innerWidth + 80, width + 180) : Math.max(window.innerWidth + 80, width + 180));
     window.setTimeout(() => finishExit(direction), 340);
   };
 
@@ -150,17 +137,8 @@ export function ProfileDiscoveryCard({
     const dx = event.clientX - startRef.current.x;
     const dy = event.clientY - startRef.current.y;
     startRef.current = null;
-    const horizontal = Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.15;
-    if (!horizontal) {
-      setDragX(0);
-      return;
-    }
+    if (Math.abs(dx) <= 70 || Math.abs(dx) <= Math.abs(dy) * 1.15) { setDragX(0); return; }
     commitExit(dx < 0 ? "left" : "right");
-  };
-
-  const pointerCancel = () => {
-    startRef.current = null;
-    if (!animating) setDragX(0);
   };
 
   const sendQuickMessage = async () => {
@@ -168,52 +146,22 @@ export function ProfileDiscoveryCard({
     setSending(true);
     try {
       const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) {
-        notify("Sign in to send a message.");
-        return;
-      }
+      if (!auth.user) { notify("Sign in to send a message."); return; }
       const { data: groupId, error: groupError } = await supabase.rpc("get_or_create_private_chat", { p_friend: quickChatPerson.id });
       if (groupError || !groupId) throw groupError || new Error("Could not open this chat.");
-      const { error: messageError } = await supabase.from("chat_messages").insert({
-        id: crypto.randomUUID(),
-        group_id: groupId,
-        sender_id: auth.user.id,
-        body: message.trim(),
-      });
+      const { error: messageError } = await supabase.from("chat_messages").insert({ id: crypto.randomUUID(), group_id: groupId, sender_id: auth.user.id, body: message.trim() });
       if (messageError) throw messageError;
       setQuickChatPerson(null);
       setMessage("");
       router.push(`/leaderboard?group=${groupId}`);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not send the message.");
-    } finally {
-      setSending(false);
-    }
+    } finally { setSending(false); }
   };
 
   if (!person) {
-    if (peopleLoading || peopleHasMore) {
-      return (
-        <div className="surface-card rounded-[28px] border-[#153c68] p-8 text-center">
-          <div className="mx-auto size-8 animate-spin rounded-full border-2 border-[#245b91] border-t-[#47a8ff]" />
-          <p className="mt-3 font-black text-white">Finding more MatchUp players…</p>
-          <p className="mt-1 text-sm text-[#7892ac]">Loading the next available profiles.</p>
-        </div>
-      );
-    }
-    return (
-      <div className="surface-card overflow-hidden rounded-[28px] border-[#153c68]">
-        <div className="grid min-h-[300px] place-items-center bg-[#071426] p-8 text-center">
-          <div>
-            <div className="mx-auto grid size-20 place-items-center rounded-full border border-[#245b91] bg-[#0b3154] p-4">
-              <img src="/matchup-logo.svg" alt="MatchUp" className="size-full object-contain" />
-            </div>
-            <p className="mt-4 font-black text-white">You’re all caught up</p>
-            <p className="mt-1 text-sm text-[#7892ac]">New MatchUp players will appear here when available.</p>
-          </div>
-        </div>
-      </div>
-    );
+    if (peopleLoading || peopleHasMore) return <div className="surface-card rounded-[30px] border-[#153c68] p-8 text-center"><div className="mx-auto size-8 animate-spin rounded-full border-2 border-[#245b91] border-t-[#47a8ff]" /><p className="mt-3 font-black text-white">Finding more MatchUp players…</p><p className="mt-1 text-sm text-[#7892ac]">Loading the next available profiles.</p></div>;
+    return <div className="surface-card grid min-h-[300px] place-items-center rounded-[30px] border-[#153c68] bg-[#071426] p-8 text-center"><div><div className="mx-auto grid size-20 place-items-center rounded-full border border-[#245b91] bg-[#0b3154] p-4"><img src="/matchup-logo.svg" alt="MatchUp" className="size-full object-contain" /></div><p className="mt-4 font-black text-white">You’re all caught up</p><p className="mt-1 text-sm text-[#7892ac]">New MatchUp players will appear here when available.</p></div></div>;
   }
 
   const progress = Math.min(1, Math.abs(dragX) / Math.max(420, typeof window === "undefined" ? 420 : window.innerWidth));
@@ -224,89 +172,44 @@ export function ProfileDiscoveryCard({
     const name = nameOf(profile);
     const isActive = layer === 0;
     const isPrevious = layer === -1;
-    const scale = isActive
-      ? 1
-      : Math.max(0.25, 0.25 + progress * 0.75 - Math.max(0, layer - 1) * 0.04);
+    const scale = isActive ? 1 : Math.max(0.25, 0.25 + progress * 0.75 - Math.max(0, layer - 1) * 0.04);
     const translateY = isActive ? 0 : isPrevious ? 8 : 8 + (layer - 1) * 8;
-
     return (
       <article
-        key={profile.id}
+        key={`${profile.id}-${layer}`}
         ref={isActive ? cardRef : undefined}
-        className={`w-full rounded-[30px] border border-[#245b91] bg-[#071426] shadow-[0_22px_70px_rgba(0,40,90,.24)] ${isActive ? "relative z-20" : "pointer-events-none absolute inset-0 z-10"}`}
+        className={`relative w-full overflow-hidden rounded-[30px] border border-[#245b91] bg-[#061426] shadow-[0_24px_80px_rgba(0,40,90,.30)] ${isActive ? "z-20" : "pointer-events-none absolute inset-0 z-10"}`}
         aria-hidden={!isActive}
         onPointerDown={isActive ? pointerDown : undefined}
         onPointerMove={isActive ? pointerMove : undefined}
         onPointerUp={isActive ? pointerUp : undefined}
-        onPointerCancel={isActive ? pointerCancel : undefined}
-        style={{
-          transform: isActive
-            ? `translate3d(${dragX}px,0,0) rotate(${rotation}deg)`
-            : `translate3d(0,${translateY}px,0) scale(${scale})`,
-          opacity: isActive ? 1 - Math.min(0.22, Math.abs(dragX) / 1300) : 0.92,
-          transition: isActive ? transition : "transform 340ms cubic-bezier(.16,1,.3,1)",
-          willChange: "transform",
-        }}
+        onPointerCancel={isActive ? () => { startRef.current = null; if (!animating) setDragX(0); } : undefined}
+        style={{ transform: isActive ? `translate3d(${dragX}px,0,0) rotate(${rotation}deg)` : `translate3d(0,${translateY}px,0) scale(${scale})`, opacity: isActive ? 1 - Math.min(0.22, Math.abs(dragX) / 1300) : 0.92, transition: isActive ? transition : "transform 340ms cubic-bezier(.16,1,.3,1)", willChange: "transform" }}
       >
-        <div className="relative h-[220px] overflow-hidden rounded-t-[30px] bg-[#061120]">
-          <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,30,61,.08)_0%,rgba(5,31,62,.10)_34%,rgba(5,24,49,.34)_59%,rgba(6,26,52,.96)_100%)]" />
-          <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-1/2 w-[210px] -translate-x-1/2 -translate-y-1/2 opacity-20 sm:w-[270px]" />
-          <span className="absolute left-4 top-4 rounded-full border border-[#2c76b5] bg-[#061a2d]/85 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#9bd3ff]">MatchUp Player</span>
-          <span className="absolute bottom-0 left-1/2 z-30 inline-flex -translate-x-1/2 translate-y-1/2 items-center gap-1.5 rounded-full border border-[#2b8ee6] bg-[#0a2946] px-3 py-2 text-[11px] font-black text-[#9bd3ff] shadow-[0_8px_18px_rgba(0,0,0,.28)]">
-            <Gamepad2 size={13} /> {gameLabel(profile.supported_game)}
-          </span>
-        </div>
+        <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.18)_0%,rgba(3,22,43,.32)_26%,rgba(4,21,41,.72)_54%,rgba(3,17,33,.97)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_8%,rgba(37,135,226,.42),transparent_34%),radial-gradient(circle_at_85%_20%,rgba(31,94,154,.18),transparent_30%)]" />
+        <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[23%] w-[220px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[290px]" />
 
-        <div className="relative px-5 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-3">
-          <div className="-mt-16 flex items-end justify-between gap-4">
-            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
-            <div className="mb-1 flex items-center gap-2">
-              {profile.is_verified ? <MatchUpVerificationBadge /> : null}
-            </div>
+        <div className="relative min-h-[590px] px-5 pb-5 pt-5 sm:min-h-[640px] sm:px-7 sm:pb-7 sm:pt-7">
+          <div className="flex items-start justify-between gap-4">
+            <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/85 px-4 py-2 text-[10px] font-black uppercase tracking-[.16em] text-[#d7efff] backdrop-blur-md sm:text-[11px]">MatchUp Player</span>
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#3a99eb] bg-[#092a49]/90 px-4 py-2.5 text-sm font-black text-[#e0f4ff] shadow-[0_8px_24px_rgba(0,0,0,.25)] backdrop-blur-md sm:px-5 sm:py-3 sm:text-base"><Gamepad2 size={18} />{gameLabel(profile.supported_game)}</span>
           </div>
 
-          <div className="mt-4 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="min-w-0 truncate text-[28px] font-black tracking-[-.03em] text-white sm:text-3xl">{name}</h3>
-              {profile.friendship !== "friends" ? (
-                <span className="shrink-0 rounded-full bg-[#1b5b98]/82 px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[.1em] text-[#e2f3ff] shadow-lg sm:px-3.5 sm:py-2 sm:text-[10px]">Not friends yet</span>
-              ) : null}
-            </div>
-            <p className="mt-1 text-sm font-semibold text-[#86a1bb]">{profile.country || "Country not set"}</p>
+          <div className="mt-[205px] flex items-end justify-between gap-3 sm:mt-[230px]">
+            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_40px_rgba(0,0,0,.48)] sm:!size-32" />
+            {profile.is_verified ? <MatchUpVerificationBadge /> : null}
           </div>
 
-          {profile.bio?.trim() ? (
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b7c9da]">{profile.bio.trim()}</p>
-          ) : null}
+          <div className="mt-4 min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-[30px] font-black leading-none tracking-[-.035em] text-white sm:text-4xl">{name}</h3>{profile.friendship !== "friends" ? <span className="rounded-full bg-[#164d7c]/90 px-3 py-2 text-[9px] font-black uppercase tracking-[.12em] text-[#bfe3ff] backdrop-blur-sm sm:text-[10px]">Not friends yet</span> : null}</div><p className="mt-2 text-base font-semibold text-[#a8c2d9]">{profile.country || "Country not set"}</p></div>
+          {profile.bio?.trim() ? <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c3d5e5]">{profile.bio.trim()}</p> : null}
 
-          <div className="mt-5 grid grid-cols-2 overflow-hidden rounded-2xl border border-[#183f68] bg-[#08182b]">
-            <div className="p-4 text-center">
-              <p className="text-2xl font-black text-white">{profile.postCount ?? 0}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[.14em] text-[#7892ac]">Posts</p>
-            </div>
-            <div className="border-l border-[#183f68] p-4 text-center">
-              <p className="text-2xl font-black text-white">{profile.followerCount ?? 0}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[.14em] text-[#7892ac]">Followers</p>
-            </div>
-          </div>
+          <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-[22px] border border-[#214a74]/90 bg-[#08203a]/90 backdrop-blur-md"><div className="p-4 text-center sm:p-5"><p className="text-2xl font-black text-white sm:text-3xl">{profile.postCount ?? 0}</p><p className="mt-1 text-[10px] font-black uppercase tracking-[.17em] text-[#8ca8c0]">Posts</p></div><div className="border-l border-[#214a74]/90 p-4 text-center sm:p-5"><p className="text-2xl font-black text-white sm:text-3xl">{profile.followerCount ?? 0}</p><p className="mt-1 text-[10px] font-black uppercase tracking-[.17em] text-[#8ca8c0]">Followers</p></div></div>
 
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#167bd1] px-4 text-sm font-black text-white shadow-[0_10px_28px_rgba(22,123,209,.22)] transition hover:bg-[#1b8ae8] active:scale-[.99]">
-              <UserPlus size={17} /> Add Friend
-            </button>
-            <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid size-12 place-items-center rounded-2xl border border-[#285b91] bg-[#0a2946] text-[#9bd3ff] transition hover:border-[#47a8ff] hover:text-white" aria-label={`Message ${name}`}>
-              <MessageCircle size={19} />
-            </button>
-          </div>
+          <div className="mt-4 grid grid-cols-[1fr_auto] gap-3"><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-14 items-center justify-center gap-3 rounded-[22px] bg-[#1680d8] px-4 text-base font-black text-white shadow-[0_12px_30px_rgba(22,128,216,.28)] transition hover:bg-[#218fe8] active:scale-[.99] sm:text-lg"><UserPlus size={21} />Add Friend</button><button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid min-h-14 min-w-14 place-items-center rounded-[22px] border border-[#3a78ad] bg-[#082a49]/90 text-[#bfe4ff] backdrop-blur-md transition hover:border-[#59acfa] hover:text-white" aria-label={`Message ${name}`}><MessageCircle size={23} /></button></div>
 
-          {isActive && availablePeople.length > 1 ? (
-            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-[#66809a]">
-              <span className="inline-flex items-center gap-1"><ArrowRight size={12} className="rotate-180" /> Swipe left for next player</span>
-              <span className="size-1 rounded-full bg-[#2b5d87]" />
-              <span className="inline-flex items-center gap-1">Swipe right for previous player <ArrowRight size={12} /></span>
-            </div>
-          ) : null}
+          {isActive && availablePeople.length > 1 ? <div className="mt-4 flex items-center justify-center gap-2 text-[9px] font-bold text-[#7795af] sm:text-[10px]"><span className="inline-flex items-center gap-1"><ArrowRight size={11} className="rotate-180" />Swipe left</span><span className="size-1 rounded-full bg-[#3b6790]" /><span className="inline-flex items-center gap-1">Swipe right<ArrowRight size={11} /></span></div> : null}
         </div>
       </article>
     );
@@ -316,39 +219,11 @@ export function ProfileDiscoveryCard({
     <>
       <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
         {activeIndex > 0 ? renderProfile(availablePeople[activeIndex - 1], -1) : null}
-        {stack.slice(1).reverse().map((profile, reverseIndex) => {
-          const layer = stack.length - reverseIndex - 1;
-          return renderProfile(profile, layer);
-        })}
+        {stack.slice(1).reverse().map((profile, reverseIndex) => renderProfile(profile, stack.length - reverseIndex - 1))}
         {renderProfile(person, 0)}
       </div>
 
-      {quickChatPerson ? (
-        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" onClick={() => !sending && setQuickChatPerson(null)}>
-          <section className="flex max-h-[calc(100dvh-12px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-[#245b91] bg-[#08182b] shadow-[0_24px_80px_rgba(0,0,0,.6)] sm:max-h-[min(720px,calc(100dvh-32px))] sm:rounded-[30px]" onClick={(event) => event.stopPropagation()}>
-            <div className="shrink-0 p-4 pb-3 sm:p-5">
-              <div className="flex items-center gap-3">
-                <MatchUpAvatar profile={quickChatPerson} size="md" alt={nameOf(quickChatPerson)} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-black text-white">{nameOf(quickChatPerson)}</p>
-                  <p className="truncate text-xs text-[#7892ac]">{quickChatPerson.country || "MatchUp player"}</p>
-                </div>
-                <button type="button" onClick={() => setQuickChatPerson(null)} className="icon-button shrink-0" aria-label="Close quick chat"><X size={17} /></button>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 sm:px-5">
-              <p className="text-xs text-[#7892ac]">Quick message</p>
-              <textarea value={message} onChange={(event) => setMessage(event.target.value)} autoFocus rows={4} maxLength={1000} placeholder={`Write a message to ${nameOf(quickChatPerson)}…`} className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-[#214a78] bg-[#071426] p-4 text-sm leading-6 text-white outline-none focus:border-[#47a8ff]" />
-            </div>
-            <div className="shrink-0 border-t border-[#18365f] p-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:p-5">
-              <div className="flex gap-2">
-                <button type="button" disabled={sending || !message.trim()} onClick={() => void sendQuickMessage()} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#167bd1] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50"><Send size={16} /> {sending ? "Sending…" : "Send Message"}</button>
-                <button type="button" disabled={sending} onClick={() => setQuickChatPerson(null)} className="min-h-12 rounded-2xl border border-[#214a78] px-4 py-3.5 text-sm font-black text-[#b7c9da]">Cancel</button>
-              </div>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      {quickChatPerson ? <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" onClick={() => !sending && setQuickChatPerson(null)}><section className="flex max-h-[calc(100dvh-12px)] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-[#245b91] bg-[#08182b] shadow-[0_24px_80px_rgba(0,0,0,.6)] sm:max-h-[min(720px,calc(100dvh-32px))] sm:rounded-[30px]" onClick={(event) => event.stopPropagation()}><div className="shrink-0 p-4 pb-3 sm:p-5"><div className="flex items-center gap-3"><MatchUpAvatar profile={quickChatPerson} size="md" alt={nameOf(quickChatPerson)} /><div className="min-w-0 flex-1"><p className="truncate text-base font-black text-white">{nameOf(quickChatPerson)}</p><p className="truncate text-xs text-[#7892ac]">{quickChatPerson.country || "MatchUp player"}</p></div><button type="button" onClick={() => setQuickChatPerson(null)} className="icon-button shrink-0" aria-label="Close quick chat"><X size={17} /></button></div></div><div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3 sm:px-5"><p className="text-xs text-[#7892ac]">Quick message</p><textarea value={message} onChange={(event) => setMessage(event.target.value)} autoFocus rows={4} maxLength={1000} placeholder={`Write a message to ${nameOf(quickChatPerson)}…`} className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-[#214a78] bg-[#071426] p-4 text-sm leading-6 text-white outline-none focus:border-[#47a8ff]" /></div><div className="shrink-0 border-t border-[#18365f] p-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:p-5"><div className="flex gap-2"><button type="button" disabled={sending || !message.trim()} onClick={() => void sendQuickMessage()} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#167bd1] px-4 py-3.5 text-sm font-black text-white disabled:opacity-50"><Send size={16} />{sending ? "Sending…" : "Send Message"}</button><button type="button" disabled={sending} onClick={() => setQuickChatPerson(null)} className="min-h-12 rounded-2xl border border-[#214a78] px-4 py-3.5 text-sm font-black text-[#b7c9da]">Cancel</button></div></div></section></div> : null}
     </>
   );
 }
