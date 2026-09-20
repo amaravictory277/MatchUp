@@ -286,7 +286,7 @@ export function ProfileDiscoveryCard({
               return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
             })}
           </div>
-          <span className="inline-flex items-center gap-1">Quick chat <ArrowRight size={11} /></span>
+          <span className="inline-flex items-center gap-1">Swipe right <ArrowRight size={11} /></span>
         </div>
       ) : null>
 
