@@ -210,20 +210,17 @@ export function ProfileDiscoveryCard({
 
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
 
-  const renderProfileCard = (profile: HomePerson, swipeMode = false) => {
+  const renderProfileCard = (profile: HomePerson) => {
     const name = nameOf(profile);
     return (
-      <article className="relative w-full overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
-        <div className="relative h-[178px] overflow-hidden bg-[#061120] sm:h-[192px]">
+      <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
+        <div className="relative h-[160px] overflow-hidden bg-[#061120] sm:h-[174px]">
           <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.06)_0%,rgba(3,22,43,.12)_34%,rgba(4,21,41,.34)_60%,rgba(6,20,38,.78)_82%,#061426_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_10%,rgba(31,94,154,.16),transparent_34%)]" />
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[48%] w-[150px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[175px]" />
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#061426] to-transparent" />
-        </div>
-
-        <div className="relative -mt-1 px-4 pb-4 pt-1.5 sm:px-5 sm:pb-5 sm:pt-2">
-          <div className="flex items-start justify-between gap-3">
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
             <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.15em] text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
               MatchUp Player
             </span>
@@ -231,55 +228,46 @@ export function ProfileDiscoveryCard({
               <Gamepad2 size={14} />Football
             </span>
           </div>
+        </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 sm:mt-5 sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
-              <MatchUpAvatar
-                profile={profile}
-                size="lg"
-                alt={name}
-                className="!size-[76px] shrink-0 border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[84px]"
-              />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="min-w-0 whitespace-normal break-words text-[20px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[22px]">
-                    {name}
-                  </h3>
-                  {profile.friendship !== "friends" ? (
-                    <span className="shrink-0 rounded-full bg-[#164d7c]/90 px-2.5 py-1.5 text-[7px] font-black uppercase tracking-[.1em] text-[#bfe3ff] sm:text-[8px]">
-                      Not friends yet
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1.5 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
-                  {profile.country || "Country not set"}
-                </p>
-              </div>
+        <div className="relative px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
+          <div className="relative -mt-2 flex flex-col items-center text-center">
+            <MatchUpAvatar
+              profile={profile}
+              size="lg"
+              alt={name}
+              className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
+            />
+            <h3 className="mt-2 max-w-full whitespace-normal break-words text-[21px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[23px]">
+              {name}
+            </h3>
+            <p className="mt-1 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
+              {profile.country || "Country not set"}
+            </p>
+          </div>
+
+          <div className="relative mx-auto mt-3 grid w-full max-w-[290px] grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)]">
+            <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
+            <div className="px-3 py-2.5 text-center sm:py-3">
+              <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.postCount ?? 0}</p>
+              <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p>
             </div>
-
-            <div className="relative grid w-[142px] shrink-0 grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)] sm:w-[156px]">
-              <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
-              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3">
-                <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.postCount ?? 0}</p>
-                <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p>
-              </div>
-              <div className="px-2 py-2.5 text-center sm:px-3 sm:py-3">
-                <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.followerCount ?? 0}</p>
-                <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p>
-              </div>
+            <div className="px-3 py-2.5 text-center sm:py-3">
+              <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.followerCount ?? 0}</p>
+              <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p>
             </div>
           </div>
 
           {profile.bio?.trim() ? (
-            <p className="mt-3 line-clamp-2 text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
+            <p className="mx-auto mt-3 max-w-[520px] line-clamp-2 text-center text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
           ) : null}
 
-          <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_52px] gap-2.5 sm:mt-4 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-3">
             <button
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => void onFriend(profile.id)}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:min-h-12 sm:text-sm"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:text-sm"
             >
               {profile.friendship === "pending" ? null : <UserPlus size={17} />}
               <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
@@ -288,57 +276,40 @@ export function ProfileDiscoveryCard({
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={() => { setMessage(""); setQuickChatPerson(profile); }}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] border border-[#3a78ad] bg-[#082a49]/92 px-3 text-[12px] font-black text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white sm:min-h-13 sm:text-sm"
+              className="flex min-h-12 items-center justify-center rounded-[15px] border border-[#3a78ad] bg-[#082a49]/92 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white"
               aria-label={`Message ${name}`}
             >
-              <MessageCircle size={18} />
-              <span>Chat</span>
+              <MessageCircle size={20} />
             </button>
           </div>
-
-          {!swipeMode && people.length > 1 ? (
-            <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a] sm:text-[10px]">
-              <span className="inline-flex items-center gap-1 whitespace-nowrap"><ArrowRight size={11} className="rotate-180" />Swipe left</span>
-              <div className="flex items-center gap-1.5" aria-hidden="true"><span className="h-1.5 w-5 rounded-full bg-[#70c1ff]" /><span className="size-1.5 rounded-full bg-[#31597f]" /><span className="size-1.5 rounded-full bg-[#31597f]" /></div>
-              <span className="inline-flex items-center gap-1 whitespace-nowrap">Swipe right<ArrowRight size={11} /></span>
-            </div>
-          ) : null}
         </div>
       </article>
     );
   };
 
+  const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
+  const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
+  const nextProfile = dragX < 0 ? people[index + 1] : dragX > 0 ? people[index - 1] : null;
+
   return (
     <>
-      <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
-        {previous && dragX > 0 ? (
+      <div
+        className="relative w-full overflow-hidden rounded-[28px]"
+        style={{ touchAction: "pan-y" }}
+      >
+        {nextProfile ? (
           <div
-            className="pointer-events-none absolute inset-0 z-10 w-full"
+            className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
+            aria-hidden="true"
             style={{
-              transform: "translate3d(0,0,0)",
-              opacity: 1,
-              transition: "none",
+              transform: `translate3d(0,0,0) scale(${0.2 + progress * 0.8})`,
+              transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
               willChange: "transform",
             }}
           >
-            {renderProfileCard(previous, true)}
+            {renderProfileCard(nextProfile)}
           </div>
         ) : null}
-
-        {dragX <= 0 ? stack.slice(1).reverse().map((profile) => (
-          <div
-            key={`${profile.id}-stack`}
-            className="pointer-events-none absolute inset-0 z-10 w-full"
-            style={{
-              transform: "translate3d(0,0,0)",
-              opacity: 1,
-              transition: "none",
-              willChange: "transform",
-            }}
-          >
-            {renderProfileCard(profile, true)}
-          </div>
-        )) : null}
 
         <div
           ref={cardRef}
@@ -350,7 +321,6 @@ export function ProfileDiscoveryCard({
           style={{
             transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
             transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
-            opacity: 1,
             willChange: "transform",
           }}
         >
@@ -359,12 +329,19 @@ export function ProfileDiscoveryCard({
       </div>
 
       {people.length > 1 ? (
-        <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a]" aria-label={`People swipe controls, ${Math.min(index + 1, people.length)} of ${people.length}`}>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap"><ArrowRight size={11} className="rotate-180" />Swipe left</span>
-          <div className="flex items-center gap-1.5" aria-hidden="true">
-            {Array.from({ length: Math.min(3, people.length) }).map((_, dotIndex) => <span key={dotIndex} className={`rounded-full transition-all ${index % Math.min(3, people.length) === dotIndex ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />)}
-          </div>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">Swipe right<ArrowRight size={11} /></span>
+        <div
+          className="mt-3 flex items-center justify-center gap-1.5"
+          aria-label={`People You May Know, card ${Math.min(index + 1, people.length)} of ${people.length}`}
+        >
+          {people.map((person, dotIndex) => (
+            <span
+              key={person.id}
+              className={`rounded-full transition-all duration-200 ${
+                dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
+              }`}
+              aria-hidden="true"
+            />
+          ))}
         </div>
       ) : null}
 
