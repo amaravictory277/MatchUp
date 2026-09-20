@@ -102,7 +102,10 @@ export function ProfileDiscoveryCard({
       setIndex((value) => Math.min(value + 1, Math.max(0, people.length - 1)));
       if (people.length - index <= 4) void requestMore();
     } else {
-      setIndex((value) => Math.max(0, value - 1));
+      // A right swipe is the quick-message gesture. Keep the card/deck
+      // animation intact, then open the existing quick-chat UI.
+      setQuickChatPerson(current);
+      setMessage("");
     }
     setDragX(0);
     setAnimating(false);
@@ -214,7 +217,7 @@ export function ProfileDiscoveryCard({
     const name = nameOf(profile);
     return (
       <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
-        <div className="relative h-[160px] overflow-hidden bg-[#061120] sm:h-[174px]">
+        <div className="relative h-[140px] overflow-hidden bg-[#061120] sm:h-[154px]">
           <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.06)_0%,rgba(3,22,43,.12)_34%,rgba(4,21,41,.34)_60%,rgba(6,20,38,.78)_82%,#061426_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_10%,rgba(31,94,154,.16),transparent_34%)]" />
@@ -330,18 +333,22 @@ export function ProfileDiscoveryCard({
 
       {people.length > 1 ? (
         <div
-          className="mt-3 flex items-center justify-center gap-1.5"
+          className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1"
           aria-label={`People You May Know, card ${Math.min(index + 1, people.length)} of ${people.length}`}
         >
-          {people.map((person, dotIndex) => (
-            <span
-              key={person.id}
-              className={`rounded-full transition-all duration-200 ${
-                dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
-              }`}
-              aria-hidden="true"
-            />
-          ))}
+          <span className="justify-self-start whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">← Swipe left for next</span>
+          <div className="flex items-center justify-center gap-1.5">
+            {people.map((person, dotIndex) => (
+              <span
+                key={person.id}
+                className={`rounded-full transition-all duration-200 ${
+                  dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
+                }`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+          <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right to message →</span>
         </div>
       ) : null}
 
