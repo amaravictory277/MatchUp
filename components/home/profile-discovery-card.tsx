@@ -113,10 +113,6 @@ export function ProfileDiscoveryCard({
 
   const commitExit = (direction: "left" | "right") => {
     if (!current || animating) return;
-    if (direction === "right" && index === 0) {
-      setDragX(0);
-      return;
-    }
     if (direction === "left" && index >= people.length - 1) {
       if (peopleHasMore) void requestMore();
       setDragX(0);
