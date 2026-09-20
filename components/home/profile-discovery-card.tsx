@@ -114,6 +114,11 @@ export function ProfileDiscoveryCard({
       setDragX(0);
       return;
     }
+    if (direction === "left" && index >= people.length - 1) {
+      if (peopleHasMore) void requestMore();
+      setDragX(0);
+      return;
+    }
     setAnimating(true);
     const width = cardRef.current?.getBoundingClientRect().width || 320;
     const distance = Math.max(window.innerWidth + 80, width + 180);
