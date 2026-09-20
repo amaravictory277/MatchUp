@@ -93,8 +93,8 @@ export function ProfileDiscoveryCard({
   }, [person, peopleHasMore, peopleLoading, requestMore]);
 
   const finishExit = (direction: "left" | "right") => {
-    playSwipeSound();
     if (direction === "left") {
+      playSwipeSound();
       if (person) seenIdsRef.current.add(person.id);
       setDragX(0);
       setAnimating(false);
