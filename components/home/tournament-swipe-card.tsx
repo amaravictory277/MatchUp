@@ -27,7 +27,6 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const [index, setIndex] = useState(0);
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const clickGuardRef = useRef(false);
@@ -65,18 +64,18 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
   const stack = tournaments.slice(index, index + 3);
 
   const finishExit = (direction: "left" | "right") => {
+    playSwipeSound();
     if (direction === "left") {
-      playSwipeSound();
-      setIndex((value) => value + 1);
+      setIndex((value) => Math.min(value + 1, tournaments.length - 1));
     } else {
-      setConfirmOpen(true);
+      setIndex((value) => Math.max(0, value - 1));
     }
     setDragX(0);
     setAnimating(false);
   };
 
   const commitExit = (direction: "left" | "right") => {
-    if (!current || animating || confirmOpen) return;
+    if (!current || animating) return;
     setAnimating(true);
     clickGuardRef.current = true;
     const width = cardRef.current?.getBoundingClientRect().width || 320;
@@ -123,21 +122,24 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
   const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
   const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
+  const nextTournament = dragX < 0 ? tournaments[index + 1] : dragX > 0 ? tournaments[index - 1] : null;
 
   return (
     <>
-      <div className="relative w-full overflow-visible" style={{ touchAction: "pan-y" }}>
-        {stack.slice(1).reverse().map((tournament, reverseIndex) => {
-          const layer = stack.length - reverseIndex - 1;
-          const baseScale = layer === 1 ? 0.94 : 0.90;
-          const growth = layer === 1 ? 0.06 : 0.10;
-          const scale = baseScale + progress * growth;
-          return (
-            <div key={tournament.id} className="pointer-events-none absolute inset-0 z-10" style={{ transform: `translate3d(0,${8 + (layer - 1) * 8}px,0) scale(${scale})`, opacity: 1, transition: "transform 340ms cubic-bezier(.16,1,.3,1)", willChange: "transform" }}>
-              <TournamentCard row={tournament} swipeMode />
-            </div>
-          );
-        })}
+      <div className="relative w-full overflow-hidden rounded-[28px]" style={{ touchAction: "pan-y" }}>
+        {nextTournament ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
+            aria-hidden="true"
+            style={{
+              transform: `translate3d(0,0,0) scale(${0.2 + progress * 0.8})`,
+              transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
+              willChange: "transform",
+            }}
+          >
+            <TournamentCard row={nextTournament} swipeMode />
+          </div>
+        ) : null}
 
         <div
           ref={cardRef}
@@ -149,7 +151,6 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
           style={{
             transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
             transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
-            opacity: 1,
             willChange: "transform",
           }}
         >
@@ -161,35 +162,19 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
       </div>
 
       {tournaments.length > 1 ? (
-        <div className="mt-3 flex items-center justify-center gap-3 text-[9px] font-black text-[#66809a]" aria-label={`Tournament swipe controls, ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <ArrowRight size={11} className="rotate-180" />
-            Swipe left
-          </span>
-          <div className="flex items-center gap-1.5" aria-hidden="true">
-            {Array.from({ length: Math.min(3, tournaments.length) }).map((_, dotIndex) => {
-              const activeDot = index % Math.min(3, tournaments.length) === dotIndex;
-              return <span key={dotIndex} className={`rounded-full transition-all ${activeDot ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} />;
-            })}
-          </div>
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            Swipe right
-            <ArrowRight size={11} />
-          </span>
-        </div>
-      ) : null}
-
-      {confirmOpen && current ? (
-        <div className="fixed inset-0 z-[95] grid place-items-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setConfirmOpen(false)}>
-          <section className="w-full max-w-sm rounded-[26px] border border-[#245b91] bg-[#08182b] p-5 shadow-[0_24px_80px_rgba(0,0,0,.6)]" onClick={(event) => event.stopPropagation()}>
-            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Tournament</p>
-            <h2 className="mt-1 text-xl font-black text-white">Do you want to open this tournament?</h2>
-            <p className="mt-2 truncate text-sm text-[#7892ac]">{current.name}</p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmOpen(false)} className="rounded-xl border border-[#214a78] bg-[#071426] px-4 py-3 text-sm font-black text-[#b7c9da]">Cancel</button>
-              <button type="button" onClick={() => { setConfirmOpen(false); router.push(`/tournaments/${current.id}`); }} className="rounded-xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white">Yes / Open Tournament</button>
-            </div>
-          </section>
+        <div
+          className="mt-3 flex items-center justify-center gap-1.5"
+          aria-label={`Featured tournaments, card ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}
+        >
+          {tournaments.map((tournament, dotIndex) => (
+            <span
+              key={tournament.id}
+              className={`rounded-full transition-all duration-200 ${
+                dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
+              }`}
+              aria-hidden="true"
+            />
+          ))}
         </div>
       ) : null}
     </>
