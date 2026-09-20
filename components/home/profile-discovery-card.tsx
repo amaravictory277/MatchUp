@@ -260,7 +260,7 @@ export function ProfileDiscoveryCard({
 
         <div className="relative px-5 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-3">
           <div className="-mt-16 flex items-end justify-between gap-4">
-            <MatchUpAvatar profile={profile} size="xl" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
+            <MatchUpAvatar profile={profile} size="lg" alt={name} className="!size-28 shrink-0 border-4 border-[#071426] shadow-[0_14px_35px_rgba(0,0,0,.38)] sm:!size-32" />
             <div className="mb-1 flex items-center gap-2">
               {profile.is_verified ? <MatchUpVerificationBadge /> : null}
             </div>
@@ -303,7 +303,7 @@ export function ProfileDiscoveryCard({
           {isActive && availablePeople.length > 1 ? (
             <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-[#66809a]">
               <span className="inline-flex items-center gap-1"><ArrowRight size={12} className="rotate-180" /> Swipe left for next player</span>
-              <span className="size-1 rounded-full bg-[#2b5d87]" />
+              <span className="size-1 rounded-full bg-[#2b5d87" />
               <span className="inline-flex items-center gap-1">Swipe right for previous player <ArrowRight size={12} /></span>
             </div>
           ) : null}
