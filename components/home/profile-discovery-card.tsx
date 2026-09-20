@@ -255,7 +255,7 @@ export function ProfileDiscoveryCard({
 
           <div className="mt-2.5 grid grid-cols-[1fr_auto] gap-2">
             <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => void onFriend(profile.id)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 text-sm font-black text-white shadow-[0_8px_22px_rgba(22,123,209,.2)] transition hover:bg-[#1b8ae8] active:scale-[.99]">
-              <UserPlus size={16} /> Add Friend
+              <UserPlus size={16} /> {profile.friendship === "pending" ? "Request Sent" : "Add Friend"}
             </button>
             <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={() => { setMessage(""); setQuickChatPerson(profile); }} className="grid size-11 place-items-center rounded-xl border border-[#285b91] bg-[#0a2946] text-[#9bd3ff]" aria-label={`Message ${name}`}>
               <MessageCircle size={18} />
