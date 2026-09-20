@@ -156,6 +156,181 @@ function EmptyState({
   );
 }
 
+function HomeFeedSwipeCard({
+  posts,
+  onToggleLike,
+  onToggleFollow,
+  onComment,
+  onEditComment,
+  onDeleteComment,
+  onShare,
+  onDelete,
+  onEdit,
+  onToggleSave,
+  onDownload,
+  onOpenPost,
+  onOpenMedia,
+}: {
+  posts: Post[];
+  onToggleLike: (id: string) => void;
+  onToggleFollow: (id: string) => void;
+  onComment: (id: string, text: string) => void;
+  onEditComment: (id: string, text: string) => void;
+  onDeleteComment: (id: string) => void;
+  onShare: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (id: string, caption: string) => void;
+  onToggleSave: (id: string) => void;
+  onDownload: (id: string, type: "image" | "video") => void;
+  onOpenPost: (id: string) => void;
+  onOpenMedia: (id: string, index: number) => void;
+}) {
+  const [index, setIndex] = useState(0);
+  const [dragX, setDragX] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [endReached, setEndReached] = useState(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setIndex((value) => Math.min(value, Math.max(0, posts.length - 1)));
+  }, [posts.length]);
+
+  const current = posts[index] || null;
+  const nextPost = dragX < 0 ? posts[index + 1] : null;
+  const swipeViewport = typeof window === "undefined" ? 420 : Math.max(420, window.innerWidth);
+  const progress = Math.min(1, Math.abs(dragX) / swipeViewport);
+
+  const finishExit = (direction: "left" | "right") => {
+    if (direction === "left") {
+      if (index >= posts.length - 1) {
+        setEndReached(true);
+        window.setTimeout(() => setEndReached(false), 1800);
+      } else {
+        setIndex((value) => Math.min(value + 1, posts.length - 1));
+      }
+    } else if (index > 0) {
+      setIndex((value) => Math.max(0, value - 1));
+    }
+    setDragX(0);
+    setAnimating(false);
+  };
+
+  const commitExit = (direction: "left" | "right") => {
+    if (!current || animating) return;
+    setAnimating(true);
+    const width = cardRef.current?.getBoundingClientRect().width || 320;
+    const distance = Math.max(window.innerWidth + 80, width + 180);
+    setDragX(direction === "left" ? -distance : distance);
+    window.setTimeout(() => finishExit(direction), 340);
+  };
+
+  const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" || animating) return;
+    startRef.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!startRef.current || animating) return;
+    const dx = event.clientX - startRef.current.x;
+    const dy = event.clientY - startRef.current.y;
+    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.15) setDragX(dx);
+  };
+
+  const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!startRef.current || animating) return;
+    const dx = event.clientX - startRef.current.x;
+    const dy = event.clientY - startRef.current.y;
+    startRef.current = null;
+    const horizontal = Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.15;
+    if (!horizontal) {
+      setDragX(0);
+      return;
+    }
+    commitExit(dx < 0 ? "left" : "right");
+  };
+
+  const pointerCancel = () => {
+    startRef.current = null;
+    if (!animating) setDragX(0);
+  };
+
+  if (!current) return null;
+
+  const feedCard = (post: Post) => (
+    <FeedCard
+      post={post}
+      onToggleLike={onToggleLike}
+      onToggleFollow={onToggleFollow}
+      onComment={onComment}
+      onEditComment={onEditComment}
+      onDeleteComment={onDeleteComment}
+      onShare={onShare}
+      onDelete={onDelete}
+      onEdit={onEdit}
+      onToggleSave={onToggleSave}
+      onDownload={onDownload}
+      onOpenPost={onOpenPost}
+      onOpenMedia={onOpenMedia}
+    />
+  );
+
+  return (
+    <>
+      <div className="relative w-full overflow-visible rounded-[28px]" style={{ touchAction: "pan-y" }}>
+        {nextPost ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
+            aria-hidden="true"
+            style={{
+              transform: `translate3d(0,0,0) scale(${0.2 + progress * 0.8})`,
+              transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
+              willChange: "transform",
+            }}
+          >
+            {feedCard(nextPost)}
+          </div>
+        ) : null}
+
+        <div
+          ref={cardRef}
+          className="relative z-20 w-full"
+          onPointerDown={pointerDown}
+          onPointerMove={pointerMove}
+          onPointerUp={pointerUp}
+          onPointerCancel={pointerCancel}
+          style={{
+            transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
+            transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
+            willChange: "transform",
+          }}
+        >
+          {feedCard(current)}
+        </div>
+      </div>
+
+      {endReached ? (
+        <div className="mt-3 w-full overflow-hidden rounded-2xl border border-[#3a99eb] bg-[#167bd1] px-2.5 py-3 text-center shadow-[0_10px_28px_rgba(22,123,209,.24)]" aria-live="polite">
+          <span className="block whitespace-nowrap text-[11px] font-black text-white sm:text-sm">You have reached the end</span>
+        </div>
+      ) : null}
+
+      {posts.length > 1 ? (
+        <div className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1" aria-label={`For You, card ${Math.min(index + 1, posts.length)} of ${posts.length}`}>
+          <span className="justify-self-start whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">← Swipe left for next</span>
+          <div className="flex items-center justify-center gap-1.5">
+            {posts.map((post, dotIndex) => (
+              <span key={post.id} className={`rounded-full transition-all duration-200 ${dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"}`} aria-hidden="true" />
+            ))}
+          </div>
+          <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right for previous →</span>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge: (id: string) => void; busy: boolean }) {
   return (
     <article className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 sm:min-w-0">
@@ -729,26 +904,21 @@ export function HomeApp() {
       <section className="mt-9">
         <SectionHeading eyebrow="Community" title="For You" description="Posts and football moments from the MatchUp community." href="/feeds" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading community posts…</div> : posts.length ? (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <FeedCard
-                key={post.id}
-                post={post}
-                onToggleLike={toggleLike}
-                onToggleFollow={toggleFollow}
-                onComment={addComment}
-                onEditComment={noOp}
-                onDeleteComment={noOp}
-                onShare={sharePost}
-                onDelete={deletePost}
-                onEdit={editPost}
-                onToggleSave={toggleSave}
-                onDownload={downloadPost}
-                onOpenPost={openPost}
-                onOpenMedia={openMedia}
-              />
-            ))}
-          </div>
+          <HomeFeedSwipeCard
+            posts={posts}
+            onToggleLike={toggleLike}
+            onToggleFollow={toggleFollow}
+            onComment={addComment}
+            onEditComment={noOp}
+            onDeleteComment={noOp}
+            onShare={sharePost}
+            onDelete={deletePost}
+            onEdit={editPost}
+            onToggleSave={toggleSave}
+            onDownload={downloadPost}
+            onOpenPost={openPost}
+            onOpenMedia={openMedia}
+          />
         ) : (
           <EmptyState icon={<Heart size={23} />} title="No community posts yet" text="Media posts from MatchUp players will appear here." href="/feeds" action="Open Feed" />
         )}
