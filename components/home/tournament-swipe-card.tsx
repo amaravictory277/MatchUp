@@ -66,10 +66,13 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
     playSwipeSound();
     if (direction === "left") {
       setIndex((value) => Math.min(value + 1, tournaments.length - 1));
+      setDragX(0);
     } else {
-      setIndex((value) => Math.max(0, value - 1));
+      // Preserve the existing right-swipe exit animation, then open the
+      // tournament that was on the surface.
+      router.push(`/tournaments/${current.id}`);
+      setDragX(0);
     }
-    setDragX(0);
     setAnimating(false);
   };
 
@@ -170,18 +173,22 @@ export function TournamentSwipeCard({ tournaments }: { tournaments: Tournament[]
 
       {tournaments.length > 1 ? (
         <div
-          className="mt-3 flex items-center justify-center gap-1.5"
+          className="mt-3 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-1"
           aria-label={`Featured tournaments, card ${Math.min(index + 1, tournaments.length)} of ${tournaments.length}`}
         >
-          {tournaments.map((tournament, dotIndex) => (
-            <span
-              key={tournament.id}
-              className={`rounded-full transition-all duration-200 ${
-                dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
-              }`}
-              aria-hidden="true"
-            />
-          ))}
+          <span className="justify-self-start whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">← Swipe left for next</span>
+          <div className="flex items-center justify-center gap-1.5">
+            {tournaments.map((tournament, dotIndex) => (
+              <span
+                key={tournament.id}
+                className={`rounded-full transition-all duration-200 ${
+                  dotIndex === index ? "h-1.5 w-5 bg-[#70c1ff]" : "size-1.5 bg-[#31597f]"
+                }`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+          <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right to open tournament →</span>
         </div>
       ) : null}
     </>
