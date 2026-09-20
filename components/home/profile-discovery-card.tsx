@@ -11,6 +11,8 @@ export type HomePerson = {
   username: string | null;
   display_name: string | null;
   avatar_path: string | null;
+  cover_media_path?: string | null;
+  cover_media_type?: "image" | "video" | null;
   country: string | null;
   bio: string | null;
   supported_game?: string | null;
@@ -47,6 +49,7 @@ export function ProfileDiscoveryCard({
   const [dragX, setDragX] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [endReached, setEndReached] = useState(false);
+  const [profilePreview, setProfilePreview] = useState<HomePerson | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
@@ -60,6 +63,12 @@ export function ProfileDiscoveryCard({
   }, [people.length]);
 
   const current = people[index] || null;
+
+  const publicStorageUrl = useCallback((path: string | null | undefined) => {
+    if (!path) return null;
+    if (/^https?:\/\//i.test(path) || path.startsWith("/")) return path;
+    return supabase.storage.from("profile-media").getPublicUrl(path).data.publicUrl;
+  }, [supabase]);
 
   const requestMore = useCallback(async () => {
     if (!onNeedMore || loadingMoreRef.current) return;
@@ -218,12 +227,22 @@ export function ProfileDiscoveryCard({
     );
   }
 
-  const renderProfileCard = (profile: HomePerson) => {
+  const renderProfileCard = (profile: HomePerson, active = false) => {
     const name = nameOf(profile);
+    const coverUrl = publicStorageUrl(profile.cover_media_path);
+    const avatarUrl = publicStorageUrl(profile.avatar_path);
     return (
       <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91] bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
         <div className="relative h-[120px] overflow-hidden bg-[#061120] sm:h-[134px]">
-          <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+          {coverUrl ? (
+            profile.cover_media_type === "video" ? (
+              <video src={coverUrl} className="absolute inset-0 size-full object-cover" autoPlay={active} muted loop playsInline preload={active ? "auto" : "metadata"} />
+            ) : (
+              <img src={coverUrl} alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+            )
+          ) : (
+            <img src="/1002371685.jpg" alt="" className="absolute inset-0 size-full object-cover" draggable={false} />
+          )}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,39,.06)_0%,rgba(3,22,43,.12)_34%,rgba(4,21,41,.34)_60%,rgba(6,20,38,.78)_82%,#061426_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(37,135,226,.30),transparent_38%),radial-gradient(circle_at_88%_10%,rgba(31,94,154,.16),transparent_34%)]" />
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[48%] w-[150px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[175px]" />
@@ -240,12 +259,21 @@ export function ProfileDiscoveryCard({
 
         <div className="relative px-4 pb-2 pt-0 sm:px-5 sm:pb-3">
           <div className="relative -mt-2 flex flex-col items-center text-center">
-            <MatchUpAvatar
-              profile={profile}
-              size="lg"
-              alt={name}
-              className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
-            />
+            <button
+              type="button"
+              disabled={!avatarUrl}
+              aria-label={avatarUrl ? "Preview profile picture" : undefined}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => { event.stopPropagation(); if (avatarUrl) setProfilePreview(profile); }}
+              className="relative block rounded-full disabled:cursor-default"
+            >
+              <MatchUpAvatar
+                profile={profile}
+                size="lg"
+                alt={name}
+                className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
+              />
+            </button>
             <h3 className="mt-1.5 max-w-full whitespace-normal break-words text-[21px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[23px]">
               {name}
             </h3>
@@ -315,7 +343,7 @@ export function ProfileDiscoveryCard({
               willChange: "transform",
             }}
           >
-            {renderProfileCard(nextProfile)}
+            {renderProfileCard(nextProfile, false)}
           </div>
         ) : null}
 
@@ -332,7 +360,7 @@ export function ProfileDiscoveryCard({
             willChange: "transform",
           }}
         >
-          {renderProfileCard(current)}
+          {renderProfileCard(current, true)}
         </div>
       </div>
 
@@ -362,6 +390,27 @@ export function ProfileDiscoveryCard({
           <span className="justify-self-end whitespace-nowrap text-[9px] font-semibold text-[#7892ac] sm:text-[10px]">Swipe right to message →</span>
         </div>
       ) : null}
+
+      {profilePreview ? (() => {
+        const previewUrl = publicStorageUrl(profilePreview.avatar_path);
+        if (!previewUrl) return null;
+        return (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-[2px] animate-[profile-preview-fade_.22s_ease-out]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Profile picture preview"
+            onClick={() => setProfilePreview(null)}
+          >
+            <div
+              className="relative aspect-square w-[min(72vw,340px)] overflow-hidden rounded-full border-[5px] border-[#071426] bg-[#061426] shadow-[0_24px_80px_rgba(0,0,0,.62)] animate-[profile-preview-grow_.28s_cubic-bezier(.16,1,.3,1)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <img src={previewUrl} alt={nameOf(profilePreview)} className="size-full rounded-full object-cover" />
+            </div>
+          </div>
+        );
+      })() : null}
 
       {quickChatPerson ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/65 p-3 pb-[max(12px,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" onClick={() => !sending && setQuickChatPerson(null)}>
