@@ -1,5 +1,5 @@
 "use client";
-import { CircleDollarSign, Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
+import { Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
 import type { MouseEvent, PointerEvent } from "react";
 import { useMemo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -236,8 +236,7 @@ export function TournamentCard({
             <div className="text-right">
               <p className="mb-1 text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Price</p>
               <div className="inline-flex min-w-[132px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2 shadow-inner sm:min-w-[148px] sm:px-3 sm:py-2.5">
-                <CircleDollarSign size={16} className="shrink-0 text-[#70c1ff]" />
-                <span className="text-[20px] font-black leading-none tracking-[-.03em] text-white sm:text-[23px]">{prizeLabel}</span>
+                <span className="text-[16px] font-black leading-none tracking-[-.03em] text-white sm:text-[19px]">{prizeLabel}</span>
               </div>
             </div>
           </div>
