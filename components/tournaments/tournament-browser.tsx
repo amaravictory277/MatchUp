@@ -235,8 +235,8 @@ export function TournamentCard({
 
             <div className="text-right">
               <p className="mb-1 text-[9px] font-black uppercase tracking-[.14em] text-[#66809a]">Price</p>
-              <div className="inline-flex min-w-[132px] items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2 shadow-inner sm:min-w-[148px] sm:px-3 sm:py-2.5">
-                <span className="text-[16px] font-black leading-none tracking-[-.03em] text-white sm:text-[19px]">{prizeLabel}</span>
+              <div className="inline-flex w-fit max-w-full items-center justify-end gap-1.5 rounded-2xl bg-[#0b2139] px-3 py-2 shadow-inner sm:px-3 sm:py-2.5">
+                <span className="whitespace-nowrap text-[16px] font-black leading-none tracking-[-.03em] text-white sm:text-[19px]">{prizeLabel}</span>
               </div>
             </div>
           </div>
