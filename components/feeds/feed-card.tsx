@@ -166,8 +166,6 @@ export function FeedCard({
     pressTimerRef.current = setTimeout(() => {
       if (!movedRef.current) {
         longPressTriggeredRef.current = true;
-        setMediaMenuOpen(true);
-        navigator.vibrate?.(12);
       }
     }, 600);
   };
@@ -182,7 +180,12 @@ export function FeedCard({
 
   const pointerUp = (event: React.PointerEvent<HTMLElement>, mediaIndex: number) => {
     cancelPress();
-    if (!longPressTriggeredRef.current && !movedRef.current) onOpenMedia(post.id, mediaIndex);
+    if (longPressTriggeredRef.current && !movedRef.current) {
+      setMediaMenuOpen(true);
+      navigator.vibrate?.(12);
+    } else if (!longPressTriggeredRef.current && !movedRef.current) {
+      onOpenMedia(post.id, mediaIndex);
+    }
     pressStartRef.current = null;
     longPressTriggeredRef.current = false;
   };
@@ -247,7 +250,7 @@ export function FeedCard({
   return (
     <article
       id={`post-${post.id}`}
-      className="matchup-feed-card relative aspect-[3/2] w-full overflow-hidden rounded-[24px] border border-white/20 bg-[#07111d] text-white"
+      className="matchup-feed-card relative aspect-[4/3] w-full overflow-hidden rounded-[24px] border border-white/20 bg-[#07111d] text-white"
       onContextMenu={(event) => event.preventDefault()}
     >
       {post.media.length ? (
@@ -300,7 +303,7 @@ export function FeedCard({
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-5 sm:p-7">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-[10px] font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-10 sm:border-2">
+            <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-[10px] font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-10 sm:border-2">
               {post.author.avatar ? (
                 <img src={post.author.avatar} alt="" className="size-full object-cover" />
               ) : (
@@ -309,7 +312,7 @@ export function FeedCard({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="truncate text-sm font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-lg">
+                <p className="truncate text-[15px] font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[17px]">
                   {post.author.name}
                 </p>
                 {post.author.verified ? <MatchUpVerificationBadge /> : null}
@@ -329,9 +332,9 @@ export function FeedCard({
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Post options"
-            className="grid size-11 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-12 sm:border-2"
+            className="grid size-10 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-10 sm:border"
           >
-            <MoreHorizontal size={19} className="sm:size-[21px]" />
+            <MoreHorizontal size={18} />
           </button>
           {menuOpen ? (
             <div role="menu" className="absolute right-0 top-14 z-50 w-56 overflow-hidden rounded-2xl border border-[#18365f] bg-[#08182b] p-1.5 shadow-xl sm:top-20">
@@ -355,41 +358,23 @@ export function FeedCard({
         </div>
       </div>
 
-      {post.videoUrl ? (
+      <div className="absolute right-3 bottom-11 z-30 flex items-center gap-2 sm:right-4 sm:bottom-12 sm:gap-2">
         <button
           type="button"
-          onClick={(event) => { event.stopPropagation(); togglePlay(); }}
-          aria-label={playing ? "Pause video" : "Play video"}
-          className="absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_8px_25px_rgba(0,0,0,.3)] sm:size-20"
+          onClick={(event) => { event.stopPropagation(); onToggleLike(post.id); }}
+          aria-label={post.liked ? "Unlike post" : "Like post"}
+          className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          {playing ? <Pause size={27} fill="currentColor" className="sm:size-[32px]" /> : <Play size={28} fill="currentColor" className="ml-1 sm:size-[34px]" />}
+          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />
         </button>
-      ) : null}
-
-      <div className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-3 sm:right-4 sm:gap-4">
-        <div className="flex flex-col items-center">
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); onToggleLike(post.id); }}
-            aria-label={post.liked ? "Unlike post" : "Like post"}
-            className="grid size-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white shadow-[0_5px_18px_rgba(0,0,0,.28)] sm:size-12"
-          >
-            <Heart size={22} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />
-          </button>
-          <span className="mt-1 text-[11px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-xs">{formatCount(post.likes)}</span>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); setShowComments(true); }}
-            aria-label="Open comments"
-            className="grid size-14 place-items-center rounded-[22px] border border-white/10 bg-black/55 text-white shadow-[0_5px_18px_rgba(0,0,0,.28)] sm:size-[92px] sm:rounded-[28px]"
-          >
-            <MessageCircle size={22} />
-          </button>
-          <span className="mt-1.5 text-sm font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-[20px]">{formatCount(post.comments)}</span>
-        </div>
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); setShowComments(true); }}
+          aria-label="Open comments"
+          className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
+        >
+          <MessageCircle size={20} />
+        </button>
       </div>
 
       {post.videoUrl ? (
@@ -398,24 +383,24 @@ export function FeedCard({
             type="button"
             onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
             aria-label={soundOn ? "Mute video" : "Unmute video"}
-            className="absolute bottom-12 left-3 z-30 grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white sm:bottom-14 sm:left-4 sm:size-11"
+            className="absolute bottom-10 left-3 z-30 grid size-9 place-items-center rounded-full border border-white/15 bg-black/45 text-white sm:bottom-11 sm:left-4 sm:size-9"
           >
-            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
           </button>
-          <div className="absolute inset-x-5 bottom-5 z-30 sm:inset-x-7 sm:bottom-7">
-            <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-[20px]">
-              <span className="shrink-0">{formatVideoTime(videoProgress * videoDuration)} / {formatVideoTime(videoDuration)}</span>
-              <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/40 sm:h-3">
-                <div className="h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${Math.max(0, Math.min(1, videoProgress)) * 100}%` }} />
-              </div>
+          <div className="pointer-events-none absolute inset-x-12 bottom-3 z-30 sm:inset-x-16 sm:bottom-3">
+            <div className="h-1 overflow-hidden rounded-full bg-white/35 sm:h-1">
+              <div
+                className="h-full rounded-full bg-white transition-[width] duration-100"
+                style={{ width: `${Math.max(0, Math.min(1, videoProgress)) * 100}%` }}
+              />
             </div>
           </div>
         </>
       ) : null}
 
       {post.caption ? (
-        <div className="pointer-events-none absolute bottom-14 left-3 z-25 max-w-[45%] sm:bottom-16 sm:left-4 sm:max-w-[42%]">
-          <span className="inline-block max-w-full truncate rounded-full bg-[#071426]/75 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,.22)] sm:text-xs">
+        <div className="pointer-events-none absolute bottom-9 left-3 z-25 max-w-[48%] sm:bottom-10 sm:left-4 sm:max-w-[45%]">
+          <span className="inline-block max-w-full truncate rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_3px_10px_rgba(0,0,0,.2)] sm:text-xs">
             {post.caption}
           </span>
         </div>
