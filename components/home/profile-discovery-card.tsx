@@ -268,7 +268,7 @@ export function ProfileDiscoveryCard({
         </div>
 
         <div className="relative px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
-          <div className="grid grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] items-start gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] items-center gap-2.5 sm:gap-3">
             <div className="relative min-w-0 px-1 pt-[43px] sm:px-1.5 sm:pt-[47px]">
               <button
                 type="button"
