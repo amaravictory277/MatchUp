@@ -766,42 +766,12 @@ export function HomeApp() {
       </section>
 
       <section className="mt-9">
-        <SectionHeading eyebrow="Watch" title="Reels" description="Short football moments from MatchUp players." href="/feeds" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading reels…</div> : posts.filter((post) => post.hasVideo && post.videoUrl).length ? (
-          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">
-            {posts.filter((post) => post.hasVideo && post.videoUrl).slice(0, 6).map((post) => <ReelCard key={post.id} post={post} />)}
-          </div>
-        ) : (
-          <EmptyState icon={<Zap size={23} />} title="No reels yet" text="Short football videos from MatchUp players will appear here." href="/feeds" action="Explore Feed" />
-        )}
-      </section>
-
-      <section className="mt-9">
         <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/groups" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading groups…</div> : groups.length ? (
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} />)}</div>
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/groups" action="Open Groups" />
         )}
-      </section>
-
-      <section className="mt-9">
-        <SectionHeading eyebrow="What's Hot" title="Trending MatchUps" description="Popular activity happening across MatchUp right now." href="/tournaments" />
-        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">
-          {tournaments.slice(0, 2).map((tournament) => (
-            <Link key={tournament.id} href="/tournaments" className="block">
-              <TrendingCard title={tournament.name} label="Featured tournament" value={`${tournament.teams ?? 0} teams · ${tournament.max_players} player capacity`} icon={<Trophy size={19} />} />
-            </Link>
-          ))}
-          {readyPlayers.slice(0, 1).map((player) => (
-            <Link key={`ready-${player.id}`} href="/ready-players" className="block">
-              <TrendingCard title={nameOf(player)} label="Ready player" value={`${gameLabel(player.supported_game)} · Ready to play`} icon={<Swords size={19} />} />
-            </Link>
-          ))}
-          {!loading && !tournaments.length && !readyPlayers.length ? (
-            <EmptyState icon={<Zap size={23} />} title="Nothing trending yet" text="Popular MatchUp activity will appear here as it builds." />
-          ) : null}
-        </div>
       </section>
 
       {cancelFriendId ? (
