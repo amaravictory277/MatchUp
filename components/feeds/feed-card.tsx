@@ -247,7 +247,7 @@ export function FeedCard({
   return (
     <article
       id={`post-${post.id}`}
-      className="matchup-feed-card relative aspect-[1.22/1] w-full overflow-hidden rounded-[24px] border border-white/20 bg-[#07111d] text-white"
+      className="matchup-feed-card relative aspect-[3/2] w-full overflow-hidden rounded-[24px] border border-white/20 bg-[#07111d] text-white"
       onContextMenu={(event) => event.preventDefault()}
     >
       {post.media.length ? (
