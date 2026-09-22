@@ -245,7 +245,7 @@ export function FeedCard({
   };
 
   const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
-  const quickComments = post.commentList.slice(0, 5);
+  const quickComments = post.commentList;
 
   return (
     <article
@@ -460,7 +460,6 @@ export function FeedCard({
                 </div>
               ))}
               {!quickComments.length ? <div className="py-12 text-center text-sm text-[#86a1bb]">No comments yet. Start the conversation.</div> : null}
-              {post.comments > 5 ? <button type="button" onClick={() => onOpenPost(post.id)} className="my-3 text-sm font-black text-[#70c1ff]">View all {post.comments} comments</button> : null}
             </div>
             <div className="border-t border-[#153c68] bg-[#071b2f] p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))]">
               <div className="flex items-center gap-2 rounded-2xl border border-[#18365f] bg-[#0a2139] px-3 py-2">
