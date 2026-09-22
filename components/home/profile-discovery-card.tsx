@@ -285,7 +285,7 @@ export function ProfileDiscoveryCard({
                   className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
                 />
               </button>
-              <div className="min-w-0 pl-[72px] sm:pl-[82px]">
+              <div className="min-w-0 pl-[86px] sm:pl-[96px]">
                 <h3 className="max-w-full break-words text-[17px] font-black leading-[1.05] tracking-[-.025em] text-white sm:text-[19px]">
                   {name}
                 </h3>
