@@ -434,7 +434,7 @@ export function HomeApp() {
         is_verified: Boolean(p.is_verified),
         ready_player_enabled: true,
       } as Profile));
-    setReadyPlayers(readyRows.slice(0, 3));
+    setReadyPlayers(readyRows.slice(0, 4));
 
     const memberCounts = new Map<string, number>();
     (groupMembersResult.data || []).forEach((m: any) => memberCounts.set(m.group_id, (memberCounts.get(m.group_id) || 0) + 1));
@@ -493,6 +493,7 @@ export function HomeApp() {
     void loadHome();
     const channel = supabase.channel("matchup-home-hub")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => void loadHome())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ready_match_presence" }, () => void loadHome())
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => void loadHome())
       .on("postgres_changes", { event: "*", schema: "public", table: "post_likes" }, () => void loadHome())
       .on("postgres_changes", { event: "*", schema: "public", table: "post_comments" }, () => void loadHome())
