@@ -311,15 +311,17 @@ export function FeedCard({
               )}
             </div>
             <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <p className="min-w-0 truncate text-[15px] font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[17px]">
-                  {post.author.name}
-                </p>
-                {post.author.verified ? <MatchUpVerificationBadge /> : null}
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="min-w-0 truncate text-[15px] font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[17px]">
+                    {post.author.name}
+                  </p>
+                  {post.author.verified ? <MatchUpVerificationBadge /> : null}
+                </div>
                 {displayGame ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#21344d]/95 px-2 py-1 text-[9px] font-semibold text-white sm:text-[11px]">
+                  <span className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full bg-[#21344d]/95 px-2 py-1 text-[9px] font-semibold text-white sm:text-[11px]">
                     <Gamepad2 size={11} className="sm:size-[13px]" />
-                    {displayGame}
+                    <span className="truncate">{displayGame}</span>
                   </span>
                 ) : null}
               </div>
@@ -327,34 +329,46 @@ export function FeedCard({
           </div>
         </div>
 
-        <div className="relative shrink-0" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label="Post options"
-            className="grid size-10 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-10 sm:border"
-          >
-            <MoreHorizontal size={18} />
-          </button>
-          {menuOpen ? (
-            <div role="menu" className="absolute right-0 top-14 z-50 w-56 overflow-hidden rounded-2xl border border-[#18365f] bg-[#08182b] p-1.5 shadow-xl sm:top-20">
-              {post.isOwn ? (
-                <>
-                  <button type="button" onClick={() => { setDraft(post.caption); setEditing(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Pencil size={16} />Edit text</button>
-                  <button type="button" onClick={() => { setTagOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><UsersRound size={16} />Tag people</button>
-                  <button type="button" onClick={() => { setForwardOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Forward size={16} />Forward post</button>
-                  <button type="button" onClick={() => { onToggleSave(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Bookmark size={16} />{post.saved ? "Unsave post" : "Save post"}</button>
-                  <button type="button" onClick={() => { onDelete(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#ff9eaa]"><Trash2 size={16} />Delete post</button>
-                </>
-              ) : (
-                <>
-                  <button type="button" onClick={() => { onToggleFollow(post.author.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white">{post.following ? "Unfollow" : "Follow"} {post.author.name}</button>
-                  <button type="button" onClick={() => { onToggleSave(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Bookmark size={16} />{post.saved ? "Unsave post" : "Save post"}</button>
-                  <button type="button" onClick={() => { setForwardOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Forward size={16} />Share / Forward</button>
-                </>
-              )}
-            </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {post.videoUrl ? (
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
+              aria-label={soundOn ? "Mute video" : "Unmute video"}
+              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_5px_16px_rgba(0,0,0,.2)] sm:size-10"
+            >
+              {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
+            </button>
           ) : null}
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Post options"
+              className="grid size-10 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-10 sm:border"
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {menuOpen ? (
+              <div role="menu" className="absolute right-0 top-14 z-50 w-56 overflow-hidden rounded-2xl border border-[#18365f] bg-[#08182b] p-1.5 shadow-xl sm:top-20">
+                {post.isOwn ? (
+                  <>
+                    <button type="button" onClick={() => { setDraft(post.caption); setEditing(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Pencil size={16} />Edit text</button>
+                    <button type="button" onClick={() => { setTagOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><UsersRound size={16} />Tag people</button>
+                    <button type="button" onClick={() => { setForwardOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Forward size={16} />Forward post</button>
+                    <button type="button" onClick={() => { onToggleSave(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Bookmark size={16} />{post.saved ? "Unsave post" : "Save post"}</button>
+                    <button type="button" onClick={() => { onDelete(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#ff9eaa]"><Trash2 size={16} />Delete post</button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => { onToggleFollow(post.author.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white">{post.following ? "Unfollow" : "Follow"} {post.author.name}</button>
+                    <button type="button" onClick={() => { onToggleSave(post.id); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Bookmark size={16} />{post.saved ? "Unsave post" : "Save post"}</button>
+                    <button type="button" onClick={() => { setForwardOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white"><Forward size={16} />Share / Forward</button>
+                  </>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -379,14 +393,6 @@ export function FeedCard({
 
       {post.videoUrl ? (
         <>
-          <button
-            type="button"
-            onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
-            aria-label={soundOn ? "Mute video" : "Unmute video"}
-            className="absolute right-14 top-4 z-30 grid size-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_5px_16px_rgba(0,0,0,.2)] sm:right-16 sm:top-5 sm:size-10"
-          >
-            {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
-          </button>
           <div className="pointer-events-none absolute inset-x-12 bottom-2 z-30 sm:inset-x-16 sm:bottom-2">
             <div className="h-1 overflow-hidden rounded-full bg-white/35 sm:h-1">
               <div
@@ -400,7 +406,7 @@ export function FeedCard({
 
       {post.caption ? (
         <div className="pointer-events-none absolute bottom-5 left-3 z-25 max-w-[58%] sm:bottom-6 sm:left-4 sm:max-w-[55%]">
-          <span className="inline-block max-w-full truncate rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_3px_10px_rgba(0,0,0,.2)] sm:text-xs">
+          <span className="inline-block max-w-full truncate rounded-full bg-black/40 px-2.5 py-1 text-[12px] font-medium text-white opacity-100 shadow-[0_3px_10px_rgba(0,0,0,.2)] sm:text-[13px]">
             {post.caption}
           </span>
         </div>
