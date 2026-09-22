@@ -182,50 +182,6 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
   );
 }
 
-function ReelCard({ post }: { post: Post }) {
-  return (
-    <button
-      type="button"
-      onClick={() => window.location.assign(`/feeds/post/${post.id}`)}
-      className="group relative min-w-[190px] overflow-hidden rounded-[24px] border border-[#1b4775] bg-[#071426] text-left sm:min-w-0"
-    >
-      <div className="relative aspect-[9/13] overflow-hidden bg-[#061120]">
-        {post.videoUrl ? (
-          <video src={post.videoUrl} className="absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.03]" muted loop playsInline preload="metadata" />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#061426] via-transparent to-black/10" />
-        <div className="absolute inset-x-0 bottom-0 p-3">
-          <div className="flex items-center gap-2">
-            {post.author.avatar ? (
-              <img src={post.author.avatar} alt="" className="size-8 rounded-full object-cover ring-2 ring-[#061426]" />
-            ) : (
-              <div className="grid size-8 place-items-center rounded-full bg-[#0b3154] text-[10px] font-black text-white">{post.author.initials}</div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate text-xs font-black text-white">{post.author.name}</p>
-              <p className="text-[10px] text-[#a8c2d9]">{post.likes} likes · {post.comments} comments</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function TrendingCard({ title, label, value, icon }: { title: string; label: string; value: string; icon: ReactNode }) {
-  return (
-    <article className="min-w-[230px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 sm:min-w-0">
-      <div className="flex items-center justify-between gap-3">
-        <span className="grid size-10 place-items-center rounded-2xl bg-[#0b3154] text-[#70c1ff]">{icon}</span>
-        <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#9bd3ff]">Trending</span>
-      </div>
-      <p className="mt-4 text-[10px] font-black uppercase tracking-[.14em] text-[#47a8ff]">{label}</p>
-      <h3 className="mt-1 line-clamp-2 text-base font-black leading-5 text-white">{title}</h3>
-      <p className="mt-3 text-xs font-semibold text-[#7892ac]">{value}</p>
-    </article>
-  );
-}
-
 function GroupCard({ group }: { group: GroupPreview }) {
   return (
     <Link href={`/leaderboard?group=${group.id}`} className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 transition hover:border-[#47a8ff] sm:min-w-0">
