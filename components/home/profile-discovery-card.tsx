@@ -267,66 +267,75 @@ export function ProfileDiscoveryCard({
           </div>
         </div>
 
-        <div className="relative px-4 pb-4 pt-0 sm:px-5 sm:pb-5">
-          <div className="relative -mt-2 flex flex-col items-center text-center">
-            <button
-              type="button"
-              disabled={!avatarUrl}
-              aria-label={avatarUrl ? "Preview profile picture" : undefined}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => { event.stopPropagation(); if (avatarUrl) { setProfilePreviewClosing(false); setProfilePreview(profile); } }}
-              className="relative block rounded-full disabled:cursor-default"
-            >
-              <MatchUpAvatar
-                profile={profile}
-                size="lg"
-                alt={name}
-                className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
-              />
-            </button>
-            <h3 className="mt-1.5 max-w-full whitespace-normal break-words text-[21px] font-black leading-[1.02] tracking-[-.03em] text-white sm:text-[23px]">
-              {name}
-            </h3>
-            <p className="mt-0.5 text-[12px] font-semibold text-[#a8c2d9] sm:text-[13px]">
-              {profile.country || "Country not set"}
-            </p>
+        <div className="relative px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
+          <div className="grid grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)] items-start gap-2.5 sm:gap-3">
+            <div className="relative min-w-0 rounded-[18px] border border-[#245b91]/55 bg-[#08203a]/70 px-2.5 pb-2.5 pt-[42px] sm:px-3 sm:pb-3 sm:pt-[46px]">
+              <button
+                type="button"
+                disabled={!avatarUrl}
+                aria-label={avatarUrl ? "Preview profile picture" : undefined}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => { event.stopPropagation(); if (avatarUrl) { setProfilePreviewClosing(false); setProfilePreview(profile); } }}
+                className="absolute left-2.5 top-0 block -translate-y-1/2 rounded-full disabled:cursor-default sm:left-3"
+              >
+                <MatchUpAvatar
+                  profile={profile}
+                  size="lg"
+                  alt={name}
+                  className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
+                />
+              </button>
+              <div className="min-w-0 pl-[72px] sm:pl-[82px]">
+                <h3 className="max-w-full break-words text-[17px] font-black leading-[1.05] tracking-[-.025em] text-white sm:text-[19px]">
+                  {name}
+                </h3>
+                <p className="mt-0.5 text-[11px] font-semibold text-[#a8c2d9] sm:text-[12px]">
+                  {profile.country || "Country not set"}
+                </p>
+              </div>
+            </div>
+
+            <div className="min-w-0 rounded-[18px] border border-[#245b91]/55 bg-[#08203a]/70 px-2.5 py-2.5 sm:px-3 sm:py-3">
+              <div className="grid grid-cols-2 overflow-hidden rounded-[12px] border border-[#245b91]/55 bg-[#06182d]/80">
+                <div className="min-w-0 px-2 py-2 text-center">
+                  <p className="text-[16px] font-black leading-none text-white sm:text-lg">{profile.postCount ?? 0}</p>
+                  <p className="mt-1 text-[7px] font-black uppercase tracking-[.1em] text-[#8ca8c0] sm:text-[8px]">Posts</p>
+                </div>
+                <div className="min-w-0 border-l border-[#31597f] px-2 py-2 text-center">
+                  <p className="text-[16px] font-black leading-none text-white sm:text-lg">{profile.followerCount ?? 0}</p>
+                  <p className="mt-1 text-[7px] font-black uppercase tracking-[.1em] text-[#8ca8c0] sm:text-[8px]">Followers</p>
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-[8px] font-black uppercase tracking-[.14em] text-[#70c1ff]">Bio</p>
+                <p className="mt-0.5 line-clamp-2 break-words text-[10px] leading-4 text-[#9fb6cc]">
+                  {profile.bio?.trim() || "No bio added"}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="relative mx-auto mt-2 grid w-full max-w-[290px] grid-cols-2 overflow-hidden rounded-[16px] border border-[#245b91]/75 bg-[#08203a]/92 shadow-[inset_0_0_0_1px_rgba(71,168,255,.04)]">
-            <span className="pointer-events-none absolute bottom-2.5 left-1/2 top-2.5 w-px -translate-x-1/2 bg-[#31597f]" aria-hidden="true" />
-            <div className="px-3 py-2.5 text-center sm:py-3">
-              <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.postCount ?? 0}</p>
-              <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Posts</p>
+          <div className="mt-2 rounded-[17px] border border-[#245b91]/55 bg-[#08203a]/55 p-1.5 sm:mt-2.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-2.5">
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void onFriend(profile.id)}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:text-sm"
+              >
+                {profile.friendship === "pending" ? null : <UserPlus size={17} />}
+                <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
+              </button>
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => { setMessage(""); setQuickChatPerson(profile); }}
+                className="flex min-h-12 items-center justify-center rounded-[15px] border border-[#3a78ad] bg-[#082a49]/92 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white"
+                aria-label={`Message ${name}`}
+              >
+                <MessageCircle size={20} />
+              </button>
             </div>
-            <div className="px-3 py-2.5 text-center sm:py-3">
-              <p className="text-lg font-black leading-none text-white sm:text-xl">{profile.followerCount ?? 0}</p>
-              <p className="mt-1 text-[7px] font-black uppercase tracking-[.12em] text-[#8ca8c0] sm:text-[8px]">Followers</p>
-            </div>
-          </div>
-
-          {profile.bio?.trim() ? (
-            <p className="mx-auto mt-2 max-w-[520px] line-clamp-2 text-center text-[11px] leading-5 text-[#9fb6cc]">{profile.bio.trim()}</p>
-          ) : null}
-
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_52px] gap-2.5 sm:mt-3 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-3">
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => void onFriend(profile.id)}
-              className="flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[#1680d8] px-3 text-[12px] font-black text-white shadow-[0_10px_24px_rgba(22,128,216,.24)] transition hover:bg-[#218fe8] active:scale-[.99] sm:text-sm"
-            >
-              {profile.friendship === "pending" ? null : <UserPlus size={17} />}
-              <span>{profile.friendship === "pending" ? "Request Sent" : "Add Friend"}</span>
-            </button>
-            <button
-              type="button"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => { setMessage(""); setQuickChatPerson(profile); }}
-              className="flex min-h-12 items-center justify-center rounded-[15px] border border-[#3a78ad] bg-[#082a49]/92 text-[#bfe4ff] transition hover:border-[#59acfa] hover:text-white"
-              aria-label={`Message ${name}`}
-            >
-              <MessageCircle size={20} />
-            </button>
           </div>
         </div>
       </article>
