@@ -300,10 +300,10 @@ export function FeedCard({
 
       <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/45 pointer-events-none" />
 
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-5 sm:p-7">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4 sm:p-5">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-[10px] font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-10 sm:border-2">
+            <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-[10px] font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-11 sm:border-2">
               {post.author.avatar ? (
                 <img src={post.author.avatar} alt="" className="size-full object-cover" />
               ) : (
@@ -311,18 +311,18 @@ export function FeedCard({
               )}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="truncate text-[15px] font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[17px]">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="min-w-0 truncate text-[15px] font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[17px]">
                   {post.author.name}
                 </p>
                 {post.author.verified ? <MatchUpVerificationBadge /> : null}
+                {displayGame ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#21344d]/95 px-2 py-1 text-[9px] font-semibold text-white sm:text-[11px]">
+                    <Gamepad2 size={11} className="sm:size-[13px]" />
+                    {displayGame}
+                  </span>
+                ) : null}
               </div>
-              {displayGame ? (
-                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#21344d]/95 px-2 py-1 text-[9px] font-semibold text-white sm:text-[11px]">
-                  <Gamepad2 size={11} className="sm:size-[13px]" />
-                  {displayGame}
-                </span>
-              ) : null}
             </div>
           </div>
         </div>
@@ -358,7 +358,7 @@ export function FeedCard({
         </div>
       </div>
 
-      <div className="absolute right-3 bottom-11 z-30 flex items-center gap-2 sm:right-4 sm:bottom-12 sm:gap-2">
+      <div className="absolute right-3 bottom-4 z-30 flex items-center gap-2 sm:right-4 sm:bottom-5 sm:gap-2">
         <button
           type="button"
           onClick={(event) => { event.stopPropagation(); onToggleLike(post.id); }}
@@ -383,11 +383,11 @@ export function FeedCard({
             type="button"
             onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
             aria-label={soundOn ? "Mute video" : "Unmute video"}
-            className="absolute bottom-10 left-3 z-30 grid size-9 place-items-center rounded-full border border-white/15 bg-black/45 text-white sm:bottom-11 sm:left-4 sm:size-9"
+            className="absolute right-14 top-4 z-30 grid size-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_5px_16px_rgba(0,0,0,.2)] sm:right-16 sm:top-5 sm:size-10"
           >
             {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
           </button>
-          <div className="pointer-events-none absolute inset-x-12 bottom-3 z-30 sm:inset-x-16 sm:bottom-3">
+          <div className="pointer-events-none absolute inset-x-12 bottom-2 z-30 sm:inset-x-16 sm:bottom-2">
             <div className="h-1 overflow-hidden rounded-full bg-white/35 sm:h-1">
               <div
                 className="h-full rounded-full bg-white transition-[width] duration-100"
@@ -399,7 +399,7 @@ export function FeedCard({
       ) : null}
 
       {post.caption ? (
-        <div className="pointer-events-none absolute bottom-9 left-3 z-25 max-w-[48%] sm:bottom-10 sm:left-4 sm:max-w-[45%]">
+        <div className="pointer-events-none absolute bottom-5 left-3 z-25 max-w-[58%] sm:bottom-6 sm:left-4 sm:max-w-[55%]">
           <span className="inline-block max-w-full truncate rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-semibold text-white shadow-[0_3px_10px_rgba(0,0,0,.2)] sm:text-xs">
             {post.caption}
           </span>
