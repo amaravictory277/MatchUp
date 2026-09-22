@@ -241,7 +241,7 @@ export function FeedCard({
     setEditing(false);
   };
 
-  const displayGame = post.author.game && /efootball/i.test(post.author.game) ? "Football" : post.author.game;
+  const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
   const quickComments = post.commentList.slice(0, 5);
 
   return (
@@ -300,7 +300,7 @@ export function FeedCard({
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-5 sm:p-7">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-sm font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-20 sm:border-[3px]">
+            <div className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-[#0b3154] text-[10px] font-black text-white shadow-[0_4px_14px_rgba(0,0,0,.3)] sm:size-10 sm:border-2">
               {post.author.avatar ? (
                 <img src={post.author.avatar} alt="" className="size-full object-cover" />
               ) : (
@@ -309,14 +309,14 @@ export function FeedCard({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="truncate text-lg font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-[30px]">
+                <p className="truncate text-sm font-black leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,.8)] sm:text-lg">
                   {post.author.name}
                 </p>
                 {post.author.verified ? <MatchUpVerificationBadge /> : null}
               </div>
               {displayGame ? (
-                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#21344d]/95 px-3 py-1.5 text-[11px] font-semibold text-white sm:text-[17px]">
-                  <Gamepad2 size={13} className="sm:size-[18px]" />
+                <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#21344d]/95 px-2 py-1 text-[9px] font-semibold text-white sm:text-[11px]">
+                  <Gamepad2 size={11} className="sm:size-[13px]" />
                   {displayGame}
                 </span>
               ) : null}
@@ -329,9 +329,9 @@ export function FeedCard({
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Post options"
-            className="grid size-12 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-[78px] sm:border-2"
+            className="grid size-11 place-items-center rounded-full border border-white/35 bg-black/35 text-white sm:size-12 sm:border-2"
           >
-            <MoreHorizontal size={23} className="sm:size-[32px]" />
+            <MoreHorizontal size={19} className="sm:size-[21px]" />
           </button>
           {menuOpen ? (
             <div role="menu" className="absolute right-0 top-14 z-50 w-56 overflow-hidden rounded-2xl border border-[#18365f] bg-[#08182b] p-1.5 shadow-xl sm:top-20">
@@ -360,23 +360,23 @@ export function FeedCard({
           type="button"
           onClick={(event) => { event.stopPropagation(); togglePlay(); }}
           aria-label={playing ? "Pause video" : "Play video"}
-          className="absolute left-1/2 top-1/2 z-20 grid size-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_8px_25px_rgba(0,0,0,.3)] sm:size-40"
+          className="absolute left-1/2 top-1/2 z-20 grid size-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_8px_25px_rgba(0,0,0,.3)] sm:size-20"
         >
-          {playing ? <Pause size={45} fill="currentColor" className="sm:size-[64px]" /> : <Play size={48} fill="currentColor" className="ml-1 sm:size-[68px]" />}
+          {playing ? <Pause size={27} fill="currentColor" className="sm:size-[32px]" /> : <Play size={28} fill="currentColor" className="ml-1 sm:size-[34px]" />}
         </button>
       ) : null}
 
-      <div className="absolute right-5 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-4 sm:right-7 sm:gap-6">
+      <div className="absolute right-3 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-3 sm:right-4 sm:gap-4">
         <div className="flex flex-col items-center">
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onToggleLike(post.id); }}
             aria-label={post.liked ? "Unlike post" : "Like post"}
-            className="grid size-14 place-items-center rounded-[22px] border border-white/10 bg-black/55 text-white shadow-[0_5px_18px_rgba(0,0,0,.28)] sm:size-[92px] sm:rounded-[28px]"
+            className="grid size-11 place-items-center rounded-full border border-white/10 bg-black/55 text-white shadow-[0_5px_18px_rgba(0,0,0,.28)] sm:size-12"
           >
-            <Heart size={29} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />
+            <Heart size={22} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />
           </button>
-          <span className="mt-1.5 text-sm font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-[20px]">{formatCount(post.likes)}</span>
+          <span className="mt-1 text-[11px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-xs">{formatCount(post.likes)}</span>
         </div>
 
         <div className="flex flex-col items-center">
@@ -386,7 +386,7 @@ export function FeedCard({
             aria-label="Open comments"
             className="grid size-14 place-items-center rounded-[22px] border border-white/10 bg-black/55 text-white shadow-[0_5px_18px_rgba(0,0,0,.28)] sm:size-[92px] sm:rounded-[28px]"
           >
-            <MessageCircle size={30} />
+            <MessageCircle size={22} />
           </button>
           <span className="mt-1.5 text-sm font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-[20px]">{formatCount(post.comments)}</span>
         </div>
@@ -398,9 +398,9 @@ export function FeedCard({
             type="button"
             onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
             aria-label={soundOn ? "Mute video" : "Unmute video"}
-            className="absolute bottom-14 left-5 z-30 grid size-12 place-items-center rounded-full border border-white/15 bg-black/55 text-white sm:bottom-16 sm:left-7 sm:size-[62px]"
+            className="absolute bottom-12 left-3 z-30 grid size-10 place-items-center rounded-full border border-white/15 bg-black/55 text-white sm:bottom-14 sm:left-4 sm:size-11"
           >
-            {soundOn ? <Volume2 size={21} /> : <VolumeX size={21} />}
+            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </button>
           <div className="absolute inset-x-5 bottom-5 z-30 sm:inset-x-7 sm:bottom-7">
             <div className="mb-2 flex items-center gap-2 text-[12px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,.9)] sm:text-[20px]">
@@ -414,11 +414,10 @@ export function FeedCard({
       ) : null}
 
       {post.caption ? (
-        <div className="absolute bottom-16 left-5 z-25 max-w-[58%] sm:bottom-20 sm:left-7">
-          <div className="relative inline-flex max-w-full items-center gap-2 rounded-full bg-[#071426]/95 px-4 py-2.5 pr-6 shadow-[0_5px_18px_rgba(0,0,0,.28)]">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#f5c32c] text-lg text-[#071426]">🔥</span>
-            <span className="truncate text-sm font-black text-white sm:text-[20px]">{post.caption}</span>
-          </div>
+        <div className="pointer-events-none absolute bottom-14 left-3 z-25 max-w-[45%] sm:bottom-16 sm:left-4 sm:max-w-[42%]">
+          <span className="inline-block max-w-full truncate rounded-full bg-[#071426]/75 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,.22)] sm:text-xs">
+            {post.caption}
+          </span>
         </div>
       ) : null}
 
