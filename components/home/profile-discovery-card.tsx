@@ -243,7 +243,7 @@ export function ProfileDiscoveryCard({
     const avatarUrl = publicStorageUrl(profile.avatar_path);
     return (
       <article className="relative flex w-full flex-col overflow-hidden rounded-[28px] border border-[#245b91]/50 bg-[#061426] shadow-[0_22px_70px_rgba(0,40,90,.28)]">
-        <div className="relative h-[156px] overflow-hidden bg-[#061120] sm:h-[170px]">
+        <div className="relative h-[148px] overflow-hidden bg-[#061120] sm:h-[162px]">
           {coverUrl ? (
             profile.cover_media_type === "video" ? (
               <video src={coverUrl} className="absolute inset-0 size-full object-cover" autoPlay={active} muted loop playsInline preload={active ? "auto" : "metadata"} />
@@ -268,15 +268,15 @@ export function ProfileDiscoveryCard({
         </div>
 
         <div className="relative px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
-          <div className="grid grid-cols-[minmax(0,1.08fr)_minmax(0,.92fr)] items-start gap-2.5 sm:gap-3">
-            <div className="relative min-w-0 rounded-[18px] border border-[#245b91]/55 bg-[#08203a]/70 px-2.5 pb-2.5 pt-[42px] sm:px-3 sm:pb-3 sm:pt-[46px]">
+          <div className="grid grid-cols-[minmax(0,.72fr)_minmax(0,1.28fr)] items-start gap-2.5 sm:gap-3">
+            <div className="relative min-w-0 px-1 pt-[43px] sm:px-1.5 sm:pt-[47px]">
               <button
                 type="button"
                 disabled={!avatarUrl}
                 aria-label={avatarUrl ? "Preview profile picture" : undefined}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => { event.stopPropagation(); if (avatarUrl) { setProfilePreviewClosing(false); setProfilePreview(profile); } }}
-                className="absolute left-2.5 top-0 block -translate-y-1/2 rounded-full disabled:cursor-default sm:left-3"
+                className="absolute left-1/2 top-0 block -translate-x-1/2 -translate-y-1/2 rounded-full disabled:cursor-default"
               >
                 <MatchUpAvatar
                   profile={profile}
@@ -285,7 +285,7 @@ export function ProfileDiscoveryCard({
                   className="!size-[78px] border-[3px] border-[#071426] shadow-[0_10px_26px_rgba(0,0,0,.42)] sm:!size-[86px]"
                 />
               </button>
-              <div className="min-w-0 pl-[86px] sm:pl-[96px]">
+              <div className="min-w-0 text-center">
                 <h3 className="max-w-full break-words text-[17px] font-black leading-[1.05] tracking-[-.025em] text-white sm:text-[19px]">
                   {name}
                 </h3>
