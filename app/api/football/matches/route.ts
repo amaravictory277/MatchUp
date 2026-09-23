@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (search) return NextResponse.json({ matches: await searchMatches(search) });
     return NextResponse.json({ matches: await getFeaturedMatches() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not load football matches.";
-    return NextResponse.json({ error: message, matches: [] }, { status: 503 });
+    console.error("[football] match feed request failed", error);
+    return NextResponse.json({ matches: [] });
   }
 }
