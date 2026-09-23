@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFeaturedMatches, getMatchById } from "../../../../lib/football/server";
-import { searchFootballMatches } from "../../../../lib/football/search-provider";
+import { getFeaturedMatches, getMatchById, searchMatches } from "../../../../lib/football/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     if (fixture) return NextResponse.json({ matches: [await getMatchById(fixture, force)] });
     if (search) {
-      const result = await searchFootballMatches({
+      const result = await searchMatches({
         query: search,
         from: request.nextUrl.searchParams.get("from") || "",
         to: request.nextUrl.searchParams.get("to") || "",
