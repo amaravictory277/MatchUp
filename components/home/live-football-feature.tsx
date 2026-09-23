@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Vote, MessageCircle, Radio } from "lucide-react";
+import { Search, Vote, MessageCircle, Radio, Trophy } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 export type FootballMatch = {
@@ -18,7 +18,7 @@ export type FootballMatch = {
 type VoteState = { home: number; away: number; total: number; myVote: "home" | "away" | null };
 
 function statusLabel(match: FootballMatch) {
-  if (match.status.live) return match.status.elapsed ? \`LIVE · \${match.status.elapsed}'\` : "LIVE";
+  if (match.status.live) return match.status.elapsed ? `LIVE · ${match.status.elapsed}'` : "LIVE";
   if (match.status.finished) return match.status.label;
   return new Date(match.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
@@ -45,7 +45,7 @@ export function LiveMatchCard({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[9px] font-black uppercase tracking-[.15em] text-[#70c1ff]">{match.league.name}</p>
-          <p className={\`mt-1 text-[10px] font-black uppercase tracking-[.1em] \${match.status.live ? "text-[#5df2c1]" : "text-[#9fb6cc]"}\`}>
+          <p className={`mt-1 text-[10px] font-black uppercase tracking-[.1em] ${match.status.live ? "text-[#5df2c1]" : "text-[#9fb6cc]"}`}>
             {statusLabel(match)}
           </p>
         </div>
@@ -76,7 +76,7 @@ export function LiveMatchCard({
           <span className="text-[#ff9ca9]">{match.away.name} {pct.away}%</span>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ff657b]">
-          <div className="h-full bg-[#70c1ff] transition-[width] duration-300" style={{ width: \`\${pct.home}%\` }} />
+          <div className="h-full bg-[#70c1ff] transition-[width] duration-300" style={{ width: `${pct.home}%` }} />
         </div>
         <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-[#7892ac]">
           <span>{voteState.home} vote{voteState.home === 1 ? "" : "s"}</span>
@@ -85,10 +85,10 @@ export function LiveMatchCard({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => onVote(match.fixtureId, "home")} className={\`rounded-xl border px-2 py-2.5 text-[10px] font-black transition \${voteState.myVote === "home" ? "border-[#70c1ff] bg-[#0b3154] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}\`}>
+        <button type="button" onClick={() => onVote(match.fixtureId, "home")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "home" ? "border-[#70c1ff] bg-[#0b3154] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
           Vote {match.home.name}
         </button>
-        <button type="button" onClick={() => onVote(match.fixtureId, "away")} className={\`rounded-xl border px-2 py-2.5 text-[10px] font-black transition \${voteState.myVote === "away" ? "border-[#ff8797] bg-[#341b2a] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}\`}>
+        <button type="button" onClick={() => onVote(match.fixtureId, "away")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "away" ? "border-[#ff8797] bg-[#341b2a] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
           Vote {match.away.name}
         </button>
       </div>
@@ -142,7 +142,7 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
     <section className="relative overflow-hidden rounded-[30px] border border-[#174978] bg-[#061426] shadow-[0_24px_70px_rgba(0,30,80,.26)]">
       <div
         className="flex w-[200%] touch-pan-y transition-transform duration-500 ease-out"
-        style={{ transform: \`translate3d(calc(-\${slide * 50}% + \${dragX}px),0,0)\` }}
+        style={{ transform: `translate3d(calc(-${slide * 50}% + ${dragX}px),0,0)` }}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}
@@ -173,7 +173,7 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
         </article>
       </div>
       <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-        {[0,1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={\`Show slide \${index+1}\`} className={\`h-1.5 rounded-full transition-all \${slide===index?"w-7 bg-[#70c1ff]":"w-1.5 bg-[#31597f]"}\`} />)}
+        {[0,1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={`Show slide ${index+1}`} className={`h-1.5 rounded-full transition-all ${slide===index?"w-7 bg-[#70c1ff]":"w-1.5 bg-[#31597f]"}`} />)}
       </div>
     </section>
   );
@@ -207,7 +207,7 @@ export function LiveFootballHomeFeature() {
   }, [supabase]);
 
   const load = useCallback(async (refresh = false) => {
-    const response = await fetch(\`/api/football/matches\${refresh ? "?refresh=1" : ""}\`, { cache: "no-store" });
+    const response = await fetch(`/api/football/matches${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
       setError(payload.error || "Live football data is unavailable.");
@@ -231,7 +231,7 @@ export function LiveFootballHomeFeature() {
       setError(payload.error || "Sign in to open a Match Room.");
       return;
     }
-    router.push(\`/match-room/\${payload.roomId}\`);
+    router.push(`/match-room/${payload.roomId}`);
   };
 
   const vote = async (fixtureId: string, team: "home" | "away") => {
@@ -255,7 +255,7 @@ export function LiveFootballHomeFeature() {
       return;
     }
     setSearching(true);
-    const response = await fetch(\`/api/football/matches?search=\${encodeURIComponent(query.trim())}\`, { cache: "no-store" });
+    const response = await fetch(`/api/football/matches?search=${encodeURIComponent(query.trim())}`, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     setSearching(false);
     if (!response.ok) {

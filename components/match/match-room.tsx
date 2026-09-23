@@ -33,11 +33,11 @@ function displayName(profile?: Message["profile"]) {
 function relative(value: string) {
   const minutes = Math.floor(Math.max(0, Date.now() - new Date(value).getTime()) / 60000);
   if (minutes < 1) return "now";
-  if (minutes < 60) return \`\${minutes}m\`;
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return \`\${hours}h\`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  return \`\${days}d\`;
+  return `${days}d`;
 }
 
 export function MatchRoom({ roomId }: { roomId: string }) {
@@ -107,14 +107,14 @@ export function MatchRoom({ roomId }: { roomId: string }) {
 
   useEffect(() => {
     void load();
-    const channel = supabase.channel(\`match-room-\${roomId}\`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "football_match_messages", filter: \`room_id=eq.\${roomId}\` }, () => void load())
+    const channel = supabase.channel(`match-room-${roomId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "football_match_messages", filter: `room_id=eq.${roomId}` }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "football_match_message_reactions" }, () => void load())
       .subscribe();
     const timer = window.setInterval(async () => {
       const current = match;
       if (!current) return;
-      const response = await fetch(\`/api/football/matches?fixture=\${encodeURIComponent(current.fixtureId)}&refresh=1\`, { cache: "no-store" });
+      const response = await fetch(`/api/football/matches?fixture=${encodeURIComponent(current.fixtureId)}&refresh=1`, { cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (response.ok && payload.matches?.[0]) setMatch(payload.matches[0]);
     }, 60000);
@@ -155,7 +155,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
     if (error) setNotice(error.message);
     else {
       const row = Array.isArray(data) ? data[0] : data;
-      setNotice(\`Vote recorded: \${Number(row?.home_percent || 0)}% / \${Number(row?.away_percent || 0)}%\`);
+      setNotice(`Vote recorded: ${Number(row?.home_percent || 0)}% / ${Number(row?.away_percent || 0)}%`);
     }
   };
 
@@ -188,7 +188,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
           <button type="button" onClick={() => router.back()} className="icon-button" aria-label="Back"><ArrowLeft size={18}/></button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-black">{title}</p>
-            <p className={\`mt-0.5 text-[9px] font-black uppercase tracking-[.12em] \${match.status.live ? "text-[#5df2c1]" : "text-[#70c1ff]"}\`}>{match.status.live ? \`LIVE\${match.status.elapsed ? \` · \${match.status.elapsed}'\` : ""}\` : match.status.label}</p>
+            <p className={`mt-0.5 text-[9px] font-black uppercase tracking-[.12em] ${match.status.live ? "text-[#5df2c1]" : "text-[#70c1ff]"}`}>{match.status.live ? `LIVE${match.status.elapsed ? ` · ${match.status.elapsed}'` : ""}` : match.status.label}</p>
           </div>
           <button type="button" onClick={() => setMenuOpen(value => !value)} className="icon-button" aria-label="Match Room options"><MoreVertical size={18}/></button>
         </div>
@@ -222,13 +222,13 @@ export function MatchRoom({ roomId }: { roomId: string }) {
             const reply = message.reply_to_id ? messages.find(item => item.id === message.reply_to_id) : null;
             const messageReactions = reactions[message.id] || [];
             return (
-              <article key={message.id} className={\`group flex \${own ? "justify-end" : "justify-start"}\`}>
-                <div className={\`max-w-[86%] rounded-2xl border px-3 py-2.5 \${own ? "border-[#1f6da8] bg-[#0b3154]" : "border-[#183b62] bg-[#071426]"}\`}>
+              <article key={message.id} className={`group flex ${own ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[86%] rounded-2xl border px-3 py-2.5 ${own ? "border-[#1f6da8] bg-[#0b3154]" : "border-[#183b62] bg-[#071426]"}`}>
                   {!own ? <p className="mb-1 text-[10px] font-black text-[#70c1ff]">{displayName(message.profile)}</p> : null}
                   {reply ? <div className="mb-2 rounded-xl border-l-2 border-[#47a8ff] bg-[#061120]/60 px-2.5 py-1.5 text-[9px] text-[#7892ac]"><span className="font-black text-[#bfe3ff]">{displayName(reply.profile)}</span>: {reply.body.slice(0,120)}</div> : null}
-                  <p className={\`whitespace-pre-wrap break-words text-sm leading-6 \${message.deleted_at ? "italic text-[#7892ac]" : "text-white"}\`}>{message.body}</p>
+                  <p className={`whitespace-pre-wrap break-words text-sm leading-6 ${message.deleted_at ? "italic text-[#7892ac]" : "text-white"}`}>{message.body}</p>
                   <div className="mt-1 flex items-center gap-2 text-[9px] text-[#7892ac]"><span>{relative(message.created_at)}</span>{message.edited_at && !message.deleted_at ? <span>edited</span> : null}{own && !message.deleted_at ? <><button type="button" onClick={() => { setEditing(message); setText(message.body); setReplyTo(null); }} aria-label="Edit message"><Edit3 size={11}/></button><button type="button" onClick={() => void deleteMessage(message)} aria-label="Delete message"><Trash2 size={11}/></button></> : null}<button type="button" onClick={() => setReplyTo(message)} aria-label="Reply"><Reply size={11}/></button></div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">{emojis.map(emoji => <button type="button" key={emoji} onClick={() => void react(message.id, emoji)} className={\`rounded-full border px-1.5 py-0.5 text-[10px] \${messageReactions.includes(emoji) ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]"}\`}>{emoji}</button>)}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">{emojis.map(emoji => <button type="button" key={emoji} onClick={() => void react(message.id, emoji)} className={`rounded-full border px-1.5 py-0.5 text-[10px] ${messageReactions.includes(emoji) ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]"}`}>{emoji}</button>)}</div>
                 </div>
               </article>
             );
@@ -239,7 +239,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
 
       <footer className="shrink-0 border-t border-[#17395e] bg-[#071426] p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="mx-auto max-w-2xl">
-          {replyTo || editing ? <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-2 text-xs text-[#7892ac]"><Reply size={13}/><span className="min-w-0 flex-1 truncate">{editing ? "Editing your message" : \`Replying to \${displayName(replyTo?.profile)}\`}</span><button type="button" onClick={() => { setReplyTo(null); setEditing(null); setText(""); }}><X size={14}/></button></div> : null}
+          {replyTo || editing ? <div className="mb-2 flex items-center gap-2 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-2 text-xs text-[#7892ac]"><Reply size={13}/><span className="min-w-0 flex-1 truncate">{editing ? "Editing your message" : `Replying to ${displayName(replyTo?.profile)}`}</span><button type="button" onClick={() => { setReplyTo(null); setEditing(null); setText(""); }}><X size={14}/></button></div> : null}
           <div className="flex items-end gap-2 rounded-2xl border border-[#214a78] bg-[#061426] p-2">
             <textarea value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();void send();} }} rows={1} maxLength={2000} placeholder="Write a match reaction…" className="min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 text-white outline-none placeholder:text-[#5f7b96]"/>
             <button type="button" disabled={busy || !text.trim()} onClick={() => void send()} className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#167bd1] text-white disabled:opacity-50" aria-label="Send message"><Send size={16}/></button>

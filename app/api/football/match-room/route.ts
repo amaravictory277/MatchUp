@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const fixtureId = String(body?.fixtureId || "").trim();
-    if (!fixtureId || !/^\\d{1,20}$/.test(fixtureId)) return NextResponse.json({ error: "Invalid fixture." }, { status: 400 });
+    if (!fixtureId || !/^\d{1,20}$/.test(fixtureId)) return NextResponse.json({ error: "Invalid fixture." }, { status: 400 });
 
     await getMatchById(fixtureId, true);
     const roomId = await callSupabaseRpc<string>(accessToken, "get_or_create_match_room", { p_fixture_id: fixtureId });

@@ -9,13 +9,15 @@ export type FootballMatch = {
   away: { id: number | null; name: string; logo: string | null; score: number | null };
 };
 
-const API_BASE = (process.env.FOOTBALL_API_BASE_URL || "https://v3.football.api-sports.io").replace(/\\/$/, "");
+const API_BASE = (process.env.FOOTBALL_API_BASE_URL || "https://v3.football.api-sports.io").replace(/\/$/, "");
 const API_KEY = process.env.FOOTBALL_API_KEY;
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\\/$/, "");
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const LIVE_CODES = new Set(["1H","HT","2H","ET","BT","P"]);
 const FINISHED_CODES = new Set(["FT","AET","PEN"]);
 const POPULAR_LEAGUES = new Map<number, number>([[1,100],[2,98],[39,96],[140,94],[78,92],[135,90],[61,88],[94,84],[88,82],[253,72],[203,70],[179,68],[71,66]]);
+
+export function getServiceRoleConfigured(){ return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY); }
 
 function requireProvider(){ if(!API_KEY) throw new Error("Football data is not configured. Add FOOTBALL_API_KEY to the server environment."); }
 
@@ -46,10 +48,10 @@ function normalize(raw:any):FootballMatch{
 
 async function getCached(fixtureIds?:string[]){
   if(!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Map<string,{match:FootballMatch;fetchedAt:number}>();
-  const url=new URL(\`\${SUPABASE_URL}/rest/v1/football_fixture_cache\`);
+  const url=new URL(`${SUPABASE_URL}/rest/v1/football_fixture_cache`);
   url.searchParams.set("select","fixture_id,payload,fetched_at");
-  if(fixtureIds?.length)url.searchParams.set("fixture_id",\`in.(\${fixtureIds.map(id=>\`"\${id.replace(/"/g,'""')}"\`).join(",")})\`);
-  const response=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:\`Bearer \${SUPABASE_SERVICE_ROLE_KEY}\`},cache:"no-store"});
+  if(fixtureIds?.length)url.searchParams.set("fixture_id",`in.(${fixtureIds.map(id=>`"${id.replace(/"/g,'""')}"`).join(",")})`);
+  const response=await fetch(url,{headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${SUPABASE_SERVICE_ROLE_KEY}`},cache:"no-store"});
   if(!response.ok)return new Map();
   const rows=await response.json().catch(()=>[]) as any[];
   return new Map(rows.map(row=>[String(row.fixture_id),{match:row.payload as FootballMatch,fetchedAt:new Date(row.fetched_at).getTime()}]));
@@ -58,7 +60,7 @@ async function getCached(fixtureIds?:string[]){
 async function upsertCache(matches:FootballMatch[]){
   if(!matches.length||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return;
   const rows=matches.map(match=>({fixture_id:match.fixtureId,provider:"api-football",payload:match,starts_at:match.startsAt,status_code:match.status.code,league_name:match.league.name,home_team_name:match.home.name,away_team_name:match.away.name,home_score:match.home.score,away_score:match.away.score,fetched_at:new Date().toISOString(),updated_at:new Date().toISOString()}));
-  await fetch(\`\${SUPABASE_URL}/rest/v1/football_fixture_cache?on_conflict=fixture_id\`,{method:"POST",headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:\`Bearer \${SUPABASE_SERVICE_ROLE_KEY}\`,"content-type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(rows),cache:"no-store"});
+  await fetch(`${SUPABASE_URL}/rest/v1/football_fixture_cache?on_conflict=fixture_id`,{method:"POST",headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,"content-type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(rows),cache:"no-store"});
 }
 
 function rankMatch(match:FootballMatch,now=Date.now()){
@@ -80,7 +82,7 @@ export async function getFeaturedMatches(){
   if(cacheFresh&&cachedUseful.length)return cachedUseful.sort((a,b)=>rankMatch(b,now)-rankMatch(a,now)).slice(0,20);
   const [todayMatches,tomorrowMatches,liveMatches]=await Promise.all([fetchDate(today),fetchDate(tomorrow),fetchLive()]);
   const map=new Map<string,FootballMatch>();
-  [...todayMatches,tomorrowMatches,liveMatches].forEach(match=>map.set(match.fixtureId,match));
+  [...todayMatches,...tomorrowMatches,...liveMatches].forEach(match=>map.set(match.fixtureId,match));
   const all=Array.from(map.values()).filter(match=>{const start=new Date(match.startsAt).getTime();return match.status.live||(!match.status.finished&&start>=now&&start<=horizon);});
   await upsertCache(all);
   return all.sort((a,b)=>rankMatch(b,now)-rankMatch(a,now)).slice(0,20);
@@ -105,7 +107,7 @@ export async function searchMatches(query:string){
   const fixtureGroups=await Promise.all(teamIds.map(teamId=>providerGet("/fixtures",{team:teamId,next:10})));
   const matches=new Map<string,FootballMatch>();
   fixtureGroups.flat().forEach((raw:any)=>{
-    const match=normalize(raw),haystack=\`\${match.home.name} \${match.away.name} \${match.league.name}\`.toLowerCase();
+    const match=normalize(raw),haystack=`${match.home.name} ${match.away.name} ${match.league.name}`.toLowerCase();
     if(haystack.includes(clean.toLowerCase())||match.home.name.toLowerCase().includes(clean.toLowerCase())||match.away.name.toLowerCase().includes(clean.toLowerCase()))matches.set(match.fixtureId,match);
   });
   const result=Array.from(matches.values()).sort((a,b)=>rankMatch(b)-rankMatch(a)).slice(0,20);
@@ -117,7 +119,7 @@ export async function getAuthenticatedAccessToken(){const cookieStore=await cook
 
 export async function getUserIdFromAccessToken(accessToken:string){
   if(!SUPABASE_URL||!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)return null;
-  const response=await fetch(\`\${SUPABASE_URL}/auth/v1/user\`,{headers:{apikey:process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:\`Bearer \${accessToken}\`},cache:"no-store"});
+  const response=await fetch(`${SUPABASE_URL}/auth/v1/user`,{headers:{apikey:process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:`Bearer ${accessToken}`},cache:"no-store"});
   if(!response.ok)return null;
   const user=await response.json().catch(()=>null) as {id?:string}|null;
   return user?.id||null;
@@ -125,7 +127,7 @@ export async function getUserIdFromAccessToken(accessToken:string){
 
 export async function callSupabaseRpc<T>(accessToken:string,functionName:string,body:Record<string,unknown>){
   if(!SUPABASE_URL||!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)throw new Error("Supabase is not configured.");
-  const response=await fetch(\`\${SUPABASE_URL}/rest/v1/rpc/\${functionName}\`,{method:"POST",headers:{apikey:process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:\`Bearer \${accessToken}\`,"content-type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+  const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`,{method:"POST",headers:{apikey:process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:`Bearer ${accessToken}`,"content-type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
   const payload=await response.json().catch(()=>null);
   if(!response.ok)throw new Error(payload?.message||payload?.hint||"Supabase request failed.");
   return payload as T;
