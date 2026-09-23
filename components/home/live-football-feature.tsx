@@ -19,7 +19,7 @@ type VoteState = { home: number; away: number; total: number; myVote: "home" | "
 
 function statusLabel(match: FootballMatch) {
   if (match.status.live) return match.status.elapsed ? `LIVE · ${match.status.elapsed}'` : "LIVE";
-  if (match.status.finished) return match.status.label;
+  if (match.status.finished) return "FULL-TIME";
   return new Date(match.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -40,12 +40,14 @@ export function LiveMatchCard({
   onRoom: (fixtureId: string) => void;
 }) {
   const pct = percentages(voteState);
+  const finished = match.status.finished;
+
   return (
     <article className="min-w-[300px] max-w-[340px] snap-start rounded-[26px] border border-[#1d5d99] bg-[#071a31] p-4 shadow-[0_18px_50px_rgba(0,45,100,.22)]">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[9px] font-black uppercase tracking-[.15em] text-[#70c1ff]">{match.league.name}</p>
-          <p className={`mt-1 text-[10px] font-black uppercase tracking-[.1em] ${match.status.live ? "text-[#5df2c1]" : "text-[#9fb6cc]"}`}>
+          <p className={`mt-1 text-[10px] font-black uppercase tracking-[.1em] ${match.status.live ? "text-[#5df2c1]" : finished ? "text-[#b7c9d9]" : "text-[#9fb6cc]"}`}>
             {statusLabel(match)}
           </p>
         </div>
@@ -70,31 +72,40 @@ export function LiveMatchCard({
         </div>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-[#173f68] bg-[#061426] p-3">
-        <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.1em]">
-          <span className="truncate text-[#70c1ff]">{match.home.name} {pct.home}%</span>
-          <span className="text-[#ff9ca9]">{match.away.name} {pct.away}%</span>
+      {finished ? (
+        <div className="mt-4 rounded-2xl border border-[#173f68] bg-[#061426] px-3 py-3 text-center">
+          <p className="text-[9px] font-black uppercase tracking-[.12em] text-[#7892ac]">Final score</p>
+          <p className="mt-1 text-sm font-black text-white">{match.home.name} {match.home.score ?? 0} — {match.away.score ?? 0} {match.away.name}</p>
         </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ff657b]">
-          <div className="h-full bg-[#70c1ff] transition-[width] duration-300" style={{ width: `${pct.home}%` }} />
-        </div>
-        <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-[#7892ac]">
-          <span>{voteState.home} vote{voteState.home === 1 ? "" : "s"}</span>
-          <span>{voteState.away} vote{voteState.away === 1 ? "" : "s"}</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="mt-4 rounded-2xl border border-[#173f68] bg-[#061426] p-3">
+            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.1em]">
+              <span className="truncate text-[#70c1ff]">{match.home.name} {pct.home}%</span>
+              <span className="text-[#ff9ca9]">{match.away.name} {pct.away}%</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#ff657b]">
+              <div className="h-full bg-[#70c1ff] transition-[width] duration-300" style={{ width: `${pct.home}%` }} />
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-[#7892ac]">
+              <span>{voteState.home} vote{voteState.home === 1 ? "" : "s"}</span>
+              <span>{voteState.away} vote{voteState.away === 1 ? "" : "s"}</span>
+            </div>
+          </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => onVote(match.fixtureId, "home")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "home" ? "border-[#70c1ff] bg-[#0b3154] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
-          Vote {match.home.name}
-        </button>
-        <button type="button" onClick={() => onVote(match.fixtureId, "away")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "away" ? "border-[#ff8797] bg-[#341b2a] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
-          Vote {match.away.name}
-        </button>
-      </div>
-      <button type="button" onClick={() => onRoom(match.fixtureId)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-3 text-xs font-black text-white shadow-[0_10px_24px_rgba(22,123,209,.22)]">
-        <MessageCircle size={15} /> View Match Room
-      </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => onVote(match.fixtureId, "home")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "home" ? "border-[#70c1ff] bg-[#0b3154] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
+              Vote {match.home.name}
+            </button>
+            <button type="button" onClick={() => onVote(match.fixtureId, "away")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black transition ${voteState.myVote === "away" ? "border-[#ff8797] bg-[#341b2a] text-white" : "border-[#214a78] bg-[#081f38] text-[#bfe3ff]"}`}>
+              Vote {match.away.name}
+            </button>
+          </div>
+          <button type="button" onClick={() => onRoom(match.fixtureId)} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-3 text-xs font-black text-white shadow-[0_10px_24px_rgba(22,123,209,.22)]">
+            <MessageCircle size={15} /> View Match Room
+          </button>
+        </>
+      )}
     </article>
   );
 }
@@ -113,7 +124,7 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (Date.now() < pauseUntil.current) return;
-      setSlide((value) => value === 0 ? 1 : 0);
+      setSlide(value => value === 0 ? 1 : 0);
     }, 8000);
     return () => window.clearInterval(timer);
   }, []);
@@ -173,7 +184,7 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
         </article>
       </div>
       <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-        {[0,1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={`Show slide ${index+1}`} className={`h-1.5 rounded-full transition-all ${slide===index?"w-7 bg-[#70c1ff]":"w-1.5 bg-[#31597f]"}`} />)}
+        {[0, 1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={`Show slide ${index + 1}`} className={`h-1.5 rounded-full transition-all ${slide === index ? "w-7 bg-[#70c1ff]" : "w-1.5 bg-[#31597f]"}`} />)}
       </div>
     </section>
   );
@@ -190,13 +201,17 @@ export function LiveFootballHomeFeature() {
   const [showSearch, setShowSearch] = useState(false);
 
   const loadVotes = useCallback(async (items: FootballMatch[]) => {
-    if (!items.length) return;
-    const ids = items.map(item => item.fixtureId);
+    const liveOrUpcoming = items.filter(item => !item.status.finished);
+    if (!liveOrUpcoming.length) {
+      setVotes({});
+      return;
+    }
+    const ids = liveOrUpcoming.map(item => item.fixtureId);
     const { data } = await supabase.from("football_match_votes").select("fixture_id,user_id,team").in("fixture_id", ids);
     const { data: auth } = await supabase.auth.getUser();
     const next: Record<string, VoteState> = {};
-    ids.forEach(id => next[id] = { home: 0, away: 0, total: 0, myVote: null });
-    (data || []).forEach((row:any) => {
+    ids.forEach(id => { next[id] = { home: 0, away: 0, total: 0, myVote: null }; });
+    (data || []).forEach((row: any) => {
       const state = next[row.fixture_id] || { home: 0, away: 0, total: 0, myVote: null };
       if (row.team === "home") state.home += 1; else state.away += 1;
       state.total += 1;
@@ -225,7 +240,11 @@ export function LiveFootballHomeFeature() {
   }, [load]);
 
   const openRoom = async (fixtureId: string) => {
-    const response = await fetch("/api/football/match-room", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fixtureId }) });
+    const response = await fetch("/api/football/match-room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fixtureId }),
+    });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || !payload.roomId) {
       setError(payload.error || "Sign in to open a Match Room.");
@@ -247,7 +266,15 @@ export function LiveFootballHomeFeature() {
       return;
     }
     const row = Array.isArray(data) ? data[0] : data;
-    setVotes(current => ({ ...current, [fixtureId]: { home: Number(row.home_votes || 0), away: Number(row.away_votes || 0), total: Number(row.total_votes || 0), myVote: row.my_vote } }));
+    setVotes(current => ({
+      ...current,
+      [fixtureId]: {
+        home: Number(row?.home_votes || 0),
+        away: Number(row?.away_votes || 0),
+        total: Number(row?.total_votes || 0),
+        myVote: row?.my_vote || null,
+      },
+    }));
   };
 
   const search = async () => {
@@ -265,7 +292,7 @@ export function LiveFootballHomeFeature() {
     }
     setMatches(payload.matches || []);
     await loadVotes(payload.matches || []);
-    setError(payload.matches?.length ? "" : "No upcoming or recent fixture matched that search.");
+    setError(payload.matches?.length ? "" : "No live, upcoming, or recent fixture matched that search.");
   };
 
   const openSearch = () => {
@@ -289,7 +316,7 @@ export function LiveFootballHomeFeature() {
         {showSearch ? (
           <div className="mb-4 rounded-2xl border border-[#214a78] bg-[#071426] p-3">
             <div className="flex gap-2">
-              <input id="matchup-match-search" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if(event.key==="Enter") void search(); }} placeholder="Search a team or fixture…" className="min-w-0 flex-1 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#47a8ff]" />
+              <input id="matchup-match-search" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void search(); }} placeholder="Search a team or fixture…" className="min-w-0 flex-1 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#47a8ff]" />
               <button type="button" disabled={searching} onClick={() => void search()} className="rounded-xl bg-[#167bd1] px-4 text-xs font-black text-white disabled:opacity-60">{searching ? "Searching…" : "Search"}</button>
             </div>
           </div>
@@ -299,7 +326,15 @@ export function LiveFootballHomeFeature() {
 
         {matches.length ? (
           <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2">
-            {matches.map(match => <LiveMatchCard key={match.fixtureId} match={match} voteState={votes[match.fixtureId] || {home:0,away:0,total:0,myVote:null}} onVote={vote} onRoom={openRoom} />)}
+            {matches.map(match => (
+              <LiveMatchCard
+                key={match.fixtureId}
+                match={match}
+                voteState={votes[match.fixtureId] || { home: 0, away: 0, total: 0, myVote: null }}
+                onVote={vote}
+                onRoom={openRoom}
+              />
+            ))}
           </div>
         ) : (
           <div className="rounded-[24px] border border-dashed border-[#214a78] bg-[#071426] p-7 text-center">
