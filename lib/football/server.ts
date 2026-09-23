@@ -14,7 +14,7 @@ const API_KEY = process.env.FOOTBALL_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const LIVE_CODES = new Set(["1H", "HT", "2H", "ET", "BT", "P"]);
-const FINISHED_CODES = new Set(["FT", "AET", "PEN"]);
+const FINISHED_CODES = new Set(["FT", "AET", "PEN", "AWD", "WO"]);
 const POPULAR_LEAGUES = new Map<number, number>([[1, 100], [2, 98], [39, 96], [140, 94], [78, 92], [135, 90], [61, 88], [94, 84], [88, 82], [253, 72], [203, 70], [179, 68], [71, 66]]);
 
 export function getServiceRoleConfigured() {
@@ -130,6 +130,17 @@ function dateOnly(value: Date) {
   return value.toISOString().slice(0, 10);
 }
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 function sortSearchMatches(matches: FootballMatch[], now = Date.now()) {
   return [...matches].sort((a, b) => {
     if (a.status.live !== b.status.live) return a.status.live ? -1 : 1;
@@ -193,15 +204,35 @@ export async function searchMatches(query: string) {
       .split(/\s+(?:vs|v|versus)\s+|\s+-\s+/i)
       .map(term => term.trim())
       .filter(Boolean),
-  )).slice(0, 3);
+  ));
 
   const teamResults = await Promise.all(searchTerms.map(term => providerGet("/teams", { search: term })));
-  const teamIds = Array.from(new Set(
-    teamResults
-      .flat()
-      .map((item: any) => Number(item?.team?.id))
-      .filter(Number.isFinite),
-  )).slice(0, 6);
+  const teamCandidates = teamResults
+    .flat()
+    .map((item: any) => item?.team)
+    .filter((team: any) => Number.isFinite(Number(team?.id)) && team?.name)
+    .map((team: any) => ({
+      id: Number(team.id),
+      name: String(team.name),
+      code: String(team.code || ""),
+    }));
+
+  const normalizedTerms = searchTerms.map(normalizeSearchText).filter(Boolean);
+  const uniqueTeams = Array.from(new Map(teamCandidates.map(team => [team.id, team])).values());
+  const rankedTeams = uniqueTeams.sort((a, b) => {
+    const aName = normalizeSearchText(a.name);
+    const bName = normalizeSearchText(b.name);
+    const aExact = normalizedTerms.some(term => aName === term) ? 100 : 0;
+    const bExact = normalizedTerms.some(term => bName === term) ? 100 : 0;
+    const aStarts = normalizedTerms.some(term => aName.startsWith(term)) ? 20 : 0;
+    const bStarts = normalizedTerms.some(term => bName.startsWith(term)) ? 20 : 0;
+    return (bExact + bStarts) - (aExact + aStarts);
+  });
+
+  // Do not scope fixture retrieval by league, country, season, competition, or round.
+  // Team IDs are global across competitions, so every competition involving a matched
+  // team remains eligible for the search.
+  const teamIds = rankedTeams.map(team => team.id).slice(0, 12);
   if (!teamIds.length) return [];
 
   const now = Date.now();
@@ -209,54 +240,74 @@ export async function searchMatches(query: string) {
   const today = dateOnly(new Date(now));
   const sevenDaysAgo = dateOnly(new Date(pastBoundary));
 
-  // Prefer the exact date window, but also use the provider's team `last` endpoint
-  // as a fallback. Some provider responses/plans can return an empty date-window
-  // result even though the team's recent fixtures are available through `last`.
-  // This keeps the MatchUp search reliable without expanding the normal query.
   const fixtureGroups = await Promise.all(teamIds.map(async teamId => {
-    let recent: any[] = [];
+    const results: any[] = [];
+
+    // Primary recent lookup: team + last returns recent fixtures across competitions
+    // without requiring a league or season. This avoids relying on provider date-window
+    // behavior for the seven-day history requirement.
     try {
-      recent = await providerGet("/fixtures", {
+      results.push(...await providerGet("/fixtures", { team: teamId, last: 20, timezone: "UTC" }));
+    } catch (error) {
+      console.error(`[football] recent team fixtures lookup failed for team ${teamId}`, error);
+    }
+
+    // Secondary exact-window lookup. This catches a match inside the seven-day window
+    // even if the team's recent list is unusual or the provider has returned stale data.
+    try {
+      results.push(...await providerGet("/fixtures", {
         team: teamId,
         from: sevenDaysAgo,
         to: today,
         timezone: "UTC",
-      });
+      }));
     } catch (error) {
-      console.error(`[football] seven-day fixture lookup failed for team ${teamId}`, error);
+      console.error(`[football] seven-day team fixture lookup failed for team ${teamId}`, error);
     }
 
-    if (!recent.length) {
-      try {
-        recent = await providerGet("/fixtures", { team: teamId, last: 20 });
-      } catch (error) {
-        console.error(`[football] recent fixture fallback failed for team ${teamId}`, error);
-      }
+    // Live lookup is deliberately global across all leagues. It is filtered locally
+    // by the resolved team IDs, so no competition is excluded from live search.
+    try {
+      results.push(...await providerGet("/fixtures", { live: "all" }));
+    } catch (error) {
+      console.error(`[football] live fixture lookup failed for team ${teamId}`, error);
     }
 
-    return recent;
+    return results;
   }));
 
   const upcomingGroups = await Promise.all(teamIds.map(async teamId => {
     try {
-      return await providerGet("/fixtures", { team: teamId, next: 10 });
+      return await providerGet("/fixtures", { team: teamId, next: 20, timezone: "UTC" });
     } catch (error) {
       console.error(`[football] upcoming fixture lookup failed for team ${teamId}`, error);
       return [];
     }
   }));
 
+  const resolvedTeamIds = new Set(teamIds);
+  const normalizedQuery = normalizeSearchText(clean);
+  const queryWords = normalizedTerms.flatMap(term => term.split(" ")).filter(Boolean);
   const matches = new Map<string, FootballMatch>();
+
   [...fixtureGroups.flat(), ...upcomingGroups.flat()].forEach((raw: any) => {
     const match = normalize(raw);
     const start = new Date(match.startsAt).getTime();
-    const haystack = `${match.home.name} ${match.away.name} ${match.league.name}`.toLowerCase();
-    const queryWords = searchTerms.map(term => term.toLowerCase());
-    const nameMatches = queryWords.some(term => haystack.includes(term));
+    const homeId = match.home.id ?? -1;
+    const awayId = match.away.id ?? -1;
+    const involvesResolvedTeam = resolvedTeamIds.has(homeId) || resolvedTeamIds.has(awayId);
+    if (!involvesResolvedTeam) return;
+
+    const homeName = normalizeSearchText(match.home.name);
+    const awayName = normalizeSearchText(match.away.name);
+    const fixtureText = `${homeName} ${awayName}`;
+    const directTeamNameMatch = normalizedTerms.some(term => homeName.includes(term) || awayName.includes(term));
+    const wordMatch = queryWords.length > 0 && queryWords.every(word => fixtureText.includes(word));
     const isRecentFinished = match.status.finished && start >= pastBoundary && start <= now;
     const isLive = match.status.live;
     const isUpcoming = !match.status.finished && start >= now;
-    if ((nameMatches || match.home.name.toLowerCase().includes(clean.toLowerCase()) || match.away.name.toLowerCase().includes(clean.toLowerCase())) && (isRecentFinished || isLive || isUpcoming)) {
+
+    if ((directTeamNameMatch || wordMatch || fixtureText.includes(normalizedQuery)) && (isRecentFinished || isLive || isUpcoming)) {
       matches.set(match.fixtureId, match);
     }
   });
