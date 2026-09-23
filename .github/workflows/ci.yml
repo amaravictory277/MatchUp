@@ -62,6 +62,7 @@ jobs:
           if p.exists():
               s = p.read_text()
               s = s.replace(r'replace(/\\/$/, "")', r'replace(/\/$/, "")')
+              s = s.replace('[...todayMatches,tomorrowMatches,liveMatches]', '[...todayMatches,...tomorrowMatches,...liveMatches]')
               if 'export function getServiceRoleConfigured' not in s:
                   marker = 'const POPULAR_LEAGUES = new Map<number, number>([[1,100],[2,98],[39,96],[140,94],[78,92],[135,90],[61,88],[94,84],[88,82],[253,72],[203,70],[179,68],[71,66]]);'
                   addition = marker + '\n\nexport function getServiceRoleConfigured(){ return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY); }'
