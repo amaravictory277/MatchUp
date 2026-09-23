@@ -8,7 +8,7 @@ import { clearAuthSession } from "../../lib/auth/session";
 import { MatchUpVerificationBadge } from "../feeds/matchup-verification-badge";
 
 type Game = "eFootball" | "FIFA";
-type Profile = { id:string; username:string; display_name:string|null; avatar_path:string|null; cover_media_path:string|null; cover_media_type:"image"|"video"|null; country:string|null; currency_code:string|null; bio:string|null; supported_game:Game|null; is_verified:boolean; created_at:string };
+type Profile = { id:string; username:string; display_name:string|null; avatar_path:string|null; cover_media_path:string|null; cover_media_type:"image"|"video"|null; country:string|null; currency_code:string|null; bio:string|null; supported_game:Game|null; gaming_team_name:string|null; player_rating:number|null; squad_formation:string|null; is_verified:boolean; created_at:string };
 const countries = ["Nigeria","Ghana","Kenya","South Africa","United Kingdom","United States","Other"];
 const currencyOptions = [
   { code:"NGN", label:"Nigerian Naira (₦)" },
@@ -34,23 +34,23 @@ export function ProfilePage(){
   const view=searchParams.get("view");
   const screen=view==="edit" || view==="settings" ? view : "profile";
   const [profile,setProfile]=useState<Profile|null>(null),[email,setEmail]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[loggingOut,setLoggingOut]=useState(false),[toast,setToast]=useState<string|null>(null);
-  const [name,setName]=useState(""),[country,setCountry]=useState(""),[currencyCode,setCurrencyCode]=useState("USD"),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null),[coverFile,setCoverFile]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState<string|null>(null),[coverType,setCoverType]=useState<"image"|"video"|null>(null),[deleteAvatar,setDeleteAvatar]=useState(false),[deleteCover,setDeleteCover]=useState(false);
+  const [name,setName]=useState(""),[country,setCountry]=useState(""),[currencyCode,setCurrencyCode]=useState("USD"),[bio,setBio]=useState(""),[game,setGame]=useState<Game|"">(""),[gamingTeam,setGamingTeam]=useState(""),[playerRating,setPlayerRating]=useState(""),[formation,setFormation]=useState(""),[avatarFile,setAvatarFile]=useState<File|null>(null),[avatarPreview,setAvatarPreview]=useState<string|null>(null),[coverFile,setCoverFile]=useState<File|null>(null),[coverPreview,setCoverPreview]=useState<string|null>(null),[coverType,setCoverType]=useState<"image"|"video"|null>(null),[deleteAvatar,setDeleteAvatar]=useState(false),[deleteCover,setDeleteCover]=useState(false);
   const notify=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(null),2600)};
   const load=async()=>{
     setLoading(true);
     const {data:auth,error:authError}=await supabase.auth.getUser();
     if(authError || !auth.user){router.replace("/");return}
     setEmail(auth.user.email || "");
-    const {data,error}=await supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,is_verified,created_at").eq("id",auth.user.id).maybeSingle();
+    const {data,error}=await supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,gaming_team_name,player_rating,squad_formation,is_verified,created_at").eq("id",auth.user.id).maybeSingle();
     if(error || !data){setProfile(null);setLoading(false);return}
-    const next=data as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || ""); setLoading(false);
+    const next=data as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || ""); setGamingTeam(next.gaming_team_name || ""); setPlayerRating(next.player_rating != null ? String(next.player_rating) : ""); setFormation(next.squad_formation || ""); setLoading(false);
   };
   useEffect(()=>{void load()},[]);
   useEffect(()=>{
     if(!profile?.id)return;
     const channel=supabase.channel("profile-"+profile.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:"id=eq."+profile.id},payload=>{
       if(payload.eventType==="DELETE")return;
-      const next=payload.new as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || "");
+      const next=payload.new as Profile; setProfile(next); setName(next.display_name || ""); setCountry(next.country || ""); setCurrencyCode(next.currency_code || currencyByCountry[next.country || ""] || "USD"); setBio(next.bio || ""); setGame(next.supported_game || ""); setGamingTeam(next.gaming_team_name || ""); setPlayerRating(next.player_rating != null ? String(next.player_rating) : ""); setFormation(next.squad_formation || "");
     }).subscribe();
     return()=>{void supabase.removeChannel(channel)};
   },[profile?.id,supabase]);
@@ -135,7 +135,7 @@ export function ProfilePage(){
         const upload=await supabase.storage.from("profile-media").upload(path,coverFile,{upsert:false,contentType:coverFile.type});
         if(upload.error)throw upload.error; coverPath=path;nextCoverType=coverType;
       }
-      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,currency_code:currencyCode,bio:bio.trim() || null,supported_game:game || null,avatar_path:avatarPath,cover_media_path:coverPath,cover_media_type:nextCoverType}).eq("id",profile.id).select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,is_verified,created_at").single();
+      const {data,error}=await supabase.from("profiles").update({display_name:name.trim() || null,country:country || null,currency_code:currencyCode,bio:bio.trim() || null,supported_game:game || null,gaming_team_name:gamingTeam.trim() || null,player_rating:playerRating.trim() ? Math.min(99,Math.max(1,Number(playerRating))) : null,squad_formation:formation || null,avatar_path:avatarPath,cover_media_path:coverPath,cover_media_type:nextCoverType}).eq("id",profile.id).select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,currency_code,bio,supported_game,gaming_team_name,player_rating,squad_formation,is_verified,created_at").single();
       if(error)throw error;
       if(deleteAvatar && profile.avatar_path) await removeCurrentMedia(profile.avatar_path);
       if(deleteCover && profile.cover_media_path) await removeCurrentMedia(profile.cover_media_path);
@@ -179,6 +179,15 @@ export function ProfilePage(){
         <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Bio</span><textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={160} rows={3} placeholder="Tell players a little about you." className="w-full resize-none rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white outline-none focus:border-[#2497ff]"/><p className="mt-1 text-[11px] text-[#7892ac]">{bio.length}/160</p></label><label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Country</span><select value={country} onChange={e=>{const next=e.target.value;setCountry(next);if(currencyByCountry[next])setCurrencyCode(currencyByCountry[next])}} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white"><option value="">Select country</option>{countries.map(item=><option key={item}>{item}</option>)}</select></label>
         <label className="block"><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Tournament Currency</span><select value={currencyCode} onChange={e=>setCurrencyCode(e.target.value)} className="w-full rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3.5 text-sm text-white">{currencyOptions.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}</select><p className="mt-1 text-[11px] text-[#7892ac]">Tournament prices you create use this currency, not the viewer's location.</p></label>
         <div><span className="mb-2 block text-xs font-bold text-[#9bb1c5]">Supported Game</span><div className="grid grid-cols-2 gap-2">{(["eFootball","FIFA"] as Game[]).map(item=><button key={item} type="button" onClick={()=>setGame(item)} className={"rounded-2xl border p-3.5 text-left text-sm font-black "+(game===item?"border-[#2497ff] bg-[#0b3154] text-[#9bd3ff]":"border-[#18365f] bg-[#071426] text-[#b7c9da]")}><Gamepad2 size={16} className="mr-2 inline"/>{item}{game===item?<Check size={14} className="float-right mt-0.5"/>:null}</button>)}</div></div>
+        <div className="rounded-2xl border border-[#18365f] bg-[#071426] p-4">
+          <p className="text-xs font-bold text-[#9bb1c5]">Ready Player Settings</p>
+          <p className="mt-1 text-[11px] leading-5 text-[#7892ac]">These values appear on your Ready Player card and relevant player discovery surfaces.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block"><span className="mb-2 block text-[11px] font-bold text-[#9bb1c5]">Gaming Team</span><input value={gamingTeam} onChange={e=>setGamingTeam(e.target.value)} maxLength={60} placeholder="e.g. Chelsea XI" className="w-full rounded-xl border border-[#18365f] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#2497ff]"/></label>
+            <label className="block"><span className="mb-2 block text-[11px] font-bold text-[#9bb1c5]">Player Rating</span><input value={playerRating} onChange={e=>setPlayerRating(e.target.value.replace(/\D/g,"").slice(0,2))} inputMode="numeric" maxLength={2} placeholder="1–99" className="w-full rounded-xl border border-[#18365f] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#2497ff]"/></label>
+            <label className="block sm:col-span-2"><span className="mb-2 block text-[11px] font-bold text-[#9bb1c5]">Squad Formation</span><select value={formation} onChange={e=>setFormation(e.target.value)} className="w-full rounded-xl border border-[#18365f] bg-[#061426] px-3 py-3 text-sm text-white"><option value="">Select formation</option>{["4-3-3","4-2-3-1","4-4-2","4-3-2-1","4-1-4-1","3-5-2","3-4-3"].map(item=><option key={item} value={item}>{item}</option>)}</select></label>
+          </div>
+        </div>
         <div className="rounded-2xl border border-[#18365f] bg-[#071426] p-4"><p className="text-xs font-bold text-[#9bb1c5]">Email / Gmail</p><p className="mt-1 break-all text-sm text-white">{email || "Not available"}</p><p className="mt-1 text-[11px] text-[#7892ac]">Email is managed by authentication and cannot be changed here.</p></div>
       </div>
       <button type="button" disabled={saving} onClick={()=>void saveProfile()} className="mt-6 w-full rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3.5 text-sm font-black text-white shadow-[0_10px_28px_rgba(36,151,255,.2)] disabled:opacity-60">{saving?"Saving…":"Save Changes"}</button>
