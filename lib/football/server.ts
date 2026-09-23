@@ -145,9 +145,7 @@ function sortSearchMatches(matches: FootballMatch[], now = Date.now()) {
   return [...matches].sort((a, b) => {
     if (a.status.live !== b.status.live) return a.status.live ? -1 : 1;
     if (a.status.finished !== b.status.finished) return a.status.finished ? 1 : -1;
-    if (a.status.finished && b.status.finished) {
-      return new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime();
-    }
+    if (a.status.finished && b.status.finished) return new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime();
     return rankMatch(b, now) - rankMatch(a, now);
   });
 }
@@ -166,9 +164,7 @@ export async function getFeaturedMatches() {
   const today = dateOnly(new Date(now));
   const tomorrow = dateOnly(new Date(now + 86400000));
   const horizon = now + 10 * 3600000;
-  const cachedUseful = Array.from(cached.values())
-    .map(entry => entry.match)
-    .filter(match => (match.status.live || (!match.status.finished && new Date(match.startsAt).getTime() <= horizon)) && new Date(match.startsAt).getTime() >= now - 3 * 3600000);
+  const cachedUseful = Array.from(cached.values()).map(entry => entry.match).filter(match => (match.status.live || (!match.status.finished && new Date(match.startsAt).getTime() <= horizon)) && new Date(match.startsAt).getTime() >= now - 3 * 3600000);
   const cacheFresh = Array.from(cached.values()).some(entry => entry.fetchedAt > now - 120000);
   if (cacheFresh && cachedUseful.length) return cachedUseful.sort((a, b) => rankMatch(b, now) - rankMatch(a, now)).slice(0, 20);
 
@@ -199,40 +195,24 @@ export async function searchMatches(query: string) {
   const clean = query.trim().slice(0, 80);
   if (clean.length < 3) return [];
 
-  const searchTerms = Array.from(new Set(
-    clean
-      .split(/\s+(?:vs|v|versus)\s+|\s+-\s+/i)
-      .map(term => term.trim())
-      .filter(Boolean),
-  ));
-
+  const searchTerms = Array.from(new Set(clean.split(/\s+(?:vs|v|versus)\s+|\s+-\s+/i).map(term => term.trim()).filter(Boolean)));
   const teamResults = await Promise.all(searchTerms.map(term => providerGet("/teams", { search: term })));
-  const teamCandidates = teamResults
-    .flat()
-    .map((item: any) => item?.team)
-    .filter((team: any) => Number.isFinite(Number(team?.id)) && team?.name)
-    .map((team: any) => ({
-      id: Number(team.id),
-      name: String(team.name),
-      code: String(team.code || ""),
-    }));
-
+  const teamCandidates = teamResults.flat().map((item: any) => item?.team).filter((team: any) => Number.isFinite(Number(team?.id)) && team?.name).map((team: any) => ({ id: Number(team.id), name: String(team.name), code: String(team.code || "") }));
   const normalizedTerms = searchTerms.map(normalizeSearchText).filter(Boolean);
   const uniqueTeams = Array.from(new Map(teamCandidates.map(team => [team.id, team])).values());
   const rankedTeams = uniqueTeams.sort((a, b) => {
     const aName = normalizeSearchText(a.name);
     const bName = normalizeSearchText(b.name);
-    const aExact = normalizedTerms.some(term => aName === term) ? 100 : 0;
-    const bExact = normalizedTerms.some(term => bName === term) ? 100 : 0;
-    const aStarts = normalizedTerms.some(term => aName.startsWith(term)) ? 20 : 0;
-    const bStarts = normalizedTerms.some(term => bName.startsWith(term)) ? 20 : 0;
-    return (bExact + bStarts) - (aExact + aStarts);
+    const aScore = normalizedTerms.some(term => aName === term) ? 100 : normalizedTerms.some(term => aName.startsWith(term)) ? 20 : 0;
+    const bScore = normalizedTerms.some(term => bName === term) ? 100 : normalizedTerms.some(term => bName.startsWith(term)) ? 20 : 0;
+    return bScore - aScore;
   });
 
-  // Do not scope fixture retrieval by league, country, season, competition, or round.
-  // Team IDs are global across competitions, so every competition involving a matched
-  // team remains eligible for the search.
-  const teamIds = rankedTeams.map(team => team.id).slice(0, 12);
+  // No league, country, season, competition, round, or popular-league filter is used.
+  // A team ID is global across competitions, so its fixtures remain searchable everywhere.
+  // The small team-candidate cap prevents ambiguous searches such as "Manchester" from
+  // consuming the daily API quota while still covering the principal matching clubs.
+  const teamIds = rankedTeams.map(team => team.id).slice(0, 4);
   if (!teamIds.length) return [];
 
   const now = Date.now();
@@ -240,40 +220,23 @@ export async function searchMatches(query: string) {
   const today = dateOnly(new Date(now));
   const sevenDaysAgo = dateOnly(new Date(pastBoundary));
 
-  const fixtureGroups = await Promise.all(teamIds.map(async teamId => {
-    const results: any[] = [];
-
-    // Primary recent lookup: team + last returns recent fixtures across competitions
-    // without requiring a league or season. This avoids relying on provider date-window
-    // behavior for the seven-day history requirement.
+  // Use the provider's team-recent endpoint first. This is deliberately independent of
+  // date-window behavior and returns fixtures across the team's competitions.
+  const recentGroups = await Promise.all(teamIds.map(async teamId => {
     try {
-      results.push(...await providerGet("/fixtures", { team: teamId, last: 20, timezone: "UTC" }));
+      const recent = await providerGet("/fixtures", { team: teamId, last: 20, timezone: "UTC" });
+      if (recent.length) return recent;
     } catch (error) {
       console.error(`[football] recent team fixtures lookup failed for team ${teamId}`, error);
     }
 
-    // Secondary exact-window lookup. This catches a match inside the seven-day window
-    // even if the team's recent list is unusual or the provider has returned stale data.
+    // Fallback only when the provider returns no recent fixtures. Still no league filter.
     try {
-      results.push(...await providerGet("/fixtures", {
-        team: teamId,
-        from: sevenDaysAgo,
-        to: today,
-        timezone: "UTC",
-      }));
+      return await providerGet("/fixtures", { team: teamId, from: sevenDaysAgo, to: today, timezone: "UTC" });
     } catch (error) {
       console.error(`[football] seven-day team fixture lookup failed for team ${teamId}`, error);
+      return [];
     }
-
-    // Live lookup is deliberately global across all leagues. It is filtered locally
-    // by the resolved team IDs, so no competition is excluded from live search.
-    try {
-      results.push(...await providerGet("/fixtures", { live: "all" }));
-    } catch (error) {
-      console.error(`[football] live fixture lookup failed for team ${teamId}`, error);
-    }
-
-    return results;
   }));
 
   const upcomingGroups = await Promise.all(teamIds.map(async teamId => {
@@ -285,18 +248,26 @@ export async function searchMatches(query: string) {
     }
   }));
 
+  // One global live request covers every competition. Never request live scores by a
+  // hard-coded league list. Filter the global response locally by the resolved team IDs.
+  let liveMatches: any[] = [];
+  try {
+    liveMatches = await providerGet("/fixtures", { live: "all" });
+  } catch (error) {
+    console.error("[football] global live fixture lookup failed", error);
+  }
+
   const resolvedTeamIds = new Set(teamIds);
   const normalizedQuery = normalizeSearchText(clean);
   const queryWords = normalizedTerms.flatMap(term => term.split(" ")).filter(Boolean);
   const matches = new Map<string, FootballMatch>();
 
-  [...fixtureGroups.flat(), ...upcomingGroups.flat()].forEach((raw: any) => {
+  [...recentGroups.flat(), ...upcomingGroups.flat(), ...liveMatches].forEach((raw: any) => {
     const match = normalize(raw);
     const start = new Date(match.startsAt).getTime();
     const homeId = match.home.id ?? -1;
     const awayId = match.away.id ?? -1;
-    const involvesResolvedTeam = resolvedTeamIds.has(homeId) || resolvedTeamIds.has(awayId);
-    if (!involvesResolvedTeam) return;
+    if (!resolvedTeamIds.has(homeId) && !resolvedTeamIds.has(awayId)) return;
 
     const homeName = normalizeSearchText(match.home.name);
     const awayName = normalizeSearchText(match.away.name);
@@ -307,9 +278,7 @@ export async function searchMatches(query: string) {
     const isLive = match.status.live;
     const isUpcoming = !match.status.finished && start >= now;
 
-    if ((directTeamNameMatch || wordMatch || fixtureText.includes(normalizedQuery)) && (isRecentFinished || isLive || isUpcoming)) {
-      matches.set(match.fixtureId, match);
-    }
+    if ((directTeamNameMatch || wordMatch || fixtureText.includes(normalizedQuery)) && (isRecentFinished || isLive || isUpcoming)) matches.set(match.fixtureId, match);
   });
 
   const result = sortSearchMatches(Array.from(matches.values()), now).slice(0, 20);
