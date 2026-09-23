@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Search, Trophy, Vote, MessageCircle, Radio } from "lucide-react";
+import { Search, Vote, MessageCircle, Radio } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
 export type FootballMatch = {
