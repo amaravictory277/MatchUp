@@ -16,7 +16,11 @@ export async function POST(request: NextRequest) {
     const fixtureId = String(body?.fixtureId || "").trim();
     if (!fixtureId || !/^\d{1,20}$/.test(fixtureId)) return NextResponse.json({ error: "Invalid fixture." }, { status: 400 });
 
-    await getMatchById(fixtureId, true);
+    const match = await getMatchById(fixtureId, true);
+    if (match.status.finished) {
+      return NextResponse.json({ error: "Finished matches only show their final score." }, { status: 409 });
+    }
+
     const roomId = await callSupabaseRpc<string>(accessToken, "get_or_create_match_room", { p_fixture_id: fixtureId });
     return NextResponse.json({ roomId, fixtureId });
   } catch (error) {
