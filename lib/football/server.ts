@@ -243,7 +243,7 @@ export type FootballSearchResult = {
 };
 
 function parseDateOnly(value: string) {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   if (
@@ -274,7 +274,7 @@ function defaultSearchRange() {
 
 function searchQueryParts(value: string) {
   return value
-    .split(/\\s+(?:vs|v|versus)\\s+|\\s+-\\s+/i)
+    .split(/\s+(?:vs|v|versus)\s+|\s+-\s+/i)
     .map(term => term.trim())
     .filter(Boolean)
     .slice(0, 2);
@@ -353,7 +353,7 @@ export async function searchMatches(options: FootballSearchOptions): Promise<Foo
   let from = parseDateOnly(options.from) || defaults.from;
   let to = parseDateOnly(options.to) || defaults.to;
 
-  const dateInQuery = query.match(/\\b\\d{4}-\\d{2}-\\d{2}\\b/)?.[0];
+  const dateInQuery = query.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
   if (dateInQuery && parseDateOnly(dateInQuery)) {
     from = dateInQuery;
     to = dateInQuery;
@@ -366,7 +366,7 @@ export async function searchMatches(options: FootballSearchOptions): Promise<Foo
     throw new Error("The selected football search date range is invalid.");
   }
 
-  if (/^\\d{1,20}$/.test(query)) {
+  if (/^\d{1,20}$/.test(query)) {
     const result = await providerGetPage("/fixtures", { id: query, timezone });
     return {
       matches: result.rows.map(normalize),
