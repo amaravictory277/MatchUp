@@ -18,6 +18,7 @@ import { MatchUpAvatar } from "./ui/matchup-avatar";
 import { FeedSwipeCard } from "./feeds/feed-swipe-card";
 import { ProfileDiscoveryCard } from "./home/profile-discovery-card";
 import { TournamentSwipeCard } from "./home/tournament-swipe-card";
+import { LiveFootballHomeFeature } from "./home/live-football-feature";
 import { createBrowserSupabaseClient } from "../lib/supabase/client";
 import type { Author, Post } from "./feeds/data";
 
@@ -645,25 +646,7 @@ export function HomeApp() {
     <main className="app-shell pb-28">
       <Navigation />
 
-      <section className="hero relative overflow-hidden rounded-[30px] px-5 py-7 sm:px-8 sm:py-9">
-        <div className="relative z-10 max-w-[620px]">
-          <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
-          <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">
-            Find your next <span className="hero-gradient">competition.</span>
-          </h1>
-          <p className="mt-4 max-w-[520px] text-sm leading-6 text-[#c8d9e9] sm:text-base">
-            Create, discover and run competitive football tournaments—all in one match-ready place.
-          </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <Link href="/tournaments/new" className="hero-button inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-black text-white">
-              <Trophy size={16} />Create Tournament
-            </Link>
-            <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white transition hover:border-[#47a8ff]">
-              <Search size={16} />Find Tournament
-            </Link>
-          </div>
-        </div>
-      </section>
+      <LiveFootballHomeFeature />
 
       <section className="mt-8">
         <SectionHeading eyebrow="Competition" title="Featured Tournaments" description="A quick look at public MatchUp competitions." href="/tournaments" />
