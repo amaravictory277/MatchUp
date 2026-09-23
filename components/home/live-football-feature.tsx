@@ -325,12 +325,20 @@ export function LiveFootballHomeFeature() {
       timezone,
       page: String(page),
     });
-    const response = await fetch(`/api/football/matches?${params.toString()}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => ({}));
+    let response: Response;
+    let payload: any = {};
+    try {
+      response = await fetch(`/api/football/matches?${params.toString()}`, { cache: "no-store" });
+      payload = await response.json().catch(() => ({}));
+    } catch {
+      setSearching(false);
+      setError("We couldn't reach the football search service right now. Please try again.");
+      return;
+    }
     setSearching(false);
 
     if (!response.ok || payload.providerUnavailable) {
-      setError("We couldn't search for that match right now. Please try again.");
+      setError(payload.error || "We couldn't search for that match right now. Please try again.");
       return;
     }
 
