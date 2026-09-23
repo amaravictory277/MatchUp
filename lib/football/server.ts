@@ -208,19 +208,43 @@ export async function searchMatches(query: string) {
   const pastBoundary = now - 7 * 24 * 60 * 60 * 1000;
   const today = dateOnly(new Date(now));
   const sevenDaysAgo = dateOnly(new Date(pastBoundary));
+
+  // Prefer the exact date window, but also use the provider's team `last` endpoint
+  // as a fallback. Some provider responses/plans can return an empty date-window
+  // result even though the team's recent fixtures are available through `last`.
+  // This keeps the MatchUp search reliable without expanding the normal query.
   const fixtureGroups = await Promise.all(teamIds.map(async teamId => {
-    // Query the exact seven-day window directly instead of relying on `last=10`.
-    // This guarantees that a finished match from any of the previous seven days
-    // is available even when the team has several fixtures around the window.
-    return providerGet("/fixtures", {
-      team: teamId,
-      from: sevenDaysAgo,
-      to: today,
-      timezone: "UTC",
-    });
+    let recent: any[] = [];
+    try {
+      recent = await providerGet("/fixtures", {
+        team: teamId,
+        from: sevenDaysAgo,
+        to: today,
+        timezone: "UTC",
+      });
+    } catch (error) {
+      console.error(`[football] seven-day fixture lookup failed for team ${teamId}`, error);
+    }
+
+    if (!recent.length) {
+      try {
+        recent = await providerGet("/fixtures", { team: teamId, last: 20 });
+      } catch (error) {
+        console.error(`[football] recent fixture fallback failed for team ${teamId}`, error);
+      }
+    }
+
+    return recent;
   }));
 
-  const upcomingGroups = await Promise.all(teamIds.map(teamId => providerGet("/fixtures", { team: teamId, next: 10 })));
+  const upcomingGroups = await Promise.all(teamIds.map(async teamId => {
+    try {
+      return await providerGet("/fixtures", { team: teamId, next: 10 });
+    } catch (error) {
+      console.error(`[football] upcoming fixture lookup failed for team ${teamId}`, error);
+      return [];
+    }
+  }));
 
   const matches = new Map<string, FootballMatch>();
   [...fixtureGroups.flat(), ...upcomingGroups.flat()].forEach((raw: any) => {
