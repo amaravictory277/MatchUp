@@ -16,6 +16,9 @@ export type HomePerson = {
   country: string | null;
   bio: string | null;
   supported_game?: string | null;
+  gaming_team_name?: string | null;
+  player_rating?: number | null;
+  squad_formation?: string | null;
   is_verified?: boolean;
   followerCount?: number;
   postCount?: number;
@@ -258,9 +261,12 @@ export function ProfileDiscoveryCard({
           <img src="/matchup-logo.svg" alt="" className="absolute left-1/2 top-[48%] w-[150px] -translate-x-1/2 -translate-y-1/2 opacity-[.13] sm:w-[175px]" />
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#061426] to-transparent" />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-            <span className="rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.15em] text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
-              MatchUp Player
-            </span>
+            {(profile.player_rating != null || profile.gaming_team_name) ? (
+              <span className="max-w-[46%] rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
+                {profile.player_rating != null ? <span className="font-black">OVR {profile.player_rating}</span> : null}
+                {profile.gaming_team_name ? <span className={profile.player_rating != null ? "ml-2 truncate" : "truncate"}>{profile.gaming_team_name}</span> : null}
+              </span>
+            ) : <span aria-hidden="true" className="size-1" />}
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#2d78b9]/80 bg-[#0a2a48]/90 px-3 py-1.5 text-[9px] font-black text-[#d7efff] shadow-[0_8px_20px_rgba(0,0,0,.18)]">
               <Gamepad2 size={14} />Football
             </span>
@@ -289,9 +295,7 @@ export function ProfileDiscoveryCard({
                 <h3 className="max-w-full break-words text-[17px] font-black leading-[1.05] tracking-[-.025em] text-white sm:text-[19px]">
                   {name}
                 </h3>
-                <p className="mt-0.5 text-[11px] font-semibold text-[#a8c2d9] sm:text-[12px]">
-                  {profile.country || "Country not set"}
-                </p>
+                {profile.country ? <p className="mt-0.5 text-[11px] font-semibold text-[#a8c2d9] sm:text-[12px]">{profile.country}</p> : null}
               </div>
             </div>
 
@@ -315,7 +319,7 @@ export function ProfileDiscoveryCard({
             </div>
           </div>
 
-          <div className="mt-2 rounded-[17px] border border-[#245b91]/55 bg-[#08203a]/55 p-1.5 sm:mt-2.5">
+          <div className="mt-3.5 rounded-[17px] border border-[#245b91]/55 bg-[#08203a]/55 p-1.5 sm:mt-4">
             <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-2 sm:grid-cols-[minmax(0,1fr)_56px] sm:gap-2.5">
               <button
                 type="button"
