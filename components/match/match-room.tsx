@@ -59,6 +59,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [voteState, setVoteState] = useState({ home: 0, away: 0, total: 0, myVote: null as "home" | "away" | null });
 
   const load = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -89,6 +90,11 @@ export function MatchRoom({ roomId }: { roomId: string }) {
       return;
     }
 
+    const { data: voteRows } = await supabase.from("football_match_votes").select("user_id,team").eq("fixture_id", (room as any).fixture_id);
+    const voteHome = (voteRows || []).filter((row:any) => row.team === "home").length;
+    const voteAway = (voteRows || []).filter((row:any) => row.team === "away").length;
+    const voteMine = (voteRows || []).find((row:any) => row.user_id === auth.user.id)?.team || null;
+    setVoteState({ home: voteHome, away: voteAway, total: voteHome + voteAway, myVote: voteMine as "home" | "away" | null });
     setMuted(Boolean(member.muted));
     setCustomName(settings?.custom_name || "");
     setRenameValue(settings?.custom_name || (room as any).canonical_name || "");
@@ -193,7 +199,11 @@ export function MatchRoom({ roomId }: { roomId: string }) {
             <div className="text-center"><p className="text-[8px] font-black uppercase tracking-[.14em] text-[#70c1ff]">{match.league.name}</p><p className="mt-1 text-[9px] font-black text-[#7892ac]">VS</p></div>
             <div className="min-w-0 flex-1 text-center"><img src={match.away.logo || ""} alt="" className="mx-auto size-9 object-contain"/><p className="mt-1 truncate text-[10px] font-black">{match.away.name}</p><p className="mt-1 text-2xl font-black">{match.away.score ?? "—"}</p></div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => void vote("home")} className="rounded-xl border border-[#214a78] bg-[#071426] px-2 py-2.5 text-[10px] font-black text-[#bfe3ff]">Vote {match.home.name}</button><button type="button" onClick={() => void vote("away")} className="rounded-xl border border-[#214a78] bg-[#071426] px-2 py-2.5 text-[10px] font-black text-[#ffb5bf]">Vote {match.away.name}</button></div>
+          <div className="mt-3 rounded-xl border border-[#173f68] bg-[#061426] p-2.5">
+            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.08em]"><span className="text-[#70c1ff]">{voteState.total ? Math.round(voteState.home / voteState.total * 100) : 0}% {match.home.name}</span><span className="text-[#ff9ca9]">{voteState.total ? Math.round(voteState.away / voteState.total * 100) : 0}% {match.away.name}</span></div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#ff657b]"><div className="h-full bg-[#70c1ff]" style={{width: `${voteState.total ? Math.round(voteState.home / voteState.total * 100) : 0}%`}} /></div>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => void vote("home")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black ${voteState.myVote === "home" ? "border-[#70c1ff] bg-[#0b3154]" : "border-[#214a78] bg-[#071426]"} text-[#bfe3ff]`}>Vote {match.home.name}</button><button type="button" onClick={() => void vote("away")} className={`rounded-xl border px-2 py-2.5 text-[10px] font-black ${voteState.myVote === "away" ? "border-[#ff8797] bg-[#341b2a]" : "border-[#214a78] bg-[#071426]"} text-[#ffb5bf]`}>Vote {match.away.name}</button></div>
         </div>
       </header>
 
