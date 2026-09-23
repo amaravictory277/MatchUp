@@ -16,6 +16,28 @@ export type FootballMatch = {
 };
 
 type VoteState = { home: number; away: number; total: number; myVote: "home" | "away" | null };
+type DatePreset = "previous7" | "today" | "next7" | "next30" | "custom";
+
+function localDateString(date = new Date()) {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
+}
+
+function shiftDate(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function searchDateRange(preset: DatePreset, customFrom: string, customTo: string) {
+  const today = new Date();
+  const todayString = localDateString(today);
+  if (preset === "previous7") return { from: localDateString(shiftDate(today, -7)), to: todayString };
+  if (preset === "today") return { from: todayString, to: todayString };
+  if (preset === "next7") return { from: todayString, to: localDateString(shiftDate(today, 7)) };
+  if (preset === "next30") return { from: todayString, to: localDateString(shiftDate(today, 30)) };
+  return { from: customFrom, to: customTo };
+}
 
 function statusLabel(match: FootballMatch) {
   if (match.status.live) return match.status.elapsed ? `LIVE · ${match.status.elapsed}'` : "LIVE";
@@ -199,6 +221,11 @@ export function LiveFootballHomeFeature() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [datePreset, setDatePreset] = useState<DatePreset>("next30");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [searchPage, setSearchPage] = useState(1);
+  const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false);
 
   const loadVotes = useCallback(async (items: FootballMatch[]) => {
     const liveOrUpcoming = items.filter(item => !item.status.finished);
@@ -277,22 +304,51 @@ export function LiveFootballHomeFeature() {
     }));
   };
 
-  const search = async () => {
+  const requestSearch = async (page = 1, append = false) => {
     if (query.trim().length < 3) {
       setError("Enter at least 3 characters to search for a match.");
       return;
     }
+
+    const range = searchDateRange(datePreset, customFrom, customTo);
+    if (!range.from || !range.to || range.from > range.to) {
+      setError("Choose a valid custom date range.");
+      return;
+    }
+
     setSearching(true);
-    const response = await fetch(`/api/football/matches?search=${encodeURIComponent(query.trim())}`, { cache: "no-store" });
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const params = new URLSearchParams({
+      search: query.trim(),
+      from: range.from,
+      to: range.to,
+      timezone,
+      page: String(page),
+    });
+    const response = await fetch(`/api/football/matches?${params.toString()}`, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     setSearching(false);
-    if (!response.ok) {
+
+    if (!response.ok || payload.providerUnavailable) {
       setError("We couldn't search for that match right now. Please try again.");
       return;
     }
-    setMatches(payload.matches || []);
-    await loadVotes(payload.matches || []);
-    setError(payload.matches?.length ? "" : "No live, upcoming, or recent fixture matched that search.");
+
+    const nextMatches = Array.isArray(payload.matches) ? payload.matches : [];
+    setMatches(current => append ? [...current, ...nextMatches.filter((match: FootballMatch) => !current.some(item => item.fixtureId === match.fixtureId))] : nextMatches);
+    setSearchPage(page);
+    setHasMoreSearchResults(Boolean(payload.hasMore));
+    await loadVotes(append ? [...matches, ...nextMatches] : nextMatches);
+    setError(nextMatches.length || append ? "" : "No fixture matched that team, competition, opponent, or date range.");
+  };
+
+  const search = async () => {
+    await requestSearch(1, false);
+  };
+
+  const loadMoreSearchResults = async () => {
+    if (!hasMoreSearchResults || searching) return;
+    await requestSearch(searchPage + 1, true);
   };
 
   const openSearch = () => {
@@ -315,9 +371,56 @@ export function LiveFootballHomeFeature() {
 
         {showSearch ? (
           <div className="mb-4 rounded-2xl border border-[#214a78] bg-[#071426] p-3">
-            <div className="flex gap-2">
-              <input id="matchup-match-search" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void search(); }} placeholder="Search a team or fixture…" className="min-w-0 flex-1 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#47a8ff]" />
-              <button type="button" disabled={searching} onClick={() => void search()} className="rounded-xl bg-[#167bd1] px-4 text-xs font-black text-white disabled:opacity-60">{searching ? "Searching…" : "Search"}</button>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input
+                  id="matchup-match-search"
+                  value={query}
+                  onChange={event => setQuery(event.target.value)}
+                  onKeyDown={event => { if (event.key === "Enter") void search(); }}
+                  placeholder="Team, opponent, competition, match or date…"
+                  className="min-w-0 flex-1 rounded-xl border border-[#214a78] bg-[#061426] px-3 py-3 text-sm text-white outline-none focus:border-[#47a8ff]"
+                />
+                <button type="button" disabled={searching} onClick={() => void search()} className="rounded-xl bg-[#167bd1] px-4 text-xs font-black text-white disabled:opacity-60">
+                  {searching ? "Searching…" : "Search"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {([
+                  ["previous7", "Previous 7 Days"],
+                  ["today", "Today"],
+                  ["next7", "Next 7 Days"],
+                  ["next30", "Next 30 Days"],
+                  ["custom", "Custom Range"],
+                ] as Array<[DatePreset, string]>).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setDatePreset(value)}
+                    className={`rounded-xl border px-2 py-2 text-[10px] font-black transition ${datePreset === value ? "border-[#70c1ff] bg-[#0b3154] text-white" : "border-[#214a78] bg-[#061426] text-[#9fb6cc]"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {datePreset === "custom" ? (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <label className="text-[10px] font-black uppercase tracking-[.12em] text-[#7892ac]">
+                    From
+                    <input type="date" value={customFrom} onChange={event => setCustomFrom(event.target.value)} className="mt-1 w-full rounded-xl border border-[#214a78] bg-[#061426] px-3 py-2.5 text-sm font-medium normal-case tracking-normal text-white outline-none" />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-[.12em] text-[#7892ac]">
+                    To
+                    <input type="date" value={customTo} onChange={event => setCustomTo(event.target.value)} className="mt-1 w-full rounded-xl border border-[#214a78] bg-[#061426] px-3 py-2.5 text-sm font-medium normal-case tracking-normal text-white outline-none" />
+                  </label>
+                </div>
+              ) : null}
+
+              <p className="text-[10px] leading-4 text-[#7892ac]">
+                Search runs against the football provider using team, opponent, competition and date-range parameters. Results are not limited to fixtures already loaded on this page.
+              </p>
             </div>
           </div>
         ) : null}
@@ -325,22 +428,34 @@ export function LiveFootballHomeFeature() {
         {error ? <div role="status" className="mb-4 rounded-2xl border border-[#6b3341] bg-[#24151a] px-4 py-3 text-sm font-bold text-[#ffb2bc]">{error}</div> : null}
 
         {matches.length ? (
-          <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2">
-            {matches.map(match => (
-              <LiveMatchCard
-                key={match.fixtureId}
-                match={match}
-                voteState={votes[match.fixtureId] || { home: 0, away: 0, total: 0, myVote: null }}
-                onVote={vote}
-                onRoom={openRoom}
-              />
-            ))}
-          </div>
+          <>
+            <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2">
+              {matches.map(match => (
+                <LiveMatchCard
+                  key={match.fixtureId}
+                  match={match}
+                  voteState={votes[match.fixtureId] || { home: 0, away: 0, total: 0, myVote: null }}
+                  onVote={vote}
+                  onRoom={openRoom}
+                />
+              ))}
+            </div>
+            {showSearch && hasMoreSearchResults ? (
+              <button
+                type="button"
+                disabled={searching}
+                onClick={() => void loadMoreSearchResults()}
+                className="mx-auto mt-3 block rounded-full border border-[#214a78] bg-[#071426] px-5 py-2.5 text-[11px] font-black text-[#bfe3ff] disabled:opacity-60"
+              >
+                {searching ? "Loading…" : "Load More Matches"}
+              </button>
+            ) : null}
+          </>
         ) : (
           <div className="rounded-[24px] border border-dashed border-[#214a78] bg-[#071426] p-7 text-center">
             <Vote className="mx-auto text-[#70c1ff]" size={23}/>
-            <p className="mt-3 font-black text-white">No live or upcoming matches available</p>
-            <p className="mt-1 text-sm leading-5 text-[#7892ac]">Check back soon for live fixtures and upcoming matches.</p>
+            <p className="mt-3 font-black text-white">{showSearch ? "No matching fixtures found" : "No live or upcoming matches available"}</p>
+            <p className="mt-1 text-sm leading-5 text-[#7892ac]">{showSearch ? "Try another team, competition, opponent, fixture or date range." : "Check back soon for live fixtures and upcoming matches."}</p>
           </div>
         )}
       </section>
