@@ -34,6 +34,9 @@ type Profile = {
   supported_game?: string | null;
   is_verified?: boolean;
   ready_player_enabled?: boolean;
+  gaming_team_name?: string | null;
+  player_rating?: number | null;
+  squad_formation?: string | null;
   followerCount?: number;
   postCount?: number;
 };
@@ -159,24 +162,19 @@ function EmptyState({
 
 function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge: (id: string) => void; busy: boolean }) {
   return (
-    <article className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 sm:min-w-0">
+    <article className="min-w-[270px] rounded-[26px] border border-[#1b5a91] bg-[#071426] p-4 shadow-[0_18px_50px_rgba(0,40,90,.2)] sm:min-w-0">
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <MatchUpAvatar profile={player} size="lg" alt={nameOf(player)} className="!rounded-full" />
-          <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#071426] bg-[#2497ff]" />
-        </div>
+        <MatchUpAvatar profile={player} size="lg" alt={nameOf(player)} className="!rounded-full" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-black text-white">{nameOf(player)}</p>
-          <p className="mt-1 text-xs font-bold text-[#70c1ff]">Ready to play</p>
+          {player.gaming_team_name ? <p className="mt-1 truncate text-xs font-bold text-[#70c1ff]">{player.gaming_team_name}</p> : null}
         </div>
+        {player.player_rating != null ? <div className="grid min-w-12 place-items-center rounded-xl border border-[#47a8ff] bg-[#0b3154] px-2 py-1.5"><span className="text-[8px] font-black uppercase tracking-[.1em] text-[#70c1ff]">OVR</span><span className="text-xl font-black leading-none text-white">{player.player_rating}</span></div> : null}
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">
-          <Gamepad2 size={11} className="mr-1 inline" />{gameLabel(player.supported_game)}
-        </span>
-        <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">READY</span>
+      <div className="mt-4 rounded-2xl border border-[#214a78] bg-[#061426] p-3">
+        {player.squad_formation ? <><p className="text-[8px] font-black uppercase tracking-[.14em] text-[#70c1ff]">Formation</p><p className="mt-1 text-lg font-black text-white">{player.squad_formation}</p></> : <p className="text-xs font-bold text-[#7892ac]">Ready to challenge</p>}
       </div>
-      <button type="button" disabled={busy} onClick={()=>onChallenge(player.id)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black text-white disabled:opacity-60">
+      <button type="button" disabled={busy} onClick={()=>onChallenge(player.id)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-4 py-3 text-xs font-black text-white disabled:opacity-60">
         <Swords size={14} />{busy?"Sending…":"Challenge"}
       </button>
     </article>
@@ -248,7 +246,7 @@ export function HomeApp() {
     ] = await Promise.all([
       supabase.from("tournaments").select("id,name,description,game_title,max_players,format,prize_pool,starts_at,banner_path,status,entry_information,organizer_id,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility", "public").order("created_at", { ascending: false }).limit(40),
       supabase.from("tournament_promotions").select("tournament_id,kind,expires_at,position").order("position", { ascending: true }),
-      supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
+      supabase.from("profiles").select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,gaming_team_name,player_rating,squad_formation,created_at", { count: "exact" }).neq("id", uid || "00000000-0000-0000-0000-000000000000").order("created_at", { ascending: false }).range(0, 39),
       uid ? supabase.from("user_follows").select("following_id").eq("follower_id", uid) : Promise.resolve({ data: [] as { following_id: string }[] }),
       uid ? supabase.from("friendships").select("user_id,friend_id,status").or(`user_id.eq.${uid},friend_id.eq.${uid}`).limit(500) : Promise.resolve({ data: [] as any[] }),
       supabase.from("posts").select("id,author_id,body,created_at").order("created_at", { ascending: false }).limit(40),
@@ -326,7 +324,7 @@ export function HomeApp() {
 
       const { data: nextRows, error: nextError } = await supabase
         .from("profiles")
-        .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at")
+        .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,gaming_team_name,player_rating,squad_formation,created_at")
         .order("created_at", { ascending: false })
         .range(discoveryCursor, discoveryCursor + 39);
       if (nextError) throw nextError;
@@ -434,6 +432,9 @@ export function HomeApp() {
         supported_game: p.supported_game || null,
         is_verified: Boolean(p.is_verified),
         ready_player_enabled: true,
+        gaming_team_name: p.gaming_team_name || null,
+        player_rating: p.player_rating ?? null,
+        squad_formation: p.squad_formation || null,
       } as Profile));
     setReadyPlayers(readyRows.slice(0, 4));
 
@@ -460,7 +461,7 @@ export function HomeApp() {
         const start = peopleCursorRef.current;
         const { data, error, count } = await supabase
           .from("profiles")
-          .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,created_at", { count: "exact" })
+          .select("id,username,display_name,avatar_path,cover_media_path,cover_media_type,country,bio,supported_game,is_verified,ready_player_enabled,gaming_team_name,player_rating,squad_formation,created_at", { count: "exact" })
           .order("created_at", { ascending: false })
           .range(start, start + 39);
 
