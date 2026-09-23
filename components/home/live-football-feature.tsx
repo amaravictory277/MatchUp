@@ -210,7 +210,7 @@ export function LiveFootballHomeFeature() {
     const response = await fetch(`/api/football/matches${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      setError(payload.error || "Live football data is unavailable.");
+      setError("Live football data is unavailable right now.");
       return;
     }
     setError("");
@@ -242,7 +242,8 @@ export function LiveFootballHomeFeature() {
     }
     const { data, error: voteError } = await supabase.rpc("cast_match_vote", { p_fixture_id: fixtureId, p_team: team });
     if (voteError) {
-      setError(voteError.message);
+      console.error("[football] vote update failed", voteError);
+      setError("We couldn't update your vote right now. Please try again.");
       return;
     }
     const row = Array.isArray(data) ? data[0] : data;
@@ -259,7 +260,7 @@ export function LiveFootballHomeFeature() {
     const payload = await response.json().catch(() => ({}));
     setSearching(false);
     if (!response.ok) {
-      setError(payload.error || "Could not search football fixtures.");
+      setError("We couldn't search for that match right now. Please try again.");
       return;
     }
     setMatches(payload.matches || []);
@@ -304,7 +305,7 @@ export function LiveFootballHomeFeature() {
           <div className="rounded-[24px] border border-dashed border-[#214a78] bg-[#071426] p-7 text-center">
             <Vote className="mx-auto text-[#70c1ff]" size={23}/>
             <p className="mt-3 font-black text-white">No live or upcoming matches available</p>
-            <p className="mt-1 text-sm leading-5 text-[#7892ac]">Configure the real football provider and the latest fixtures will appear here automatically.</p>
+            <p className="mt-1 text-sm leading-5 text-[#7892ac]">Check back soon for live fixtures and upcoming matches.</p>
           </div>
         )}
       </section>
