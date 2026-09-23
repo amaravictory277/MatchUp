@@ -65,11 +65,14 @@ type Tournament = {
   venue?: string | null;
 };
 
+type GroupMember = { id: string; display_name: string | null; username: string | null; avatar_path: string | null };
 type GroupPreview = {
   id: string;
   name: string;
   image_path: string | null;
   memberCount: number;
+  members: GroupMember[];
+  joined: boolean;
 };
 
 function nameOf(p?: Profile | null) {
@@ -181,21 +184,34 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
   );
 }
 
-function GroupCard({ group }: { group: GroupPreview }) {
+function GroupCard({ group, onJoin, busy }: { group: GroupPreview; onJoin: (id: string) => void; busy: boolean }) {
   return (
-    <Link href={`/leaderboard?group=${group.id}`} className="min-w-[250px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 transition hover:border-[#47a8ff] sm:min-w-0">
-      <div className="flex items-center gap-3">
-        <MatchUpAvatar group profile={{ id: group.id, display_name: group.name, avatar_path: group.image_path, username: null }} size="lg" alt={group.name} className="!rounded-full" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-black text-white">{group.name}</p>
-          <p className="mt-1 text-xs text-[#7892ac]">{group.memberCount} {group.memberCount === 1 ? "member" : "members"}</p>
+    <article className="min-w-[280px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 transition hover:border-[#47a8ff] sm:min-w-0">
+      <Link href={`/leaderboard?group=${group.id}`} className="block">
+        <div className="flex items-start gap-3">
+          <MatchUpAvatar group profile={{ id: group.id, display_name: group.name, avatar_path: group.image_path, username: null }} size="lg" alt={group.name} className="!rounded-full" />
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex rounded-full border border-[#214a78] bg-[#0a2946] px-2 py-1 text-[9px] font-black uppercase tracking-[.1em] text-[#70c1ff]">Football Community</span>
+            <p className="mt-2 truncate font-black text-white">{group.name}</p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#7892ac]">Football community for MatchUp players.</p>
+          </div>
+          <MoreVertical size={18} className="mt-1 shrink-0 text-[#5f86a8]" aria-hidden="true" />
         </div>
+      </Link>
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center">
+          <div className="flex -space-x-2">
+            {group.members.slice(0,4).map(member => <MatchUpAvatar key={member.id} profile={member} size="sm" alt={nameOf(member as Profile)} className="border-2 border-[#071426]" />)}
+          </div>
+          <span className="ml-2 truncate text-[10px] font-black text-[#bfe3ff]">{group.memberCount} {group.memberCount === 1 ? "Member" : "Members"}</span>
+        </div>
+        {group.joined ? (
+          <Link href={`/leaderboard?group=${group.id}`} className="shrink-0 rounded-xl bg-[#167bd1] px-4 py-2.5 text-[10px] font-black text-white">Open Group</Link>
+        ) : (
+          <button type="button" disabled={busy} onClick={() => onJoin(group.id)} className="shrink-0 rounded-xl bg-[#167bd1] px-4 py-2.5 text-[10px] font-black text-white disabled:opacity-60">{busy ? "Joining…" : "Join"}</button>
+        )}
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2">
-        <span className="rounded-full border border-[#214a78] bg-[#0a2139] px-2.5 py-1 text-[10px] font-black text-[#9bd3ff]">FOOTBALL COMMUNITY</span>
-        <ArrowRight size={15} className="shrink-0 text-[#70c1ff]" />
-      </div>
-    </Link>
+    </article>
   );
 }
 
@@ -213,6 +229,7 @@ export function HomeApp() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [readyPlayers, setReadyPlayers] = useState<Profile[]>([]);
   const [groups, setGroups] = useState<GroupPreview[]>([]);
+  const [groupJoinBusy, setGroupJoinBusy] = useState("");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
   const [challengeBusy, setChallengeBusy] = useState("");
@@ -252,7 +269,7 @@ export function HomeApp() {
       supabase.from("posts").select("id,author_id,body,created_at").order("created_at", { ascending: false }).limit(40),
       supabase.rpc("get_ready_players"),
       supabase.from("chat_groups").select("id,name,image_path,kind,archived_at,created_at").eq("kind", "group").is("archived_at", null).order("created_at", { ascending: false }).limit(20),
-      supabase.from("chat_group_members").select("group_id,user_id").limit(3000),
+      supabase.from("chat_group_members").select("group_id,user_id,profiles(id,display_name,username,avatar_path)").limit(3000),
     ]);
 
     const promotions = promotionsResult.data || [];
@@ -439,9 +456,20 @@ export function HomeApp() {
     setReadyPlayers(readyRows.slice(0, 4));
 
     const memberCounts = new Map<string, number>();
-    (groupMembersResult.data || []).forEach((m: any) => memberCounts.set(m.group_id, (memberCounts.get(m.group_id) || 0) + 1));
+    const memberPreviews = new Map<string, GroupMember[]>();
+    const joinedGroups = new Set<string>();
+    (groupMembersResult.data || []).forEach((m: any) => {
+      memberCounts.set(m.group_id, (memberCounts.get(m.group_id) || 0) + 1);
+      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+      if (profile) {
+        const list = memberPreviews.get(m.group_id) || [];
+        if (list.length < 4) list.push(profile as GroupMember);
+        memberPreviews.set(m.group_id, list);
+      }
+      if (m.user_id === uid) joinedGroups.add(m.group_id);
+    });
     setGroups(((groupsResult.data || []) as any[])
-      .map((g) => ({ id: g.id, name: g.name, image_path: g.image_path, memberCount: memberCounts.get(g.id) || 0 }))
+      .map((g) => ({ id: g.id, name: g.name, image_path: g.image_path, memberCount: memberCounts.get(g.id) || 0, members: memberPreviews.get(g.id) || [], joined: joinedGroups.has(g.id) }))
       .sort((a, b) => b.memberCount - a.memberCount)
       .slice(0, 3));
 
@@ -534,6 +562,18 @@ export function HomeApp() {
         setPeople((items) => items.map((p) => p.id === id ? { ...p, following: true } : p));
       }
     }
+  };
+
+  const joinGroup = async (id: string) => {
+    if (!userId) { notify("Sign in to join groups."); return; }
+    setGroupJoinBusy(id);
+    const { error } = await supabase.rpc("join_chat_group", { p_group_id: id });
+    if (error) notify(error.message || "Could not join group.");
+    else {
+      setGroups(items => items.map(group => group.id === id ? { ...group, joined: true, memberCount: group.memberCount + 1 } : group));
+      notify("Joined group.");
+    }
+    setGroupJoinBusy("");
   };
 
   const challengeReady = async (id: string) => {
@@ -709,7 +749,7 @@ export function HomeApp() {
       <section className="mt-9">
         <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/groups" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading groups…</div> : groups.length ? (
-          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} />)}</div>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} onJoin={joinGroup} busy={groupJoinBusy === group.id} />)}</div>
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/groups" action="Open Groups" />
         )}
