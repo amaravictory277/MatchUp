@@ -191,6 +191,12 @@ export async function getMatchById(fixtureId: string, forceRefresh = false) {
   return match;
 }
 
+type ProviderResponse = {
+  errors?: unknown;
+  response?: unknown;
+  paging?: { current?: number; total?: number };
+};
+
 async function providerGetPage(path: string, params: Record<string, string | number>) {
   requireProvider();
   const url = new URL(API_BASE + path);
@@ -199,12 +205,26 @@ async function providerGetPage(path: string, params: Record<string, string | num
     headers: { "x-apisports-key": API_KEY!, accept: "application/json" },
     cache: "no-store",
   });
-  const json = await response.json().catch(() => null) as { errors?: unknown; response?: unknown[]; paging?: { total?: number } } | null;
-  if (!response.ok || !json || !Array.isArray(json.response)) {
-    const errorText = typeof json?.errors === "object" ? JSON.stringify(json.errors) : "Football provider request failed.";
-    throw new Error(errorText);
+  const json = await response.json().catch(() => null) as ProviderResponse | null;
+  const rows = Array.isArray(json?.response) ? json.response : [];
+  if (!response.ok || !json) {
+    throw new Error(formatProviderError(json?.errors, response.status));
   }
-  return { rows: json.response as any[], totalPages: Math.max(1, Number(json.paging?.total || 1)) };
+  if (json.errors && Object.keys(json.errors as Record<string, unknown>).length > 0) {
+    throw new Error(formatProviderError(json.errors, response.status));
+  }
+  return {
+    rows: rows as any[],
+    totalPages: Math.max(1, Number(json.paging?.total || 1)),
+  };
+}
+
+function formatProviderError(errors: unknown, status?: number) {
+  if (errors && typeof errors === "object") {
+    const values = Object.values(errors as Record<string, unknown>).filter(Boolean).map(String);
+    if (values.length) return values.join(" ");
+  }
+  return status ? `Football provider request failed (HTTP ${status}).` : "Football provider request failed.";
 }
 
 export type FootballSearchOptions = {
@@ -222,12 +242,42 @@ export type FootballSearchResult = {
   hasMore: boolean;
 };
 
-function validSearchDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+function parseDateOnly(value: string) {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) return null;
+  return value;
+}
+
+function validateTimezone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return value;
+  } catch {
+    return "UTC";
+  }
+}
+
+function defaultSearchRange() {
+  const today = new Date();
+  const from = new Date(today);
+  from.setUTCDate(from.getUTCDate() - 7);
+  const to = new Date(today);
+  to.setUTCDate(to.getUTCDate() + 30);
+  return { from: dateOnly(from), to: dateOnly(to) };
 }
 
 function searchQueryParts(value: string) {
-  return Array.from(new Set(value.split(/\s+(?:vs|v|versus)\s+|\s+-\s+/i).map(term => term.trim()).filter(Boolean)));
+  return value
+    .split(/\\s+(?:vs|v|versus)\\s+|\\s+-\\s+/i)
+    .map(term => term.trim())
+    .filter(Boolean)
+    .slice(0, 2);
 }
 
 function searchNameScore(name: string, query: string) {
@@ -242,70 +292,110 @@ function searchNameScore(name: string, query: string) {
 
 async function resolveSearchTeams(query: string) {
   const result = await providerGet("/teams", { search: query });
-  return Array.from(new Map(
-    result.map(item => item?.team)
-      .filter((team: any) => Number.isFinite(Number(team?.id)) && team?.name)
-      .map((team: any) => ({ id: Number(team.id), name: String(team.name) }))
-      .map(team => [team.id, team] as const)
-  ).values()).sort((a, b) => searchNameScore(b.name, query) - searchNameScore(a.name, query)).slice(0, 5);
+  return Array.from(
+    new Map(
+      result
+        .map(item => item?.team)
+        .filter((team: any) => Number.isFinite(Number(team?.id)) && team?.name)
+        .map((team: any) => [Number(team.id), { id: Number(team.id), name: String(team.name) }] as const)
+    ).values()
+  )
+    .sort((a, b) => searchNameScore(b.name, query) - searchNameScore(a.name, query))
+    .slice(0, 5);
 }
 
 async function resolveSearchLeagues(query: string) {
   const result = await providerGet("/leagues", { search: query });
-  return result.map(item => ({
-    id: Number(item?.league?.id),
-    name: String(item?.league?.name || ""),
-    seasons: Array.isArray(item?.seasons) ? item.seasons : [],
-  })).filter(league => Number.isFinite(league.id) && league.name)
+  return result
+    .map(item => ({
+      id: Number(item?.league?.id),
+      name: String(item?.league?.name || ""),
+      seasons: Array.isArray(item?.seasons) ? item.seasons : [],
+    }))
+    .filter(league => Number.isFinite(league.id) && league.name)
     .sort((a, b) => searchNameScore(b.name, query) - searchNameScore(a.name, query))
     .slice(0, 3);
 }
 
 function seasonsForSearchRange(league: any, from: string, to: string) {
-  const start = new Date(from).getTime();
-  const end = new Date(to).getTime();
-  return Array.from(new Set(
-    league.seasons.filter((season: any) => {
-      const seasonStart = season.start ? new Date(season.start).getTime() : -Infinity;
-      const seasonEnd = season.end ? new Date(season.end).getTime() : Infinity;
-      return seasonEnd >= start && seasonStart <= end;
-    }).map((season: any) => Number(season.year)).filter((year: number) => Number.isFinite(year))
-  )).slice(-4);
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T23:59:59Z`);
+  return Array.from(
+    new Set(
+      league.seasons
+        .filter((season: any) => {
+          const seasonStart = season.start ? Date.parse(`${String(season.start).slice(0, 10)}T00:00:00Z`) : -Infinity;
+          const seasonEnd = season.end ? Date.parse(`${String(season.end).slice(0, 10)}T23:59:59Z`) : Infinity;
+          return seasonEnd >= start && seasonStart <= end;
+        })
+        .map((season: any) => Number(season.year))
+        .filter((year: number) => Number.isFinite(year))
+    )
+  ).slice(-4);
+}
+
+function matchesTeamIds(match: FootballMatch, teamIds: number[]) {
+  return teamIds.length === 0 || teamIds.includes(match.home.id || -1) || teamIds.includes(match.away.id || -1);
+}
+
+function matchesHeadToHead(match: FootballMatch, teamIds: number[]) {
+  if (teamIds.length < 2) return true;
+  return (
+    (match.home.id === teamIds[0] && match.away.id === teamIds[1]) ||
+    (match.home.id === teamIds[1] && match.away.id === teamIds[0])
+  );
 }
 
 export async function searchMatches(options: FootballSearchOptions): Promise<FootballSearchResult> {
   const query = options.query.trim().slice(0, 80);
-  const page = Math.max(1, Math.min(20, Number(options.page) || 1));
-  const timezone = options.timezone || "UTC";
-  const defaultFrom = dateOnly(new Date(Date.now() - 7 * 86400000));
-  const defaultTo = dateOnly(new Date(Date.now() + 30 * 86400000));
-  let from = validSearchDate(options.from) || defaultFrom;
-  let to = validSearchDate(options.to) || defaultTo;
-  const dateInQuery = query.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
-  if (dateInQuery) {
+  const page = Math.max(1, Math.min(50, Number(options.page) || 1));
+  const timezone = validateTimezone(options.timezone?.trim() || "UTC");
+  const defaults = defaultSearchRange();
+
+  let from = parseDateOnly(options.from) || defaults.from;
+  let to = parseDateOnly(options.to) || defaults.to;
+
+  const dateInQuery = query.match(/\\b\\d{4}-\\d{2}-\\d{2}\\b/)?.[0];
+  if (dateInQuery && parseDateOnly(dateInQuery)) {
     from = dateInQuery;
     to = dateInQuery;
   }
 
-  if (query.length < 3 || from > to) return { matches: [], page, totalPages: 1, hasMore: false };
+  if (query.length < 3) {
+    return { matches: [], page, totalPages: 1, hasMore: false };
+  }
+  if (from > to) {
+    throw new Error("The selected football search date range is invalid.");
+  }
 
-  if (/^\d{4,20}$/.test(query)) {
+  if (/^\\d{1,20}$/.test(query)) {
     const result = await providerGetPage("/fixtures", { id: query, timezone });
-    return { matches: result.rows.map(normalize), page: 1, totalPages: 1, hasMore: false };
+    return {
+      matches: result.rows.map(normalize),
+      page: 1,
+      totalPages: 1,
+      hasMore: false,
+    };
   }
 
   const parts = searchQueryParts(query);
-  const teamGroups = await Promise.all(parts.slice(0, 3).map(term => resolveSearchTeams(term).catch(() => [])));
-  const teams = Array.from(new Map(teamGroups.flat().map(team => [team.id, team])).values());
+  const teamLookups = parts.length
+    ? await Promise.all(parts.map(term => resolveSearchTeams(term).catch(() => [])))
+    : [];
+  const teams = Array.from(new Map(teamLookups.flat().map(team => [team.id, team])).values());
   const selectedTeams = parts
-    .map(term => teams.filter(team => searchNameScore(team.name, term) >= 60).sort((a, b) => searchNameScore(b.name, term) - searchNameScore(a.name, term))[0])
+    .map(term => teams
+      .filter(team => searchNameScore(team.name, term) >= 60)
+      .sort((a, b) => searchNameScore(b.name, term) - searchNameScore(a.name, term))[0]
+    )
     .filter((team): team is { id: number; name: string } => Boolean(team));
+
   const leagueCandidates = await resolveSearchLeagues(query).catch(() => []);
   const matches = new Map<string, FootballMatch>();
   let totalPages = 1;
 
-  if (parts.length >= 2 && selectedTeams.length >= 2) {
-    const result = await providerGetPage("/fixtures", {
+  if (selectedTeams.length >= 2 && parts.length >= 2) {
+    const result = await providerGetPage("/fixtures/headtohead", {
       h2h: `${selectedTeams[0].id}-${selectedTeams[1].id}`,
       from,
       to,
@@ -314,34 +404,33 @@ export async function searchMatches(options: FootballSearchOptions): Promise<Foo
     });
     totalPages = Math.max(totalPages, result.totalPages);
     result.rows.map(normalize).forEach(match => matches.set(match.fixtureId, match));
-  } else if (selectedTeams.length) {
-    const results = await Promise.all(selectedTeams.slice(0, 5).map(team => providerGetPage("/fixtures", {
-      team: team.id,
+  } else if (selectedTeams.length === 1) {
+    const result = await providerGetPage("/fixtures", {
+      team: selectedTeams[0].id,
       from,
       to,
       timezone,
       page,
-    })));
-    results.forEach(result => {
-      totalPages = Math.max(totalPages, result.totalPages);
-      result.rows.map(normalize).forEach(match => matches.set(match.fixtureId, match));
     });
+    totalPages = Math.max(totalPages, result.totalPages);
+    result.rows.map(normalize).forEach(match => matches.set(match.fixtureId, match));
   }
 
   if (leagueCandidates.length) {
-    const requests = leagueCandidates.flatMap(league =>
-      seasonsForSearchRange(league, from, to).map(season =>
-        providerGetPage("/fixtures", {
-          league: league.id,
-          season,
-          from,
-          to,
-          timezone,
-          page,
-        }).catch(() => null)
+    const results = await Promise.all(
+      leagueCandidates.flatMap(league =>
+        seasonsForSearchRange(league, from, to).map(season =>
+          providerGetPage("/fixtures", {
+            league: league.id,
+            season,
+            from,
+            to,
+            timezone,
+            page,
+          }).catch(() => null)
+        )
       )
     );
-    const results = await Promise.all(requests);
     results.forEach(result => {
       if (!result) return;
       totalPages = Math.max(totalPages, result.totalPages);
@@ -355,17 +444,19 @@ export async function searchMatches(options: FootballSearchOptions): Promise<Foo
     result.rows.map(normalize).forEach(match => matches.set(match.fixtureId, match));
   }
 
-  const today = dateOnly(new Date());
-  if (today >= from && today <= to) {
+  const rangeStart = Date.parse(`${from}T00:00:00Z`);
+  const rangeEnd = Date.parse(`${to}T23:59:59Z`);
+  const liveNeeded = from <= dateOnly(new Date()) && dateOnly(new Date()) <= to;
+  if (liveNeeded) {
     try {
       const live = await providerGetPage("/fixtures", { live: "all", timezone });
       live.rows.map(normalize).forEach(match => {
-        const teamMatch = !selectedTeams.length || selectedTeams.some(team => team.id === match.home.id || team.id === match.away.id);
+        const kickoff = new Date(match.startsAt).getTime();
+        const inRequestedRange = kickoff >= rangeStart && kickoff <= rangeEnd;
+        const teamMatch = matchesTeamIds(match, selectedTeams.map(team => team.id));
         const leagueMatch = !leagueCandidates.length || leagueCandidates.some(league => league.id === match.league.id);
-        const h2hMatch = parts.length < 2 || selectedTeams.length < 2 ||
-          ((match.home.id === selectedTeams[0].id && match.away.id === selectedTeams[1].id) ||
-           (match.home.id === selectedTeams[1].id && match.away.id === selectedTeams[0].id));
-        if (teamMatch && leagueMatch && h2hMatch) matches.set(match.fixtureId, match);
+        const h2hMatch = matchesHeadToHead(match, selectedTeams.map(team => team.id));
+        if (inRequestedRange && teamMatch && leagueMatch && h2hMatch) matches.set(match.fixtureId, match);
       });
     } catch (error) {
       console.error("[football] live search supplement failed", error);
@@ -373,18 +464,15 @@ export async function searchMatches(options: FootballSearchOptions): Promise<Foo
   }
 
   let result = sortSearchMatches(Array.from(matches.values()));
-  const queryWords = normalizeSearchText(query).split(" ").filter(Boolean);
+  const normalizedQuery = normalizeSearchText(query);
+  const queryWords = normalizedQuery.split(" ").filter(Boolean);
+  const selectedTeamIds = selectedTeams.map(team => team.id);
+
   result = result.filter(match => {
-    const home = normalizeSearchText(match.home.name);
-    const away = normalizeSearchText(match.away.name);
-    const league = normalizeSearchText(match.league.name);
-    const text = `${home} ${away} ${league}`;
-    if (parts.length >= 2 && selectedTeams.length >= 2) {
-      const ids = selectedTeams.slice(0, 2).map(team => team.id);
-      return ids.includes(match.home.id || -1) && ids.includes(match.away.id || -1);
-    }
-    if (selectedTeams.length) return selectedTeams.some(team => team.id === match.home.id || team.id === match.away.id);
-    if (leagueCandidates.length) return leagueCandidates.some(leagueItem => leagueItem.id === match.league.id);
+    const text = normalizeSearchText(`${match.home.name} ${match.away.name} ${match.league.name}`);
+    if (selectedTeamIds.length >= 2 && parts.length >= 2) return matchesHeadToHead(match, selectedTeamIds);
+    if (selectedTeamIds.length === 1) return matchesTeamIds(match, selectedTeamIds);
+    if (leagueCandidates.length) return leagueCandidates.some(league => league.id === match.league.id);
     return queryWords.every(word => text.includes(word));
   });
 
