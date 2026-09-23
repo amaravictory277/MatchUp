@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Edit3, MoreVertical, Reply, Send, Smile, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, Edit3, MoreVertical, Reply, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 
@@ -174,7 +174,6 @@ export function MatchRoom({ roomId }: { roomId: string }) {
   if (loading) return <main className="grid min-h-[100dvh] place-items-center bg-[#061120] text-sm text-[#7892ac]">Loading Match Room…</main>;
   if (!match) return <main className="min-h-[100dvh] bg-[#061120] p-5 text-white"><button type="button" onClick={() => router.back()} className="icon-button"><ArrowLeft size={18}/></button><div className="mx-auto mt-16 max-w-lg rounded-3xl border border-[#214a78] bg-[#071426] p-7 text-center"><p className="font-black">Match Room unavailable</p><p className="mt-2 text-sm text-[#7892ac]">{notice}</p></div></main>;
 
-  const total = 0;
   const title = customName || canonicalName;
   return (
     <main className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#061120] text-white">
