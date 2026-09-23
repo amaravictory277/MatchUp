@@ -317,21 +317,19 @@ async function resolveSearchLeagues(query: string) {
     .slice(0, 3);
 }
 
-function seasonsForSearchRange(league: any, from: string, to: string) {
+function seasonsForSearchRange(league: any, from: string, to: string): number[] {
   const start = Date.parse(`${from}T00:00:00Z`);
   const end = Date.parse(`${to}T23:59:59Z`);
-  return Array.from(
-    new Set(
-      league.seasons
-        .filter((season: any) => {
-          const seasonStart = season.start ? Date.parse(`${String(season.start).slice(0, 10)}T00:00:00Z`) : -Infinity;
-          const seasonEnd = season.end ? Date.parse(`${String(season.end).slice(0, 10)}T23:59:59Z`) : Infinity;
-          return seasonEnd >= start && seasonStart <= end;
-        })
-        .map((season: any) => Number(season.year))
-        .filter((year: number) => Number.isFinite(year))
-    )
-  ).slice(-4);
+  const years: number[] = [];
+
+  for (const season of (Array.isArray(league?.seasons) ? league.seasons : []) as Array<{ year?: unknown; start?: unknown; end?: unknown }>) {
+    const seasonStart = season.start ? Date.parse(`${String(season.start).slice(0, 10)}T00:00:00Z`) : -Infinity;
+    const seasonEnd = season.end ? Date.parse(`${String(season.end).slice(0, 10)}T23:59:59Z`) : Infinity;
+    const year = Number(season.year);
+    if (seasonEnd >= start && seasonStart <= end && Number.isFinite(year)) years.push(year);
+  }
+
+  return Array.from(new Set(years)).sort((a, b) => a - b).slice(-4);
 }
 
 function matchesTeamIds(match: FootballMatch, teamIds: number[]) {
