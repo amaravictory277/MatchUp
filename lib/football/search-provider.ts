@@ -1,4 +1,11 @@
-import type { FootballMatch } from "./server";
+type FootballMatch = {
+  fixtureId: string;
+  league: { id: number | null; name: string; logo: string | null };
+  status: { code: string; label: string; elapsed: number | null; live: boolean; finished: boolean };
+  startsAt: string;
+  home: { id: number | null; name: string; logo: string | null; score: number | null };
+  away: { id: number | null; name: string; logo: string | null; score: number | null };
+};
 
 const API_BASE = (process.env.FOOTBALL_API_BASE_URL || "https://v3.football.api-sports.io").replace(/\/$/, "");
 const API_KEY = process.env.FOOTBALL_API_KEY;
