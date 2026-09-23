@@ -206,16 +206,24 @@ export async function searchMatches(query: string) {
 
   const now = Date.now();
   const pastBoundary = now - 7 * 24 * 60 * 60 * 1000;
+  const today = dateOnly(new Date(now));
+  const sevenDaysAgo = dateOnly(new Date(pastBoundary));
   const fixtureGroups = await Promise.all(teamIds.map(async teamId => {
-    const [lastRows, nextRows] = await Promise.all([
-      providerGet("/fixtures", { team: teamId, last: 10 }),
-      providerGet("/fixtures", { team: teamId, next: 10 }),
-    ]);
-    return [...lastRows, ...nextRows];
+    // Query the exact seven-day window directly instead of relying on `last=10`.
+    // This guarantees that a finished match from any of the previous seven days
+    // is available even when the team has several fixtures around the window.
+    return providerGet("/fixtures", {
+      team: teamId,
+      from: sevenDaysAgo,
+      to: today,
+      timezone: "UTC",
+    });
   }));
 
+  const upcomingGroups = await Promise.all(teamIds.map(teamId => providerGet("/fixtures", { team: teamId, next: 10 })));
+
   const matches = new Map<string, FootballMatch>();
-  fixtureGroups.flat().forEach((raw: any) => {
+  [...fixtureGroups.flat(), ...upcomingGroups.flat()].forEach((raw: any) => {
     const match = normalize(raw);
     const start = new Date(match.startsAt).getTime();
     const haystack = `${match.home.name} ${match.away.name} ${match.league.name}`.toLowerCase();
