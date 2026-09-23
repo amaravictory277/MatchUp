@@ -684,7 +684,7 @@ export function HomeApp() {
   const openMedia = (id: string, index: number) => router.push(`/feeds/media/${id}?index=${index}`);
 
   return (
-    <main className="app-shell pb-28">
+    <main className="app-shell min-h-[100dvh] overflow-x-clip overscroll-y-none pb-28">
       <Navigation />
 
       <LiveFootballHomeFeature />
