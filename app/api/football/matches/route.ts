@@ -11,11 +11,18 @@ export async function GET(request: NextRequest) {
 
   try {
     if (fixture) return NextResponse.json({ matches: [await getMatchById(fixture, force)] });
-    if (search) return NextResponse.json({ matches: await searchFootballMatches(search) });
+    if (search) {
+      const result = await searchFootballMatches({
+        query: search,
+        from: request.nextUrl.searchParams.get("from") || "",
+        to: request.nextUrl.searchParams.get("to") || "",
+        timezone: request.nextUrl.searchParams.get("timezone") || "UTC",
+        page: Number(request.nextUrl.searchParams.get("page") || 1),
+      });
+      return NextResponse.json(result);
+    }
     return NextResponse.json({ matches: await getFeaturedMatches() });
   } catch (error) {
-    // Keep provider details in server logs for the founder/developer. Never expose
-    // API keys, provider configuration, or infrastructure details to users.
     console.error("[football] match feed request failed", error);
     return NextResponse.json({ matches: [], providerUnavailable: true }, { status: 200 });
   }
