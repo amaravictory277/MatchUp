@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Gamepad2,
   Heart,
+  MoreVertical,
   Search,
   Swords,
   Trophy,
