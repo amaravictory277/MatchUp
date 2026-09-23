@@ -202,11 +202,15 @@ function seasonsForLeague(league: any, from: string, to: string) {
   return yearsBetween(from, to);
 }
 
-function inRequestedWindow(match: FootballMatch, from: string, to: string) {
-  const time = new Date(match.startsAt).getTime();
-  const start = new Date(`${from}T00:00:00Z`).getTime();
-  const end = new Date(`${to}T23:59:59Z`).getTime();
-  return time >= start && time <= end;
+function dateInTimezone(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function inRequestedWindow(match: FootballMatch, from: string, to: string, timezone: string) {
+  const localDate = dateInTimezone(new Date(match.startsAt), timezone);
+  return localDate >= from && localDate <= to;
 }
 
 export async function searchFootballMatches(options: FootballSearchOptions): Promise<FootballSearchResult> {
@@ -297,7 +301,7 @@ export async function searchFootballMatches(options: FootballSearchOptions): Pro
   }
 
   // Always include currently live fixtures when the requested window contains today.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateInTimezone(new Date(), timezone);
   if (today >= effectiveFrom && today <= effectiveTo) {
     try {
       const live = await providerGet("/fixtures", { live: "all", timezone });
