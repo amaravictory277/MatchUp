@@ -240,7 +240,9 @@ export async function searchFootballMatches(options: FootballSearchOptions): Pro
   ]);
 
   const uniqueTeams = Array.from(new Map(teamCandidates.map(team => [team.id, team])).values());
-  const teamByTerm = directTerms.map(term => uniqueTeams.filter(team => teamScore(team.name, term) >= 60).sort((a, b) => teamScore(b.name, term) - teamScore(a.name, term))[0]).filter(Boolean);
+  const teamByTerm = directTerms
+    .map(term => uniqueTeams.filter(team => teamScore(team.name, term) >= 60).sort((a, b) => teamScore(b.name, term) - teamScore(a.name, term))[0])
+    .filter((team): team is { id: number; name: string } => Boolean(team));
 
   const matches = new Map<string, FootballMatch>();
   let totalPages = 1;
