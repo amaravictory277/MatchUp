@@ -5,7 +5,6 @@ import { ArrowLeft, Bell, CircleUserRound, ChevronRight, Circle, IdCard, Message
 import { useRouter } from "next/navigation";
 import { EFFECTS, PERSONALIZATION_CATEGORIES, PersonalizationKey } from "./personalization-config";
 import { usePersonalization } from "./personalization-provider";
-import { ChatBubbleEffect, ChatTextEffect, NameEffect, ProfileFrame } from "./effect-renderers";
 
 const ICONS = { Type, CircleUserRound, Palette, MessageCircle, Sparkles, Swords, Trophy, IdCard, Zap, Bell };
 
