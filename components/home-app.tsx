@@ -18,6 +18,7 @@ import { Navigation } from "./navigation";
 import { MatchUpAvatar } from "./ui/matchup-avatar";
 import { usePersonalization } from "./personalization/personalization-provider";
 import { NameEffect } from "./personalization/effect-renderers";
+import { EFFECTS } from "./personalization/personalization-config";
 import { FeedSwipeCard } from "./feeds/feed-swipe-card";
 import { ProfileDiscoveryCard } from "./home/profile-discovery-card";
 import { TournamentSwipeCard } from "./home/tournament-swipe-card";
@@ -174,6 +175,7 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
         <MatchUpAvatar profile={player} size="lg" alt={nameOf(player)} className="!rounded-full" />
         <div className="min-w-0 flex-1">
           <p className="truncate font-black text-white"><NameEffect>{nameOf(player)}</NameEffect></p>
+          <span className={"mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black matchup-ready-preview--" + preferences.selected_ready_effect}>{EFFECTS.ready.find((item) => item.id === preferences.selected_ready_effect)?.name || "READY"}</span>
           {player.gaming_team_name ? <p className="mt-1 truncate text-xs font-bold text-[#70c1ff]">{player.gaming_team_name}</p> : null}
         </div>
         {player.player_rating != null ? <div className="grid min-w-12 place-items-center rounded-xl border border-[#47a8ff] bg-[#0b3154] px-2 py-1.5"><span className="text-[8px] font-black uppercase tracking-[.1em] text-[#70c1ff]">OVR</span><span className="text-xl font-black leading-none text-white">{player.player_rating}</span></div> : null}
