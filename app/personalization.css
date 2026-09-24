@@ -77,3 +77,4 @@
 @media (prefers-reduced-motion:reduce){
  .matchup-name-effect--shimmer,.matchup-name-effect--wave,.matchup-name-effect--gradient,.matchup-name-effect--pulse,.matchup-chat-animation--soft-slide,.matchup-chat-animation--fade,.matchup-chat-animation--pop,.matchup-chat-animation--glow,.matchup-chat-animation--energy,.matchup-chat-text--shimmer,.matchup-reaction-preview--blue-pulse,.matchup-ready-preview--pulse{animation:none!important}
 }
+.matchup-match-effect--vs,.matchup-match-effect--match-start{box-shadow:0 0 22px rgba(36,151,255,.18);animation:matchup-chat-glow .7s ease-out}.matchup-match-effect--victory{box-shadow:0 0 24px rgba(36,151,255,.28)}.matchup-match-effect--defeat{box-shadow:inset 0 0 0 1px rgba(255,135,151,.16)}.matchup-match-effect--result{box-shadow:0 0 20px rgba(112,193,255,.2)}
