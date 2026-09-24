@@ -4,6 +4,7 @@ import "./brand-theme.css";
 import "./ui-interaction.css";
 import "./chat-ui.css";
 import "./profile-discovery-refinement.css";
+import "./personalization.css";
 import { ServiceWorker } from "../components/service-worker";
 import { InstallPrompt } from "../components/install-prompt";
 import { PwaLaunchScreen } from "../components/pwa-launch-screen";
@@ -15,6 +16,7 @@ import { ChatVisualEnhancer } from "../components/chat/chat-visual-enhancer";
 import { ChatMetadataEnhancer } from "../components/chat/chat-metadata-enhancer";
 import { PrivateHeaderEnhancer } from "../components/chat/private-header-enhancer";
 import { MessageFriendsCardEnhancer } from "../components/chat/message-friends-card-enhancer";
+import { PersonalizationProvider } from "../components/personalization/personalization-provider";
 
 export const metadata: Metadata = {
   title: "MatchUp | Football competition platform",
@@ -37,5 +39,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}<PwaLaunchScreen/><PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
+  return <html lang="en"><body><PersonalizationProvider>{children}</PersonalizationProvider><PwaLaunchScreen/><PresenceProvider/><AuthNotice/><RequestOverlays/><RealtimeMatchOverlay/><ChatVisualEnhancer/><ChatMetadataEnhancer/><PrivateHeaderEnhancer/><MessageFriendsCardEnhancer/><ServiceWorker/><InstallPrompt/></body></html>;
 }
