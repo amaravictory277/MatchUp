@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Edit3, MoreVertical, Reply, Send, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { usePersonalization } from "../personalization/personalization-provider";
 
 type Match = {
   fixtureId: string;
@@ -43,6 +44,7 @@ function relative(value: string) {
 export function MatchRoom({ roomId }: { roomId: string }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const { preferences } = usePersonalization();
   const [userId, setUserId] = useState("");
   const [match, setMatch] = useState<Match | null>(null);
   const [canonicalName, setCanonicalName] = useState("");
@@ -193,7 +195,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
           <button type="button" onClick={() => setMenuOpen(value => !value)} className="icon-button" aria-label="Match Room options"><MoreVertical size={18}/></button>
         </div>
 
-        <div className="mt-3 rounded-2xl border border-[#1b527f] bg-[#0a2139] p-3">
+        <div className={"mt-3 rounded-2xl border border-[#1b527f] bg-[#0a2139] p-3 matchup-match-effect--" + preferences.selected_match_effect}>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1 text-center"><img src={match.home.logo || ""} alt="" className="mx-auto size-9 object-contain"/><p className="mt-1 truncate text-[10px] font-black">{match.home.name}</p><p className="mt-1 text-2xl font-black">{match.home.score ?? "—"}</p></div>
             <div className="text-center"><p className="text-[8px] font-black uppercase tracking-[.14em] text-[#70c1ff]">{match.league.name}</p><p className="mt-1 text-[9px] font-black text-[#7892ac]">VS</p></div>
