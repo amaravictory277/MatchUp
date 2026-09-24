@@ -60,7 +60,7 @@ export function ProfilePage(){
   const avatar=avatarPreview || publicAvatar(supabase,profile?.avatar_path || null);
   const displayName=profile ? nameOf(profile) : "MatchUp Player";
   const initial=displayName.charAt(0).toUpperCase();
-  const openView=(next:"edit"|"settings")=>router.push("/profile?view="+next);
+  const openView=(next:"edit"|"settings"|"personalization")=>router.push("/profile?view="+next);
   const goBack=()=>router.back();
   const selectAvatar=(file:File|null)=>{
     if(!file)return;
