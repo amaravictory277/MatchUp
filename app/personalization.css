@@ -1,0 +1,79 @@
+.matchup-name-effect{display:inline-block;position:relative;isolation:isolate}
+.matchup-name-effect--normal{color:inherit}
+.matchup-name-effect--blue-glow,.matchup-name-effect--soft-glow{color:inherit;text-shadow:0 0 12px rgba(36,151,255,.55)}
+.matchup-name-effect--shimmer,.matchup-name-effect--wave,.matchup-name-effect--gradient{background:linear-gradient(100deg,currentColor 25%,#bfe5ff 45%,currentColor 65%);background-size:220% 100%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:matchup-shimmer 3.2s linear infinite}
+.matchup-name-effect--pulse{animation:matchup-pulse 2.4s ease-in-out infinite}
+.matchup-name-effect--electric,.matchup-name-effect--neon{color:#bfe5ff;text-shadow:0 0 5px rgba(36,151,255,.8),0 0 18px rgba(36,151,255,.35)}
+.matchup-name-effect--gold,.matchup-name-effect--champion{color:#f2d58b;text-shadow:0 0 12px rgba(242,213,139,.25)}
+.matchup-name-effect--ice{color:#d8f4ff;text-shadow:0 0 12px rgba(145,224,255,.55)}
+.matchup-name-effect--fire{color:#ffd0a6;text-shadow:0 0 12px rgba(255,129,65,.45)}
+.matchup-name-effect--outline{-webkit-text-stroke:1px rgba(190,225,255,.8);color:transparent}
+.matchup-profile-frame{position:relative;display:inline-grid;place-items:center;flex:none;padding:3px;border-radius:999px}
+.matchup-profile-frame__media{position:relative;z-index:2;display:grid;place-items:center;overflow:hidden;width:100%;height:100%;border-radius:inherit;background:#0b3154}
+.matchup-profile-frame__ring{position:absolute;inset:-1px;border-radius:inherit;z-index:1;pointer-events:none;background:linear-gradient(135deg,#126bc0,#70c1ff,#126bc0);box-shadow:0 0 0 1px rgba(36,151,255,.2),0 0 18px rgba(36,151,255,.2)}
+.matchup-profile-frame--blue-glow .matchup-profile-frame__ring,.matchup-profile-frame--electric-blue .matchup-profile-frame__ring,.matchup-profile-frame--neon .matchup-profile-frame__ring,.matchup-profile-frame--lightning .matchup-profile-frame__ring{box-shadow:0 0 0 2px rgba(36,151,255,.28),0 0 22px rgba(36,151,255,.55)}
+.matchup-profile-frame--gold .matchup-profile-frame__ring,.matchup-profile-frame--championship .matchup-profile-frame__ring{background:linear-gradient(135deg,#9a6b22,#f2d58b,#a97925);box-shadow:0 0 16px rgba(242,213,139,.25)}
+.matchup-profile-frame--ice .matchup-profile-frame__ring{background:linear-gradient(135deg,#75cfff,#ecfbff,#75cfff)}
+.matchup-profile-frame--fire .matchup-profile-frame__ring{background:linear-gradient(135deg,#8b3f20,#ffad68,#8b3f20)}
+.matchup-profile-frame--diamond .matchup-profile-frame__ring{background:conic-gradient(#bfe5ff,#548ec4,#fff,#548ec4,#bfe5ff)}
+.matchup-profile-frame--rainbow .matchup-profile-frame__ring{background:conic-gradient(#6cf,#b9f,#ffb,#9f9,#6cf)}
+.matchup-profile-frame--stadium .matchup-profile-frame__ring{background:linear-gradient(90deg,#126bc0,#70c1ff,#126bc0);box-shadow:0 0 18px rgba(112,193,255,.38)}
+.matchup-profile-frame--football-net .matchup-profile-frame__ring{background:repeating-linear-gradient(45deg,#70c1ff 0 2px,#126bc0 2px 5px)}
+.matchup-profile-frame--dark-elite .matchup-profile-frame__ring{background:linear-gradient(135deg,#0b3154,#18365f,#071426)}
+.matchup-profile-frame--classic .matchup-profile-frame__ring{background:#126bc0}
+.matchup-profile-frame--electric-blue .matchup-profile-frame__ring:after,.matchup-profile-frame--lightning .matchup-profile-frame__ring:after{content:"";position:absolute;inset:8%;border-radius:inherit;border:1px solid rgba(255,255,255,.35);transform:rotate(8deg)}
+.matchup-profile-theme{border-radius:28px;padding:1px;background:#18365f}
+.matchup-profile-theme--matchup-blue{background:linear-gradient(145deg,rgba(36,151,255,.24),#18365f)}
+.matchup-profile-theme--stadium-night{background:radial-gradient(circle at 50% 0%,rgba(36,151,255,.4),#071426 65%)}
+.matchup-profile-theme--blue-energy,.matchup-profile-theme--electric{background:radial-gradient(circle at 15% 10%,rgba(36,151,255,.42),transparent 42%),linear-gradient(145deg,#0b3154,#071426)}
+.matchup-profile-theme--football-pitch{background:linear-gradient(145deg,rgba(20,125,92,.28),#071426)}
+.matchup-profile-theme--neon-arena{background:radial-gradient(circle at 50% 0%,rgba(80,160,255,.5),transparent 50%),#061221}
+.matchup-profile-theme--championship,.matchup-profile-theme--gold-elite{background:linear-gradient(145deg,rgba(242,213,139,.28),rgba(36,151,255,.18),#071426)}
+.matchup-profile-theme--midnight,.matchup-profile-theme--dark{background:#071426}
+.matchup-profile-theme--clean-sport{background:#18365f}
+.matchup-chat-bubble{display:inline-block;position:relative;border-radius:22px;border-bottom-right-radius:7px;padding:.875rem 1rem;background:#126bc0;color:#fff}
+.matchup-chat-bubble--gradient-blue{background:linear-gradient(135deg,#126bc0,#2497ff)}
+.matchup-chat-bubble--glass{background:rgba(29,83,126,.72);border:1px solid rgba(112,193,255,.25);backdrop-filter:blur(8px)}
+.matchup-chat-bubble--neon{background:#092747;border:1px solid #2497ff;box-shadow:0 0 18px rgba(36,151,255,.3)}
+.matchup-chat-bubble--dark-elite{background:#0a1b2f;border:1px solid #214a78}
+.matchup-chat-bubble--gold{background:linear-gradient(135deg,#5c481f,#8d6a2b)}
+.matchup-chat-bubble--ice{background:linear-gradient(135deg,#126bc0,#8edcff);color:#061221}
+.matchup-chat-bubble--fire{background:linear-gradient(135deg,#7d3a20,#c56a35)}
+.matchup-chat-animation--soft-slide{animation:matchup-slide-in .22s ease-out}
+.matchup-chat-animation--fade{animation:matchup-fade-in .2s ease-out}
+.matchup-chat-animation--pop{animation:matchup-pop .2s ease-out}
+.matchup-chat-animation--glow{animation:matchup-chat-glow .5s ease-out}
+.matchup-chat-animation--energy{animation:matchup-chat-energy .55s ease-out}
+.matchup-chat-text--bold{font-weight:800}
+.matchup-chat-text--soft-glow{color:#e4f5ff;text-shadow:0 0 8px rgba(112,193,255,.4)}
+.matchup-chat-text--blue-gradient{background:linear-gradient(90deg,#fff,#a7dbff);background-clip:text;-webkit-background-clip:text;color:transparent}
+.matchup-chat-text--neon{color:#dff5ff;text-shadow:0 0 8px rgba(36,151,255,.65)}
+.matchup-chat-text--shimmer{background:linear-gradient(100deg,#fff 30%,#aee0ff 50%,#fff 70%);background-size:220%;background-clip:text;-webkit-background-clip:text;color:transparent;animation:matchup-shimmer 3s linear infinite}
+.matchup-chat-text--champion{color:#f2d58b}
+.matchup-chat-text--ice{color:#e2f8ff}
+.matchup-reaction-preview,.matchup-ready-preview,.matchup-notification-preview,.matchup-tournament-preview,.matchup-player-card-preview{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.matchup-reaction-preview--blue-pulse,.matchup-ready-preview--pulse{animation:matchup-pulse 1.8s ease-in-out infinite}
+.matchup-reaction-preview--fire-burst,.matchup-reaction-preview--explosion{filter:drop-shadow(0 0 9px rgba(255,125,55,.6))}
+.matchup-reaction-preview--lightning,.matchup-ready-preview--electric{filter:drop-shadow(0 0 10px rgba(36,151,255,.7))}
+.matchup-ready-preview{display:inline-flex;align-items:center;border-radius:999px;padding:.55rem 1rem;border:1px solid #2497ff;background:#0b3154;color:#bfe5ff;font-weight:900;letter-spacing:.04em}
+.matchup-ready-preview--fire,.matchup-ready-preview--football,.matchup-ready-preview--trophy{box-shadow:0 0 16px rgba(242,140,70,.22)}
+.matchup-notification-preview{display:flex;align-items:center;gap:.75rem;border:1px solid #18365f;border-radius:18px;padding:1rem;background:#0a1b2f}
+.matchup-notification-preview--football:before{content:"⚽";font-size:1.1rem}
+.matchup-notification-preview--lightning{box-shadow:0 0 18px rgba(36,151,255,.25)}
+.matchup-notification-preview--trophy{border-color:rgba(242,213,139,.35)}
+.matchup-notification-preview--fire{border-color:rgba(255,129,65,.35)}
+.matchup-notification-preview--diamond{border-color:rgba(190,225,255,.4)}
+.matchup-tournament-preview,.matchup-player-card-preview{display:flex;align-items:center;gap:.8rem;border:1px solid #18365f;border-radius:20px;padding:1rem;background:#071426}
+.matchup-tournament-preview--championship,.matchup-player-card-preview--championship{border-color:rgba(242,213,139,.35);box-shadow:0 0 22px rgba(242,213,139,.08)}
+.matchup-tournament-preview--neon,.matchup-player-card-preview--neon{border-color:#2497ff;box-shadow:0 0 20px rgba(36,151,255,.18)}
+.matchup-tournament-preview--midnight,.matchup-player-card-preview--dark{background:#061120}
+@keyframes matchup-shimmer{to{background-position:-220% 0}}
+@keyframes matchup-pulse{50%{opacity:.78;transform:scale(1.015)}}
+@keyframes matchup-slide-in{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+@keyframes matchup-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes matchup-pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes matchup-chat-glow{50%{box-shadow:0 0 22px rgba(36,151,255,.38)}}
+@keyframes matchup-chat-energy{50%{transform:translateY(-1px);box-shadow:0 0 22px rgba(36,151,255,.32)}}
+@media (prefers-reduced-motion:reduce){
+ .matchup-name-effect--shimmer,.matchup-name-effect--wave,.matchup-name-effect--gradient,.matchup-name-effect--pulse,.matchup-chat-animation--soft-slide,.matchup-chat-animation--fade,.matchup-chat-animation--pop,.matchup-chat-animation--glow,.matchup-chat-animation--energy,.matchup-chat-text--shimmer,.matchup-reaction-preview--blue-pulse,.matchup-ready-preview--pulse{animation:none!important}
+}
