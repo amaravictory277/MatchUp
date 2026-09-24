@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { SidebarSectionCard } from "./sidebar-section-card";
+import { usePersonalization } from "../personalization/personalization-provider";
+import { ChatTextEffect } from "../personalization/effect-renderers";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 
 type Profile = {
@@ -149,6 +151,7 @@ function chatBodyError(body: string) {
 
 export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const { preferences } = usePersonalization();
   const [user, setUser] = useState<{ id: string; displayName: string }>({
     id: "",
     displayName: "You",
@@ -1573,16 +1576,16 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
                       <div className="flex max-w-[84%] flex-col items-end sm:max-w-[72%]">
                         {replyPreview}
                         <div
-                          className={`relative rounded-[22px] rounded-br-[7px] bg-[#126bc0] px-4 py-3.5 transition ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}
+                          className={`relative rounded-[22px] rounded-br-[7px] px-4 py-3.5 transition matchup-chat-bubble--${preferences.selected_chat_bubble} matchup-chat-animation--${preferences.selected_chat_animation} ${highlighted === m.id ? "ring-2 ring-[#70c1ff] shadow-[0_0_28px_rgba(36,151,255,.35)]" : ""} ${m.deleted_at ? "opacity-60" : ""}`}
                         >
                           {m.deleted_at ? (
                             <i className="text-sm">Message deleted</i>
                           ) : m.sticker_key ? (
                             <span className="text-5xl">{m.sticker_key}</span>
                           ) : (
-                            <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                            <ChatTextEffect><p className="whitespace-pre-wrap break-words text-sm leading-6">
                               {m.body}
-                            </p>
+                            </p></ChatTextEffect>
                           )}
                           {!m.pending ? (
                             <span
