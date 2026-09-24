@@ -5,6 +5,7 @@ import { useMemo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { usePersonalization } from "../personalization/personalization-provider";
 import { MatchUpImage } from "../matchup-image";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { ContentForwarder } from "../share/content-forwarder";
@@ -34,6 +35,7 @@ export function TournamentCard({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const { preferences } = usePersonalization();
   const [saved, setSaved] = useState(false);
   const [menu, setMenu] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
@@ -161,7 +163,7 @@ export function TournamentCard({
 
   return (
     <article
-      className="group relative w-full overflow-hidden rounded-[28px] bg-[#071426] text-left shadow-[0_24px_70px_rgba(0,25,55,.34)]"
+      className={"group relative w-full overflow-hidden rounded-[28px] bg-[#071426] text-left shadow-[0_24px_70px_rgba(0,25,55,.34)] matchup-tournament-preview--" + preferences.selected_tournament_theme}
       onPointerDown={swipeMode ? undefined : down}
       onPointerMove={swipeMode ? undefined : move}
       onPointerUp={swipeMode ? undefined : up}
