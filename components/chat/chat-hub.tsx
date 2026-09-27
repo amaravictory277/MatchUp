@@ -1342,7 +1342,7 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
                       </span>
                     ) : null}
                   </button>
-                  {active?.kind === "group" ? (<button
+                  {active?.kind === "group" && active.created_by === user.id ? (<button
   type="button"
   onClick={() => {
     setGroupName(active?.name || "");
