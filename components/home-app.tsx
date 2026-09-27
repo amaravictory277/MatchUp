@@ -193,7 +193,7 @@ function ReadyCard({ player, onChallenge, busy }: { player: Profile; onChallenge
 function GroupCard({ group, onJoin, busy }: { group: GroupPreview; onJoin: (id: string) => void; busy: boolean }) {
   return (
     <article className="min-w-[280px] rounded-[24px] border border-[#1b4775] bg-[#071426] p-4 transition hover:border-[#47a8ff] sm:min-w-0">
-      <Link href={`/leaderboard?group=${group.id}`} className="block">
+      <Link href={`/chat?group=${group.id}`} className="block">
         <div className="flex items-start gap-3">
           <MatchUpAvatar group profile={{ id: group.id, display_name: group.name, avatar_path: group.image_path, username: null }} size="lg" alt={group.name} className="!rounded-full" />
           <div className="min-w-0 flex-1">
@@ -212,7 +212,7 @@ function GroupCard({ group, onJoin, busy }: { group: GroupPreview; onJoin: (id: 
           <span className="ml-2 truncate text-[10px] font-black text-[#bfe3ff]">{group.memberCount} {group.memberCount === 1 ? "Member" : "Members"}</span>
         </div>
         {group.joined ? (
-          <Link href={`/leaderboard?group=${group.id}`} className="shrink-0 rounded-xl bg-[#167bd1] px-4 py-2.5 text-[10px] font-black text-white">Open Group</Link>
+          <Link href={`/chat?group=${group.id}`} className="shrink-0 rounded-xl bg-[#167bd1] px-4 py-2.5 text-[10px] font-black text-white">Open Group</Link>
         ) : (
           <button type="button" disabled={busy} onClick={() => onJoin(group.id)} className="shrink-0 rounded-xl bg-[#167bd1] px-4 py-2.5 text-[10px] font-black text-white disabled:opacity-60">{busy ? "Joining…" : "Join"}</button>
         )}
