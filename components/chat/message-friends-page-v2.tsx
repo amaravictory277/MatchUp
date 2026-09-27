@@ -45,7 +45,7 @@ export function MessageFriendsPageV2() {
       if (!auth.user) { router.push("/auth"); return; }
       const uid = auth.user.id;
       const { data: fr } = await supabase.from("friendships").select("user_id,friend_id").eq("status", "accepted").or(`user_id.eq.${uid},friend_id.eq.${uid}`);
-      const friendIds = ((fr || []) as any[]).map(r => r.user_id === uid ? r.friend_id : r.user_id);
+      const friendIds = Array.from(new Set(((fr || []) as any[]).map(r => r.user_id === uid ? r.friend_id : r.user_id)));
       const fp = friendIds.length ? (await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", friendIds)).data || [] : [];
 
       const { data: memberships } = await supabase.from("chat_group_members").select("group_id,chat_groups(id,name,kind,image_path)").eq("user_id", uid);
