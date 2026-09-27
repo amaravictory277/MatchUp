@@ -39,6 +39,6 @@ function ChatRoute(){
   );
 }
 
-export default function LeaderboardPage(){
+export default function ChatPage(){
   return <Suspense fallback={<main className="h-[100dvh] bg-[#061120]"/>}><ChatRoute/></Suspense>
 }
