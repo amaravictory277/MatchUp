@@ -7,7 +7,7 @@ import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { usePersonalization } from "../personalization/personalization-provider";
 
 type NotificationRow={id:string;recipient_id:string;kind:string;payload:Record<string,unknown>|null;read_at:string|null;created_at:string};
-type Profile={id:string;display_name:string|null;username:string|null;avatar_path:string|null};
+type Profile={id:string;display_name:string|null;username:string|null;avatar_path:string|null;bio?:string|null};
 type ViewNotification=NotificationRow&{actor?:Profile|null;message:string;href?:string|null;thumbnail?:string|null;postBody?:string|null};
 type FriendRequestModal={notification:ViewNotification;sender:Profile|null};
 type InviteModal={kind:"group"|"tournament";notification:ViewNotification;group?:{id:string;name:string;image_path:string|null;member_count:number};tournament?:{id:string;name:string;description:string|null;starts_at:string|null;game_title:string|null;prize_pool:number|null};inviter?:Profile|null;participantId?:string};
