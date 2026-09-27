@@ -264,10 +264,11 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
   }, [loadVotes]);
 
   useEffect(() => {
+    if (!isPage) return;
     void load();
     const timer = window.setInterval(() => void load(true), 60000);
     return () => window.clearInterval(timer);
-  }, [load]);
+  }, [isPage, load]);
 
   const openRoom = async (fixtureId: string) => {
     const response = await fetch("/api/football/match-room", {
