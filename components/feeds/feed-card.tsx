@@ -285,6 +285,8 @@ export function FeedCard({
               src={src || "/placeholder.svg"}
               alt={`${post.author.name} post media ${mediaIndex + 1}`}
               draggable={false}
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 size-full object-cover"
               style={{ opacity: mediaIndex === 0 ? 1 : 0 }}
               onPointerDown={pointerDown}
