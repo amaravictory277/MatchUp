@@ -35,6 +35,7 @@ export function ProfileDiscoveryCard({
   onNeedMore,
   peopleLoading = false,
   peopleHasMore = false,
+  listMode = false,
 }: {
   people: HomePerson[];
   onFriend: (id: string) => Promise<void> | void;
@@ -42,6 +43,7 @@ export function ProfileDiscoveryCard({
   onNeedMore?: () => Promise<void> | void;
   peopleLoading?: boolean;
   peopleHasMore?: boolean;
+  listMode?: boolean;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -352,40 +354,47 @@ export function ProfileDiscoveryCard({
 
   return (
     <>
-      <div
-        className="relative w-full overflow-visible rounded-[28px]"
-        style={{ touchAction: "pan-y" }}
-      >
-        {nextProfile ? (
+      {listMode ? (
+        <div className="space-y-3">
+          {people.map(person => (
+            <div key={person.id}>{renderProfileCard(person, true)}</div>
+          ))}
+        </div>
+      ) : (
+        <div
+          className="relative w-full overflow-visible rounded-[28px]"
+          style={{ touchAction: "pan-y" }}
+        >
+          {nextProfile ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
+              aria-hidden="true"
+              style={{
+                transform: `translate3d(0,0,0) scale(${0.2 + progress * 0.8})`,
+                transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
+                willChange: "transform",
+              }}
+            >
+              {renderProfileCard(nextProfile, false)}
+            </div>
+          ) : null}
           <div
-            className="pointer-events-none absolute inset-0 z-10 w-full origin-center"
-            aria-hidden="true"
+            ref={cardRef}
+            className="relative z-20 w-full"
+            onPointerDown={pointerDown}
+            onPointerMove={pointerMove}
+            onPointerUp={pointerUp}
+            onPointerCancel={pointerCancel}
             style={{
-              transform: `translate3d(0,0,0) scale(${0.2 + progress * 0.8})`,
+              transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
               transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
               willChange: "transform",
             }}
           >
-            {renderProfileCard(nextProfile, false)}
+            {renderProfileCard(current, true)}
           </div>
-        ) : null}
-
-        <div
-          ref={cardRef}
-          className="relative z-20 w-full"
-          onPointerDown={pointerDown}
-          onPointerMove={pointerMove}
-          onPointerUp={pointerUp}
-          onPointerCancel={pointerCancel}
-          style={{
-            transform: `translate3d(${dragX}px,0,0) rotate(${Math.max(-5, Math.min(5, dragX / 70))}deg)`,
-            transition: animating ? "transform 340ms cubic-bezier(.16,1,.3,1)" : "none",
-            willChange: "transform",
-          }}
-        >
-          {renderProfileCard(current, true)}
         </div>
-      </div>
+      )}
 
       {endReached ? (
         <div className="mt-3 w-full overflow-hidden rounded-2xl border border-[#3a99eb] bg-[#167bd1] px-2.5 py-3 text-center shadow-[0_10px_28px_rgba(22,123,209,.24)]" aria-live="polite">
