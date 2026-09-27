@@ -19,6 +19,7 @@ import {
   Users,
   UserPlus,
   X,
+  VolumeX,
 } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { SidebarSectionCard } from "./sidebar-section-card";
@@ -1324,7 +1325,7 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
                     }}
                     className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-[#0b223c]"
                   >
-                    {muted ? "Unmute chat" : "Mute chat"}
+                    <VolumeX size={14} className="mr-2 inline" />{muted ? "Unmute Chat" : "Mute Chat"}
                   </button>
                   <button
                     type="button"
@@ -1334,27 +1335,27 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
                     }}
                     className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-[#0b223c]"
                   >
-                    <span>Group invitations</span>
+                    <span>Group Invitations</span>
                     {invites.length ? (
                       <span className="rounded-full bg-[#126bc0] px-1.5 py-0.5 text-[9px]">
                         {invites.length}
                       </span>
                     ) : null}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGroupName(active?.name || "");
-                      setInviteSearch("");
-                      setInviteCandidates(friends);
-                      setGroupLimit(active?.member_limit || 20);
-                      setShowManage(true);
-                      setShowChatOptions(false);
-                    }}
-                    className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-[#0b223c]"
-                  >
-                    Group settings
-                  </button>
+                  {active?.kind === "group" ? (<button
+  type="button"
+  onClick={() => {
+    setGroupName(active?.name || "");
+    setInviteSearch("");
+    setInviteCandidates(friends);
+    setGroupLimit(active?.member_limit || 20);
+    setShowManage(true);
+    setShowChatOptions(false);
+  }}
+  className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-xs font-bold hover:bg-[#0b223c]"
+>
+  Group settings
+</button>                  ) : null}
                 </div>
               ) : null}
             </div>
