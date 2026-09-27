@@ -55,17 +55,19 @@ export function LiveMatchCard({
   voteState,
   onVote,
   onRoom,
+  listMode = false,
 }: {
   match: FootballMatch;
   voteState: VoteState;
   onVote: (fixtureId: string, team: "home" | "away") => void;
   onRoom: (fixtureId: string) => void;
+  listMode?: boolean;
 }) {
   const pct = percentages(voteState);
   const finished = match.status.finished;
 
   return (
-    <article className="min-w-[300px] max-w-[340px] snap-start rounded-[26px] border border-[#1d5d99] bg-[#071a31] p-4 shadow-[0_18px_50px_rgba(0,45,100,.22)]">
+    <article className={`${listMode ? "w-full max-w-none" : "min-w-[300px] max-w-[340px] snap-start"} rounded-[26px] border border-[#1d5d99] bg-[#071a31] p-4 shadow-[0_18px_50px_rgba(0,45,100,.22)]">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[9px] font-black uppercase tracking-[.15em] text-[#70c1ff]">{match.league.name}</p>
@@ -132,7 +134,7 @@ export function LiveMatchCard({
   );
 }
 
-function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
+function DiscoveryCarousel({ onOpenMatch, showLive = true }: { onOpenMatch: () => void; showLive?: boolean }) {
   const [slide, setSlide] = useState(0);
   const [dragX, setDragX] = useState(0);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -174,14 +176,14 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
   return (
     <section className="relative overflow-hidden rounded-[30px] border border-[#174978] bg-[#061426] shadow-[0_24px_70px_rgba(0,30,80,.26)]">
       <div
-        className="flex w-[200%] touch-pan-y transition-transform duration-500 ease-out"
-        style={{ transform: `translate3d(calc(-${slide * 50}% + ${dragX}px),0,0)` }}
+        className={`${showLive ? "flex w-[200%]" : "flex w-full"} touch-pan-y transition-transform duration-500 ease-out`}
+        style={{ transform: showLive ? `translate3d(calc(-${slide * 50}% + ${dragX}px),0,0)` : "none" }}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerUp}
         onPointerCancel={() => { start.current = null; setDragX(0); }}
       >
-        <article className="w-1/2 shrink-0 bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] px-5 py-7 sm:px-8 sm:py-9">
+        <article className={`${showLive ? "w-1/2" : "w-full"} shrink-0 bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] px-5 py-7 sm:px-8 sm:py-9">
           <div className="max-w-[620px]">
             <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
             <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">Find your next <span className="text-[#70c1ff]">competition.</span></h1>
@@ -193,7 +195,7 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
           </div>
         </article>
 
-        <article className="w-1/2 shrink-0 bg-[radial-gradient(circle_at_82%_8%,rgba(36,151,255,.22),transparent_42%),#071426] px-5 py-7 sm:px-8 sm:py-9">
+        {showLive ? <article className="w-1/2 shrink-0 bg-[radial-gradient(circle_at_82%_8%,rgba(36,151,255,.22),transparent_42%),#071426] px-5 py-7 sm:px-8 sm:py-9">
           <div className="max-w-[620px]">
             <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#70c1ff]">LIVE FOOTBALL • MATCHUP ROOMS</p>
             <h2 className="mt-4 text-[38px] font-black leading-[.96] tracking-[-.05em] text-white sm:text-5xl">View <span className="text-[#70c1ff]">Live Scores.</span></h2>
@@ -203,16 +205,17 @@ function DiscoveryCarousel({ onOpenMatch }: { onOpenMatch: () => void }) {
               <button type="button" onClick={onOpenMatch} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white"><Search size={16}/>Search Match</button>
             </div>
           </div>
-        </article>
+        </article> : null}
       </div>
-      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
+      {showLive ? <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
         {[0, 1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={`Show slide ${index + 1}`} className={`h-1.5 rounded-full transition-all ${slide === index ? "w-7 bg-[#70c1ff]" : "w-1.5 bg-[#31597f]"}`} />)}
-      </div>
+      </div> : null}
     </section>
   );
 }
 
-export function LiveFootballHomeFeature() {
+export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "page" }) {
+  const isPage = mode === "page";
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
   const [matches, setMatches] = useState<FootballMatch[]>([]);
@@ -220,7 +223,7 @@ export function LiveFootballHomeFeature() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const [showSearch, setShowSearch] = useState(mode === "page");
   const [datePreset, setDatePreset] = useState<DatePreset>("next30");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -366,8 +369,8 @@ export function LiveFootballHomeFeature() {
 
   return (
     <>
-      <DiscoveryCarousel onOpenMatch={openSearch} />
-      <section className="mt-9" id="live-scores">
+      {isPage ? <section className="rounded-[30px] border border-[#1b67a6] bg-[radial-gradient(circle_at_80%_0%,rgba(71,168,255,.3),transparent_48%),#167bd1] px-5 py-8 shadow-[0_24px_70px_rgba(0,60,130,.28)] sm:px-8 sm:py-10"><p className="text-[10px] font-black uppercase tracking-[.2em] text-white/80">MATCHUP LIVE SCORES</p><h1 className="mt-3 text-[42px] font-black leading-[.95] tracking-[-.05em] text-white sm:text-6xl">View Live Matches.</h1><p className="mt-4 max-w-xl text-sm leading-6 text-white/85 sm:text-base">Follow real football matches, current scores, voting and Match Room discussion.</p></section> : <DiscoveryCarousel onOpenMatch={openSearch} showLive={false} />}
+      <section className={`${isPage ? "mt-6" : "hidden"}`} id="live-scores">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#47a8ff]">Live Football</p>
@@ -437,7 +440,7 @@ export function LiveFootballHomeFeature() {
 
         {matches.length ? (
           <>
-            <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2">
+            <div className={isPage ? "space-y-3" : "no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2"}>
               {matches.map(match => (
                 <LiveMatchCard
                   key={match.fixtureId}
@@ -445,6 +448,7 @@ export function LiveFootballHomeFeature() {
                   voteState={votes[match.fixtureId] || { home: 0, away: 0, total: 0, myVote: null }}
                   onVote={vote}
                   onRoom={openRoom}
+                  listMode={isPage}
                 />
               ))}
             </div>
