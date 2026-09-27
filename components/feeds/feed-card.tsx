@@ -295,7 +295,9 @@ export function FeedCard({
           ))
         )
       ) : (
-        <div className="absolute inset-0 bg-[#071426]" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[#071426] p-6">
+          {post.caption ? <div className="w-full max-w-[88%] rounded-[22px] border border-[#214a78] bg-[#0a2139]/95 p-6 text-center shadow-[0_18px_50px_rgba(0,0,0,.25)]"><p className="text-sm font-semibold leading-6 text-white sm:text-base">{post.caption}</p></div> : null}
+        </div>
       )}
 
       <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/45 pointer-events-none" />
@@ -335,7 +337,7 @@ export function FeedCard({
               type="button"
               onClick={(event) => { event.stopPropagation(); void toggleVideoMute(); }}
               aria-label={soundOn ? "Mute video" : "Unmute video"}
-              className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white shadow-[0_5px_16px_rgba(0,0,0,.2)] sm:size-10"
+              className="flex h-10 min-w-10 items-center justify-center gap-1 rounded-full border border-white/25 bg-black/35 text-white shadow-[0_5px_16px_rgba(0,0,0,.2)] sm:size-10"
             >
               {soundOn ? <Volume2 size={17} /> : <VolumeX size={17} />}
             </button>
@@ -379,7 +381,7 @@ export function FeedCard({
           aria-label={post.liked ? "Unlike post" : "Like post"}
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />
+          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} /><span className="text-[10px] font-black">{formatCount(post.likes)}</span>
         </button>
         <button
           type="button"
@@ -387,7 +389,7 @@ export function FeedCard({
           aria-label="Open comments"
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <MessageCircle size={20} />
+          <MessageCircle size={20} /><span className="text-[10px] font-black">{formatCount(post.comments)}</span>
         </button>
       </div>
 
