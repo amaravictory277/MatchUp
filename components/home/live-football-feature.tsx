@@ -387,6 +387,7 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
               <div className="flex gap-2">
                 <input
                   id="matchup-match-search"
+                  aria-label="Search live football matches"
                   value={query}
                   onChange={event => setQuery(event.target.value)}
                   onKeyDown={event => { if (event.key === "Enter") void search(); }}
