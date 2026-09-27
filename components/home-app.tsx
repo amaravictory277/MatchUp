@@ -753,11 +753,11 @@ export function HomeApp() {
       </section>
 
       <section className="mt-9">
-        <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/groups" />
+        <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/chat?tab=groups" />
         {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading groups…</div> : groups.length ? (
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} onJoin={joinGroup} busy={groupJoinBusy === group.id} />)}</div>
         ) : (
-          <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/groups" action="Open Groups" />
+          <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/chat?tab=groups" action="Open Groups" />
         )}
       </section>
 
