@@ -209,7 +209,7 @@ export function ProfileDiscoveryCard({
       if (messageError) throw messageError;
       setQuickChatPerson(null);
       setMessage("");
-      router.push(`/leaderboard?group=${groupId}`);
+      router.push(`/chat?group=${groupId}`);
     } catch (error) {
       notify(error instanceof Error ? error.message : "Could not send the message.");
     } finally {
