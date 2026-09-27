@@ -67,7 +67,7 @@ export function LiveMatchCard({
   const finished = match.status.finished;
 
   return (
-    <article className={`${listMode ? "w-full max-w-none" : "min-w-[300px] max-w-[340px] snap-start"} rounded-[26px] border border-[#1d5d99] bg-[#071a31] p-4 shadow-[0_18px_50px_rgba(0,45,100,.22)]">
+    <article className={`${listMode ? "w-full max-w-none" : "min-w-[300px] max-w-[340px] snap-start"} rounded-[26px] border border-[#1d5d99] bg-[#071a31] p-4 shadow-[0_18px_50px_rgba(0,45,100,.22)]`}">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[9px] font-black uppercase tracking-[.15em] text-[#70c1ff]">{match.league.name}</p>
@@ -183,7 +183,7 @@ function DiscoveryCarousel({ onOpenMatch, showLive = true }: { onOpenMatch: () =
         onPointerUp={pointerUp}
         onPointerCancel={() => { start.current = null; setDragX(0); }}
       >
-        <article className={`${showLive ? "w-1/2" : "w-full"} shrink-0 bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] px-5 py-7 sm:px-8 sm:py-9">
+        <article className={`${showLive ? "w-1/2" : "w-full"} shrink-0 bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] px-5 py-7 sm:px-8 sm:py-9`}">
           <div className="max-w-[620px]">
             <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
             <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">Find your next <span className="text-[#70c1ff]">competition.</span></h1>
