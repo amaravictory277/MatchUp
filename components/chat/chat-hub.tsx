@@ -150,7 +150,7 @@ function chatBodyError(body: string) {
   return null;
 }
 
-export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
+export function ChatHub({ initialGroupId, initialTab, initialCreate = false }: { initialGroupId?: string; initialTab?: "groups" | "friends"; initialCreate?: boolean }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { preferences } = usePersonalization();
   const [user, setUser] = useState<{ id: string; displayName: string }>({
@@ -337,6 +337,16 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
   useEffect(() => {
     void loadWorkspace();
   }, [loadWorkspace]);
+
+  useEffect(() => {
+    if (!user.id) return;
+    if (initialTab === "groups" || initialTab === "friends") setShowRooms(true);
+    if (initialCreate) {
+      setInviteSearch("");
+      setInviteCandidates(friends);
+      setShowCreate(true);
+    }
+  }, [friends, initialCreate, initialTab, user.id]);
   useEffect(() => {
     if (!initialGroupId || !user.id) return;
     let cancelled = false;
@@ -1491,7 +1501,7 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
               }))}
               primaryLabel="View Groups"
               secondaryLabel="Create Group"
-              onPrimary={() => window.location.assign("/groups")}
+              onPrimary={() => setShowRooms(true)}
               onSecondary={() => {
                 setInviteSearch("");
                 setInviteCandidates(friends);
