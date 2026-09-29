@@ -44,7 +44,7 @@ export function SearchResults({type,query,onNavigate}:{type:SearchType;query:str
      setLoading(true);setError("");
      try{
        if(type==="tournaments"){
-         const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility","public").or(`name.ilike.%${q}%,tournament_id.ilike.%${q}%,game_title.ilike.%${q}%,description.ilike.%${q}%`).order("created_at",{ascending:false}).limit(12);
+         const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility","public").or(`name.ilike.%${q}%,tournament_id.ilike.%${q}%,game_title.ilike.%${q}%,description.ilike.%${q}%`).order("created_at",{ascending:false}).limit(4);
          if(!cancelled)setTournaments((data||[]) as TournamentResult[]);
        }else if(type==="players"||type==="ready-players"){
          const base=supabase.from("profiles").select("id,username,display_name,avatar_path,country,bio,supported_game,gaming_team_name,player_rating,squad_formation,is_verified,ready_player_enabled").neq("id",(await supabase.auth.getUser()).data.user?.id||"");
@@ -79,7 +79,7 @@ export function SearchResults({type,query,onNavigate}:{type:SearchType;query:str
      }catch{if(!cancelled)setError("Search is unavailable right now. Please try again.");}
      finally{if(!cancelled)setLoading(false);}
    };
-   void run();return()=>{cancelled=true};
+   const timer=window.setTimeout(()=>void run(),250);return()=>{cancelled=true;window.clearTimeout(timer)};
  },[query,type,supabase]);
 
  if(query.trim().length<2)return <p className="py-10 text-center text-sm text-[#7892ac]">Type at least 2 characters to search real MatchUp data.</p>;
