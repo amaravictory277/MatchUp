@@ -318,8 +318,12 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
         })
         .filter(Boolean) as PrivateChat[],
     );
-    const friendIds = (friendRows || []).map((r: any) =>
-      r.user_id === auth.user.id ? r.friend_id : r.user_id,
+    const friendIds = Array.from(
+      new Set(
+        (friendRows || []).map((r: any) =>
+          r.user_id === auth.user.id ? r.friend_id : r.user_id,
+        ),
+      ),
     );
     const fp = friendIds.length
       ? (
