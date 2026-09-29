@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Gamepad2, Loader2, Swords, UserRound, X } from "lucid
 import { useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
+import { ReadyPlayerSkeleton } from "../ui/content-skeletons";
 
 type Profile = {
   id: string;
@@ -155,7 +156,7 @@ export function ReadyPlayersPage() {
   };
 
   const openMatchChat = (conversationId: string | undefined) => {
-    if (conversationId) router.push(`/leaderboard?group=${conversationId}`);
+    if (conversationId) router.push(`/chat?group=${conversationId}`);
     else setNotice("The match chat is not available yet. Please refresh and try again.");
   };
 
@@ -174,7 +175,7 @@ export function ReadyPlayersPage() {
         .select("conversation_id")
         .eq("match_id", data as string)
         .maybeSingle();
-      if (conversation?.conversation_id) router.push(`/leaderboard?group=${conversation.conversation_id}`);
+      if (conversation?.conversation_id) router.push(`/chat?group=${conversation.conversation_id}`);
       else setNotice("The match was created, but its private chat is not available yet.");
       await load();
     } else {
@@ -208,7 +209,7 @@ export function ReadyPlayersPage() {
 
         {outgoing.length ? <section className="mt-7"><h2 className="mb-3 text-sm font-black uppercase tracking-[.14em] text-[#70c1ff]">Your Requests</h2><div className="space-y-2">{outgoing.map((request) => {const profile = profileOf(request);if (!profile) return null;const accepted = request.status === "accepted";return <div key={request.id} className="rounded-2xl border border-[#18365f] bg-[#071426] p-3"><div className="flex items-center gap-3"><MatchUpAvatar profile={profile} size="md" alt={nameOf(profile)} /><div className="min-w-0 flex-1"><p className="truncate font-black">{nameOf(profile)}</p><p className="text-xs text-[#7892ac]">{accepted ? "Match accepted" : "Request sent"}</p></div></div>{accepted ? <button type="button" disabled={!conversationOf(request)} onClick={() => openMatchChat(conversationOf(request))} className="mt-3 w-full rounded-xl bg-[#167bd1] px-4 py-2.5 text-xs font-black disabled:opacity-50">MESSAGE NOW</button> : null}</div>})}</div></section> : null}
 
-        <section className="mt-7"><div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-black">Players ready now</h2><p className="mt-1 text-xs text-[#7892ac]">Only users who are connected, inside Ready Match, and have enabled Ready Player are shown.</p></div><span className="text-xs font-bold text-[#7892ac]">{players.length}</span></div>{loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading ready players…</div> : players.length ? <div className="space-y-2">{players.map((player) => <div key={player.id} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-3"><MatchUpAvatar profile={player} size="md" alt={nameOf(player)} /><div className="min-w-0 flex-1"><p className="truncate font-black">{nameOf(player)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-[#7892ac]"><span className="size-2 rounded-full bg-[#35c58a]" />Ready to play</p></div><button type="button" disabled={busy === player.id} onClick={() => void challenge(player.id)} className="flex items-center gap-1.5 rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50"><Swords size={14} />{busy === player.id ? "Sending…" : "Challenge"}</button></div>)}</div> : <div className="surface-card p-8 text-center"><UserRound size={28} className="mx-auto text-[#47a8ff]" /><p className="mt-3 font-black">No ready players right now</p><p className="mt-1 text-sm text-[#7892ac]">You can turn on Ready Player and wait for another user.</p></div>}</section>
+        <section className="mt-7"><div className="mb-3 flex items-end justify-between"><div><h2 className="text-lg font-black">Players ready now</h2><p className="mt-1 text-xs text-[#7892ac]">Only users who are connected, inside Ready Match, and have enabled Ready Player are shown.</p></div><span className="text-xs font-bold text-[#7892ac]">{players.length}</span></div>{loading ? <ReadyPlayerSkeleton count={4} /> : players.length ? <div className="space-y-2">{players.map((player) => <div key={player.id} className="flex items-center gap-3 rounded-2xl border border-[#18365f] bg-[#071426] p-3"><MatchUpAvatar profile={player} size="md" alt={nameOf(player)} /><div className="min-w-0 flex-1"><p className="truncate font-black">{nameOf(player)}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-[#7892ac]"><span className="size-2 rounded-full bg-[#35c58a]" />Ready to play</p></div><button type="button" disabled={busy === player.id} onClick={() => void challenge(player.id)} className="flex items-center gap-1.5 rounded-xl bg-[#167bd1] px-3 py-2.5 text-xs font-black disabled:opacity-50"><Swords size={14} />{busy === player.id ? "Sending…" : "Challenge"}</button></div>)}</div> : <div className="surface-card p-8 text-center"><UserRound size={28} className="mx-auto text-[#47a8ff]" /><p className="mt-3 font-black">No ready players right now</p><p className="mt-1 text-sm text-[#7892ac]">You can turn on Ready Player and wait for another user.</p></div>}</section>
       </div>
     </main>
   );
