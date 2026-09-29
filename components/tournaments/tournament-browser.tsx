@@ -1,5 +1,5 @@
-import { TournamentCardSkeleton } from "../ui/structural-skeletons";
 "use client";
+import { TournamentCardSkeleton } from "../ui/structural-skeletons";
 import { Forward, Gamepad2, Plus, Search, Trophy, Users, Bookmark, Check } from "lucide-react";
 import type { MouseEvent, PointerEvent } from "react";
 import { useMemo, useEffect, useRef, useState } from "react";
