@@ -26,7 +26,6 @@ import { SidebarSectionCard } from "./sidebar-section-card";
 import { usePersonalization } from "../personalization/personalization-provider";
 import { ChatTextEffect } from "../personalization/effect-renderers";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
-import { FriendCardSkeleton } from "../ui/structural-skeletons";
 
 type Profile = {
   id: string;
