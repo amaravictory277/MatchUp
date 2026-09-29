@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Navigation } from "./navigation";
+import { SectionSkeletons } from "./ui/structural-skeletons";
 import { MatchUpAvatar } from "./ui/matchup-avatar";
 import { usePersonalization } from "./personalization/personalization-provider";
 import { NameEffect } from "./personalization/effect-renderers";
@@ -440,7 +441,7 @@ export function HomeApp() {
           verified: Boolean(p2.is_verified),
         })),
       } as Post;
-    }).filter((p) => p.media.length > 0).slice(0, 6);
+    }).slice(0, 6);
     setPosts(feed);
 
     const readyRows = ((readyResult.data || []) as any[])
@@ -697,7 +698,7 @@ export function HomeApp() {
 
       <section className="mt-8">
         <SectionHeading eyebrow="Competition" title="Featured Tournaments" description="A quick look at public MatchUp competitions." href="/tournaments" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading tournaments…</div> : tournaments.length ? (
+        {loading ? <SectionSkeletons kind="tournament" count={2} /> : tournaments.length ? (
           <TournamentSwipeCard tournaments={tournaments.slice(0, 3)} />
         ) : (
           <EmptyState icon={<Trophy size={23} />} title="No featured tournaments yet" text="Public competitions will appear here when they are available." href="/tournaments" action="Explore Tournaments" />
@@ -706,7 +707,7 @@ export function HomeApp() {
 
       <section className="mt-9">
         <SectionHeading eyebrow="Quick Match" title="Ready Players" description="Players who are ready to connect and play." href="/ready-players" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Checking Ready Players…</div> : readyPlayers.length ? (
+        {loading ? <SectionSkeletons kind="player" count={2} /> : readyPlayers.length ? (
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{readyPlayers.map((player) => <ReadyCard key={player.id} player={player} onChallenge={challengeReady} busy={challengeBusy===player.id} />)}</div>
         ) : (
           <EmptyState icon={<Zap size={23} />} title="No ready players right now" text="Ready Player availability is live. Open Ready Players to see the current pool or enable your own availability." href="/ready-players" action="Open Ready Players" />
@@ -715,7 +716,7 @@ export function HomeApp() {
 
       <section className="mt-9">
         <SectionHeading eyebrow="Community" title="For You" description="Posts and football moments from the MatchUp community." href="/feeds" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading community posts…</div> : posts.length ? (
+        {loading ? <SectionSkeletons kind="feed" count={1} /> : posts.length ? (
           <FeedSwipeCard
             posts={posts}
             onToggleLike={toggleLike}
@@ -738,9 +739,7 @@ export function HomeApp() {
 
       <section className="mt-9">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
-        {loading ? (
-          <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading players…</div>
-        ) : (
+        {loading ? <SectionSkeletons kind="player" count={2} /> : (
           <ProfileDiscoveryCard
             people={people}
             onFriend={addFriend}
@@ -754,7 +753,7 @@ export function HomeApp() {
 
       <section className="mt-9">
         <SectionHeading eyebrow="Community" title="Groups & Communities" description="Find football communities and play together." href="/chat?tab=groups" />
-        {loading ? <div className="surface-card p-8 text-center text-sm text-[#7892ac]">Loading groups…</div> : groups.length ? (
+        {loading ? <SectionSkeletons kind="group" count={2} /> : groups.length ? (
           <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-3">{groups.map((group) => <GroupCard key={group.id} group={group} onJoin={joinGroup} busy={groupJoinBusy === group.id} />)}</div>
         ) : (
           <EmptyState icon={<UsersRound size={23} />} title="No groups yet" text="Football communities will appear here as groups are created." href="/chat?tab=groups" action="Open Groups" />
