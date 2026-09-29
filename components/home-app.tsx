@@ -25,7 +25,7 @@ import { TournamentSwipeCard } from "./home/tournament-swipe-card";
 import { LiveFootballHomeFeature } from "./home/live-football-feature";
 import { createBrowserSupabaseClient } from "../lib/supabase/client";
 import type { Author, Post } from "./feeds/data";
-import { TournamentCardSkeleton, ReadyPlayerSkeleton, FeedCardSkeleton, GroupCardSkeleton } from "./ui/content-skeletons";
+import { TournamentCardSkeleton, ReadyPlayerSkeleton, FeedCardSkeleton, GroupCardSkeleton, ProfileCardSkeleton } from "./ui/content-skeletons";
 
 type Profile = {
   id: string;
@@ -740,7 +740,7 @@ export function HomeApp() {
       <section className="mt-9">
         <SectionHeading eyebrow="Connections" title="People You May Know" description="Connect with football players on MatchUp." href="/friends" />
         {loading ? (
-          <div className="surface-card min-h-[300px] animate-pulse rounded-[30px] border-[#153c68] bg-[#071426]" />
+          <ProfileCardSkeleton count={1} />
         ) : (
           <ProfileDiscoveryCard
             people={people}
