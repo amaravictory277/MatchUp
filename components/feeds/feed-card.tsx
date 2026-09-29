@@ -383,7 +383,7 @@ export function FeedCard({
           aria-label={post.liked ? "Unlike post" : "Like post"}
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} /><span className="text-[10px] font-black">{formatCount(post.likes)}</span>
+          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />{post.media.length === 0 ? <span className="text-[10px] font-black">{formatCount(post.likes)}</span> : null}
         </button>
         <button
           type="button"
@@ -391,7 +391,7 @@ export function FeedCard({
           aria-label="Open comments"
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <MessageCircle size={20} /><span className="text-[10px] font-black">{formatCount(post.comments)}</span>
+          <MessageCircle size={20} />{post.media.length === 0 ? <span className="text-[10px] font-black">{formatCount(post.comments)}</span> : null}
         </button>
       </div>
 
