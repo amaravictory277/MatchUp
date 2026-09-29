@@ -76,6 +76,10 @@ export function SearchResultSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+export function ProfileCardSkeleton({ count = 1 }: { count?: number }) {
+  return <div className="space-y-3">{Array.from({ length: count }, (_, i) => <div key={i} className="animate-pulse overflow-hidden rounded-[28px] border border-[#245b91]/50 bg-[#061426]"><div className="h-[148px] bg-[#12385a] sm:h-[162px]" /><div className="p-4"><div className="-mt-10 size-20 rounded-full border-4 border-[#061426] bg-[#12385a]" /><div className="mt-3 h-5 w-40 rounded bg-[#12385a]" /><div className="mt-2 h-3 w-28 rounded bg-[#0d2945]" /><div className="mt-4 h-10 w-full rounded-xl bg-[#12385a]" /></div></div>)}</div>;
+}
+
 export function GroupCardSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
