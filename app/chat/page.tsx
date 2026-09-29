@@ -9,6 +9,8 @@ function ChatRoute(){
   const params=useSearchParams();
   const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);
   const requestedGroup=params.get("group")||"";
+  const requestedTab=params.get("tab")||"";
+  const requestedCreate=params.get("create")||"";
   const friendId=params.get("friend")||"";
   const [resolvedGroup,setResolvedGroup]=useState("");
   const [error,setError]=useState("");
@@ -33,7 +35,7 @@ function ChatRoute(){
   return (
     <main className="h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#061120]">
       {error ? <div className="fixed left-1/2 top-4 z-[120] w-[min(92vw,520px)] -translate-x-1/2 rounded-2xl border border-[#6c2736] bg-[#24151a] px-4 py-3 text-sm text-[#ffb2bc]">{error}</div> : null}
-      <ChatHub initialGroupId={groupId||undefined}/>
+      <ChatHub initialGroupId={groupId||undefined} initialTab={requestedTab==="groups"||requestedTab==="friends"?requestedTab:undefined} initialCreate={requestedCreate==="group"}/>
       <MessageInteractionLayer/>
     </main>
   );
