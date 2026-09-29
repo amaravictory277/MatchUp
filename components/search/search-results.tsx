@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Gamepad2, MessageSquare, Search, Swords, UsersRound } from "lucide-react";
+import { Gamepad2, Swords, UsersRound } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { TournamentCard } from "../tournaments/tournament-browser";
 import { ProfileDiscoveryCard, type HomePerson } from "../home/profile-discovery-card";
