@@ -26,6 +26,7 @@ import { SidebarSectionCard } from "./sidebar-section-card";
 import { usePersonalization } from "../personalization/personalization-provider";
 import { ChatTextEffect } from "../personalization/effect-renderers";
 import { MatchUpAvatar } from "../ui/matchup-avatar";
+import { FriendCardSkeleton } from "../ui/structural-skeletons";
 
 type Profile = {
   id: string;
@@ -1207,8 +1208,23 @@ export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
   );
   if (loading)
     return (
-      <section className="surface-card p-6 text-sm text-[#7892ac]">
-        Loading MatchUp chat…
+      <section className="matchup-chat relative h-[100dvh] min-h-0 overflow-hidden rounded-[28px] border border-[#18365f] bg-[#071426] p-4">
+        <div className="animate-pulse">
+          <div className="flex items-center gap-3 border-b border-[#18365f] pb-4">
+            <div className="size-10 rounded-full bg-[#12385a]" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-32 rounded bg-[#12385a]" />
+              <div className="h-2.5 w-20 rounded bg-[#0d2945]" />
+            </div>
+            <div className="size-9 rounded-full bg-[#12385a]" />
+          </div>
+          <div className="mt-5 space-y-4">
+            <div className="flex items-end gap-2"><div className="size-8 rounded-full bg-[#12385a]" /><div className="h-12 w-3/5 rounded-2xl bg-[#0d2945]" /></div>
+            <div className="flex justify-end"><div className="h-12 w-2/3 rounded-2xl bg-[#12385a]" /></div>
+            <div className="flex items-end gap-2"><div className="size-8 rounded-full bg-[#12385a]" /><div className="h-16 w-1/2 rounded-2xl bg-[#0d2945]" /></div>
+          </div>
+          <div className="absolute inset-x-4 bottom-4 h-12 rounded-2xl bg-[#0d2945]" />
+        </div>
       </section>
     );
   if (!user.id)
