@@ -23,6 +23,7 @@ import { formatCount, type Post } from "./data";
 import { ContentForwarder } from "../share/content-forwarder";
 import { MatchUpVerificationBadge } from "./matchup-verification-badge";
 import { PostTagger } from "../share/post-tagger";
+import { ProgressiveImage } from "../ui/progressive-image";
 
 type FeedCardProps = {
   post: Post;
@@ -280,14 +281,14 @@ export function FeedCard({
           />
         ) : (
           post.media.map((src, mediaIndex) => (
-            <img
+            <ProgressiveImage
               key={src + mediaIndex}
-              src={src || "/placeholder.svg"}
+              src={src}
               alt={`${post.author.name} post media ${mediaIndex + 1}`}
               draggable={false}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 size-full object-cover"
+              className="absolute inset-0"
               style={{ opacity: mediaIndex === 0 ? 1 : 0 }}
               onPointerDown={pointerDown}
               onPointerUp={(event) => pointerUp(event, mediaIndex)}
