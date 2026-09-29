@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ImgHTMLAttributes } from "react";
 
-type ProgressiveImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
+type ProgressiveImageProps = ImgHTMLAttributes<HTMLImageElement> & {
   placeholderClassName?: string;
 };
 
