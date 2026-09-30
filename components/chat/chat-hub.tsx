@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,\n  Check,
+  ArrowLeft,
+  Check,
   CheckCheck,
   Lock,
   Menu,
