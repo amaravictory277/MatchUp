@@ -1249,7 +1249,7 @@ export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onView
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  {active?.kind === "group" && members.length ? (
+                  {(active?.kind === "group" || active?.kind === "tournament") && members.length ? (
                     <div className="flex shrink-0 items-center pl-1">
                       {members.slice(0, 5).map((m, i) => (
                         <div
@@ -1284,7 +1284,7 @@ export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onView
                     <p className="text-[11px] text-[#7892ac]">
                       {active?.kind === "general"
                         ? `${presence.length} online`
-                        : active?.kind === "group"
+                        : active?.kind === "group" || active?.kind === "tournament"
                           ? `${members.length} members`
                           : "Private message"}
                     </p>

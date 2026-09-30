@@ -29,10 +29,14 @@ export function TournamentCard({
   row,
   swipeMode = false,
   onOpenOverride,
+  openActions = false,
+  onActionsClose,
 }: {
   row: TournamentRow;
   swipeMode?: boolean;
   onOpenOverride?: () => void;
+  openActions?: boolean;
+  onActionsClose?: () => void;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
@@ -44,7 +48,6 @@ export function TournamentCard({
   const [participantProfiles, setParticipantProfiles] = useState<Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>>([]);
   const [joined, setJoined] = useState(false);
   const [joining, setJoining] = useState(false);
-  const [tournamentGroupId, setTournamentGroupId] = useState<string | null>(row.tournament_group_id || null);
   const [actionOpen, setActionOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moved = useRef(false);
@@ -52,22 +55,28 @@ export function TournamentCard({
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   const creator = profile?.display_name || profile?.username || "MatchUp Organizer";
   const creatorAvatar = profile?.avatar_path || null;
+
+  useEffect(() => {
+    if (openActions) setActionOpen(true);
+  }, [openActions]);
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id || "";
-      const [{ data: tournamentRow }, { data: players }] = await Promise.all([
-        supabase.from("tournaments").select("tournament_group_id").eq("id", row.id).maybeSingle(),
-        supabase.from("tournament_players").select("player_id,status").eq("tournament_id", row.id).eq("status", "joined").order("joined_at", { ascending: true }).limit(128),
-      ]);
+      const { data: players } = await supabase
+        .from("tournament_players")
+        .select("player_id,status")
+        .eq("tournament_id", row.id)
+        .eq("status", "joined")
+        .order("joined_at", { ascending: true })
+        .limit(128);
       const ids = ((players || []) as Array<{player_id:string}>).map((p) => p.player_id);
       const previewIds = ids.slice(0, 6);
       const { data: profiles } = previewIds.length
         ? await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", previewIds)
         : { data: [] as Array<{id:string}> };
       if (!cancelled) {
-        setTournamentGroupId((tournamentRow as { tournament_group_id?: string | null } | null)?.tournament_group_id || row.tournament_group_id || null);
         setParticipantIds(ids);
         setParticipantProfiles((profiles || []) as Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>);
         setJoined(Boolean(uid && ids.includes(uid)));
@@ -88,6 +97,8 @@ export function TournamentCard({
       if (error) { setJoining(false); window.dispatchEvent(new CustomEvent("matchup-toast", { detail: error.message })); return; }
       setJoined(false);
       setParticipantIds(ids => ids.filter(id => id !== auth.user.id));
+      setActionOpen(false);
+      onActionsClose?.();
       setJoining(false);
       return;
     }
@@ -277,6 +288,66 @@ export function TournamentCard({
             <button type="button" onClick={() => { void save(); setMenu(false); }} className="flex w-full items-center gap-3 rounded-2xl p-4 text-left text-sm font-black text-white"><Bookmark size={18}/>{saved ? "Remove saved tournament" : "Save tournament"}</button>
             <button type="button" onClick={() => setMenu(false)} className="flex w-full items-center justify-center rounded-2xl p-3 text-sm font-bold text-[#a9bdd5]">Cancel</button>
           </div>
+        </div>
+      ) : null}
+
+      {actionOpen ? (
+        <div
+          className="fixed inset-0 z-[96] flex items-end justify-center bg-black/65 p-4 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          onClick={(event) => {
+            if (joined && event.target === event.currentTarget) {
+              setActionOpen(false);
+              onActionsClose?.();
+            }
+          }}
+        >
+          <section
+            className="w-full max-w-sm rounded-[28px] border border-[#245b91] bg-[#08182b] p-4 shadow-[0_24px_80px_rgba(0,0,0,.6)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="px-2 text-[10px] font-black uppercase tracking-[.16em] text-[#47a8ff]">Tournament actions</p>
+            <h3 className="mt-1 px-2 text-lg font-black text-white">{row.name}</h3>
+            <div className="mt-4 grid gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActionOpen(false);
+                  onActionsClose?.();
+                  router.push(`/tournaments/${row.id}`);
+                }}
+                className="min-h-12 w-full rounded-2xl bg-[#167bd1] px-4 py-3 text-sm font-black text-white"
+              >
+                View Tournament Details
+              </button>
+              {joined ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionOpen(false);
+                    onActionsClose?.();
+                    router.push(`/tournaments/${row.id}/group`);
+                  }}
+                  className="min-h-12 w-full rounded-2xl border border-[#245b91] bg-[#0a2946] px-4 py-3 text-sm font-black text-[#bfe3ff]"
+                >
+                  View Tournament Group
+                </button>
+              ) : null}
+              {joined ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActionOpen(false);
+                    onActionsClose?.();
+                  }}
+                  className="min-h-12 w-full rounded-2xl px-4 py-3 text-sm font-bold text-[#a9bdd5]"
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </section>
         </div>
       ) : null}
 

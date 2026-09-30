@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Vote, MessageCircle, Radio, Trophy } from "lucide-react";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { LiveMatchCardSkeleton } from "../ui/content-skeletons";
 
 export type FootballMatch = {
   fixtureId: string;
@@ -134,82 +135,53 @@ export function LiveMatchCard({
   );
 }
 
-function DiscoveryCarousel({ onOpenMatch, showLive = true }: { onOpenMatch: () => void; showLive?: boolean }) {
-  const [slide, setSlide] = useState(0);
-  const [dragX, setDragX] = useState(0);
-  const start = useRef<{ x: number; y: number } | null>(null);
-  const pauseUntil = useRef(0);
-
-  const go = useCallback((next: number) => {
-    setSlide(next === 0 ? 0 : 1);
-    pauseUntil.current = Date.now() + 10000;
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (Date.now() < pauseUntil.current) return;
-      setSlide(value => value === 0 ? 1 : 0);
-    }, 8000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse") return;
-    start.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-  const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!start.current) return;
-    const dx = event.clientX - start.current.x;
-    const dy = event.clientY - start.current.y;
-    if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.15) setDragX(dx);
-  };
-  const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!start.current) return;
-    const dx = event.clientX - start.current.x;
-    const dy = event.clientY - start.current.y;
-    start.current = null;
-    if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy) * 1.15) go(dx < 0 ? 1 : 0);
-    setDragX(0);
-  };
+function GameLiveSwitcher({ active }: { active: "game" | "live" }) {
+  const router = useRouter();
 
   return (
-    <section className="relative overflow-hidden rounded-[30px] border border-[#174978] bg-[#061426] shadow-[0_24px_70px_rgba(0,30,80,.26)]">
-      <div
-        className={`${showLive ? "flex w-[200%]" : "flex w-full"} touch-pan-y transition-transform duration-500 ease-out`}
-        style={{ transform: showLive ? `translate3d(calc(-${slide * 50}% + ${dragX}px),0,0)` : "none" }}
-        onPointerDown={pointerDown}
-        onPointerMove={pointerMove}
-        onPointerUp={pointerUp}
-        onPointerCancel={() => { start.current = null; setDragX(0); }}
+    <div className="mb-5 grid grid-cols-2 rounded-2xl border border-[#214a78] bg-[#071426] p-1.5 shadow-[0_12px_35px_rgba(0,25,55,.2)]" aria-label="Game navigation">
+      <button
+        type="button"
+        onClick={() => router.push("/game")}
+        aria-pressed={active === "game"}
+        className={`min-h-11 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[.08em] transition ${active === "game" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
       >
-        <article className={`${showLive ? "w-1/2" : "w-full"} shrink-0 bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] px-5 py-7 sm:px-8 sm:py-9`}>
-          <div className="max-w-[620px]">
-            <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
-            <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">Find your next <span className="text-[#70c1ff]">competition.</span></h1>
-            <p className="mt-4 max-w-[520px] text-sm leading-6 text-[#c8d9e9] sm:text-base">Create, discover and run competitive football tournaments—all in one match-ready place.</p>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-5 py-3 text-xs font-black text-white"><Trophy size={16}/>Search Tournaments</Link>
-              <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white"><Search size={16}/>Find Tournament</Link>
-            </div>
-          </div>
-        </article>
+        GAME
+      </button>
+      <button
+        type="button"
+        onClick={() => router.push("/live-scores")}
+        aria-pressed={active === "live"}
+        className={`min-h-11 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[.08em] transition ${active === "live" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
+      >
+        LIVE SCORES
+      </button>
+    </div>
+  );
+}
 
-        {showLive ? <article className="w-1/2 shrink-0 bg-[radial-gradient(circle_at_82%_8%,rgba(36,151,255,.22),transparent_42%),#071426] px-5 py-7 sm:px-8 sm:py-9">
-          <div className="max-w-[620px]">
-            <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#70c1ff]">LIVE FOOTBALL • MATCHUP ROOMS</p>
-            <h2 className="mt-4 text-[38px] font-black leading-[.96] tracking-[-.05em] text-white sm:text-5xl">View <span className="text-[#70c1ff]">Live Scores.</span></h2>
-            <p className="mt-4 max-w-[540px] text-sm leading-6 text-[#c8d9e9] sm:text-base">Follow real football matches, see current scores, vote for either team, and jump into the Match Room for the discussion.</p>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={onOpenMatch} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-5 py-3 text-xs font-black text-white"><Radio size={16}/>View Live Scores</button>
-              <button type="button" onClick={onOpenMatch} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white"><Search size={16}/>Search Match</button>
-            </div>
+function GameHero() {
+  return (
+    <section className="relative overflow-hidden rounded-[30px] border border-[#174978] bg-[radial-gradient(circle_at_80%_0%,rgba(36,151,255,.22),transparent_45%),#071426] shadow-[0_24px_70px_rgba(0,30,80,.26)]">
+      <div className="px-5 py-7 sm:px-8 sm:py-9">
+        <div className="max-w-[620px]">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
+          <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">
+            Find your next <span className="text-[#70c1ff]">competition.</span>
+          </h1>
+          <p className="mt-4 max-w-[520px] text-sm leading-6 text-[#c8d9e9] sm:text-base">
+            Create, discover and run competitive football tournaments—all in one match-ready place.
+          </p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-5 py-3 text-xs font-black text-white">
+              <Trophy size={16} />Search Tournaments
+            </Link>
+            <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white">
+              <Search size={16} />Find Tournament
+            </Link>
           </div>
-        </article> : null}
+        </div>
       </div>
-      {showLive ? <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-        {[0, 1].map(index => <button key={index} type="button" onClick={() => go(index)} aria-label={`Show slide ${index + 1}`} className={`h-1.5 rounded-full transition-all ${slide === index ? "w-7 bg-[#70c1ff]" : "w-1.5 bg-[#31597f]"}`} />)}
-      </div> : null}
     </section>
   );
 }
@@ -219,6 +191,7 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
   const [matches, setMatches] = useState<FootballMatch[]>([]);
+  const [loading, setLoading] = useState(isPage);
   const [votes, setVotes] = useState<Record<string, VoteState>>({});
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -252,15 +225,20 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
   }, [supabase]);
 
   const load = useCallback(async (refresh = false) => {
-    const response = await fetch(`/api/football/matches${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setError("Live football data is unavailable right now.");
-      return;
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/football/matches${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError("Live football data is unavailable right now.");
+        return;
+      }
+      setError("");
+      setMatches(payload.matches || []);
+      await loadVotes(payload.matches || []);
+    } finally {
+      setLoading(false);
     }
-    setError("");
-    setMatches(payload.matches || []);
-    await loadVotes(payload.matches || []);
   }, [loadVotes]);
 
   useEffect(() => {
@@ -370,7 +348,16 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
 
   return (
     <>
-      {isPage ? <section className="rounded-[30px] border border-[#1b67a6] bg-[radial-gradient(circle_at_80%_0%,rgba(71,168,255,.3),transparent_48%),#167bd1] px-5 py-8 shadow-[0_24px_70px_rgba(0,60,130,.28)] sm:px-8 sm:py-10"><p className="text-[10px] font-black uppercase tracking-[.2em] text-white/80">MATCHUP LIVE SCORES</p><h1 className="mt-3 text-[42px] font-black leading-[.95] tracking-[-.05em] text-white sm:text-6xl">View Live Matches.</h1><p className="mt-4 max-w-xl text-sm leading-6 text-white/85 sm:text-base">Follow real football matches, current scores, voting and Match Room discussion.</p></section> : <DiscoveryCarousel onOpenMatch={openSearch} showLive={false} />}
+      <GameLiveSwitcher active={isPage ? "live" : "game"} />
+      {isPage ? (
+        <section className="rounded-[30px] border border-[#1b67a6] bg-[radial-gradient(circle_at_80%_0%,rgba(71,168,255,.3),transparent_48%),#167bd1] px-5 py-8 shadow-[0_24px_70px_rgba(0,60,130,.28)] sm:px-8 sm:py-10">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-white/80">MATCHUP LIVE SCORES</p>
+          <h1 className="mt-3 text-[42px] font-black leading-[.95] tracking-[-.05em] text-white sm:text-6xl">View Live Matches.</h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-white/85 sm:text-base">Follow real football matches, current scores, voting and Match Room discussion.</p>
+        </section>
+      ) : (
+        <GameHero />
+      )}
       <section className={`${isPage ? "mt-6" : "hidden"}`} id="live-scores">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div className="min-w-0">
@@ -440,7 +427,9 @@ export function LiveFootballHomeFeature({ mode = "home" }: { mode?: "home" | "pa
 
         {error ? <div role="status" className="mb-4 rounded-2xl border border-[#6b3341] bg-[#24151a] px-4 py-3 text-sm font-bold text-[#ffb2bc]">{error}</div> : null}
 
-        {matches.length ? (
+        {loading ? (
+          <LiveMatchCardSkeleton count={3} />
+        ) : matches.length ? (
           <>
             <div className={isPage ? "space-y-3" : "no-scrollbar flex snap-x gap-3 overflow-x-auto pb-2"}>
               {matches.map(match => (
