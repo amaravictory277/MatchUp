@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Check,
   CheckCheck,
   Lock,
@@ -1244,7 +1244,7 @@ export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onView
         >
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => tournamentMode ? onBack?.() : setShowRooms((v) => !v)} className="icon-button" aria-label={tournamentMode ? "Back" : "Open chats and groups"}>
-              {tournamentMode ? <ArrowLeft size={19} /> : <Menu size={19} />}
+              {tournamentMode ? <ChevronLeft size={19} /> : <Menu size={19} />}
             </button>
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-3">
