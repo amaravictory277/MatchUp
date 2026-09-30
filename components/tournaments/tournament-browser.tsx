@@ -11,7 +11,7 @@ import { MatchUpAvatar } from "../ui/matchup-avatar";
 import { TournamentCardSkeleton } from "../ui/content-skeletons";
 import { ContentForwarder } from "../share/content-forwarder";
 type Category="boosted"|"featured"|"discover";
-type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null};
+type TournamentRow={id:string;tournament_id?:string;name:string;teams?:number;description?:string|null;format:string;status:string;starts_at?:string|null;visibility?:string;max_players:number;organizer_id:string;banner_path?:string|null;game_title?:string|null;prize_pool?:number|null;profiles?:{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}|Array<{display_name?:string|null;username?:string|null;avatar_path?:string|null;country?:string|null;currency_code?:string|null}>|null;promotion_kind?:string|null;promotion_expires_at?:string|null;tournament_group_id?:string|null};
 function currencyForOrganizer(profile?:{country?:string|null;currency_code?:string|null}|null){
   if(profile?.currency_code) return profile.currency_code;
   const country=(profile?.country||"").trim().toLowerCase();
@@ -43,7 +43,7 @@ export function TournamentCard({
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [participantProfiles, setParticipantProfiles] = useState<Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>>([]);
   const [joined, setJoined] = useState(false);
-  const [joining, setJoining] = useState(false);
+  const [joining, setJoining] = useState(false);\n  const [tournamentGroupId, setTournamentGroupId] = useState<string | null>(row.tournament_group_id || null);\n  const [actionOpen, setActionOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moved = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -55,20 +55,17 @@ export function TournamentCard({
     const load = async () => {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id || "";
-      const { data: players } = await supabase
-        .from("tournament_players")
-        .select("player_id,status")
-        .eq("tournament_id", row.id)
-        .eq("status", "joined")
-        .order("joined_at", { ascending: true })
-        .limit(128);
+      const [{ data: tournamentRow }, { data: players }] = await Promise.all([
+        supabase.from("tournaments").select("tournament_group_id").eq("id", row.id).maybeSingle(),
+        supabase.from("tournament_players").select("player_id,status").eq("tournament_id", row.id).eq("status", "joined").order("joined_at", { ascending: true }).limit(128),
+      ]);
       const ids = ((players || []) as Array<{player_id:string}>).map((p) => p.player_id);
       const previewIds = ids.slice(0, 6);
       const { data: profiles } = previewIds.length
         ? await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", previewIds)
         : { data: [] as Array<{id:string}> };
       if (!cancelled) {
-        setParticipantIds(ids);
+        setTournamentGroupId((tournamentRow as { tournament_group_id?: string | null } | null)?.tournament_group_id || row.tournament_group_id || null);\n        setParticipantIds(ids);
         setParticipantProfiles((profiles || []) as Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>);
         setJoined(Boolean(uid && ids.includes(uid)));
       }
@@ -79,22 +76,25 @@ export function TournamentCard({
 
   const joinTournament = async (event?: MouseEvent) => {
     event?.stopPropagation();
-    if (joining || joined) return;
+    if (joining) return;
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) {
-      router.push("/auth");
+    if (!auth.user) { router.push("/auth"); return; }
+    if (joined) {
+      setJoining(true);
+      const { error } = await supabase.rpc("leave_tournament", { p_tournament: row.id });
+      if (error) { setJoining(false); window.dispatchEvent(new CustomEvent("matchup-toast", { detail: error.message })); return; }
+      setJoined(false);
+      setParticipantIds(ids => ids.filter(id => id !== auth.user.id));
+      setJoining(false);
       return;
     }
     setJoining(true);
     const { error } = await supabase.rpc("join_tournament", { p_tournament: row.id });
-    if (error) {
-      setJoining(false);
-      window.dispatchEvent(new CustomEvent("matchup-toast", { detail: error.message }));
-      return;
-    }
+    if (error) { setJoining(false); window.dispatchEvent(new CustomEvent("matchup-toast", { detail: error.message })); return; }
     setJoined(true);
-    setParticipantIds((ids) => ids.includes(auth.user.id) ? ids : [...ids, auth.user.id]);
+    setParticipantIds(ids => ids.includes(auth.user.id) ? ids : [...ids, auth.user.id]);
     setJoining(false);
+    setActionOpen(true);
   };
 
   const save = async () => {
@@ -249,11 +249,11 @@ export function TournamentCard({
               type="button"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => void joinTournament(event)}
-              disabled={joining || joined || row.status === "full"}
+              disabled={joining || (!joined && row.status === "full")}
               className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-5 py-3 text-[12px] font-black uppercase tracking-[.04em] text-white shadow-[0_10px_28px_rgba(36,151,255,.22)] transition active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-65"
             >
               {joined ? <Check size={15} /> : null}
-              {joining ? "Joining…" : joined ? "Joined Tournament" : row.status === "full" ? "Tournament Full" : "Join Tournament"}
+              {joining ? (joined ? "Leaving…" : "Joining…") : joined ? "Leave Tournament" : row.status === "full" ? "Tournament Full" : "Join Tournament"}
             </button>
           </div>
 
@@ -282,4 +282,4 @@ export function TournamentCard({
   );
 }
 
-export function TournamentListingPage({category,title}:{category:Category;title:string}){const router=useRouter();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [rows,setRows]=useState<TournamentRow[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [idMode,setIdMode]=useState(false);useEffect(()=>{setIdMode(new URLSearchParams(window.location.search).get("mode")==="id");},[]);useEffect(()=>{let mounted=true;const load=async()=>{const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility","public").order("created_at",{ascending:false}).limit(100);if(mounted){setRows((data||[]) as TournamentRow[]);setLoading(false);}};void load();return()=>{mounted=false;};},[supabase]);const filtered=rows.filter(r=>!query.trim()||`${r.name} ${r.tournament_id} ${r.format} ${r.game_title||""} ${r.description||""}`.toLowerCase().includes(query.trim().toLowerCase()));return <main className="app-shell pb-28"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#47a8ff]">MatchUp Tournaments</p><h1 className="mt-1 text-3xl font-black text-white">{title}</h1><p className="mt-1 max-w-xl text-sm leading-6 text-[#86a1bb]">Browse real public tournaments and find your next competition.</p></div><Link href="/tournaments/new" className="hidden items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white sm:flex"><Plus size={15}/>Create</Link></div><div className="mt-5 flex gap-3"><label className="flex flex-1 items-center gap-2 rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3"><Search size={17} className="text-[#47a8ff]"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent text-sm text-white outline-none" placeholder={idMode?"Paste tournament ID":"Search tournaments"}/></label><button type="button" onClick={()=>router.push("/tournaments/new")} className="rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white">Create</button></div>{loading?<div className="mt-7"><TournamentCardSkeleton count={2}/></div>:filtered.length?<div className="mt-7 grid gap-4 sm:grid-cols-2">{filtered.map(row=><TournamentCard key={row.id} row={row}/>)}</div>:<div className="surface-card mt-7 border-[#153c68] p-8 text-center"><Search className="mx-auto text-[#47a8ff]"/><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-sm text-[#7892ac]">Try a different search.</p></div>}</main>;}
+export function TournamentListingPage({category,title}:{category:Category;title:string}){const router=useRouter();const supabase=useMemo(()=>createBrowserSupabaseClient(),[]);const [rows,setRows]=useState<TournamentRow[]>([]);const [query,setQuery]=useState("");const [loading,setLoading]=useState(true);const [idMode,setIdMode]=useState(false);useEffect(()=>{setIdMode(new URLSearchParams(window.location.search).get("mode")==="id");},[]);useEffect(()=>{let mounted=true;const load=async()=>{const {data}=await supabase.from("tournaments").select("id,tournament_id,name,description,format,status,starts_at,visibility,max_players,organizer_id,banner_path,game_title,prize_pool,tournament_group_id,profiles:organizer_id(display_name,username,avatar_path,country,currency_code)").eq("visibility","public").order("created_at",{ascending:false}).limit(100);if(mounted){setRows((data||[]) as TournamentRow[]);setLoading(false);}};void load();return()=>{mounted=false;};},[supabase]);const filtered=rows.filter(r=>!query.trim()||`${r.name} ${r.tournament_id} ${r.format} ${r.game_title||""} ${r.description||""}`.toLowerCase().includes(query.trim().toLowerCase()));return <main className="app-shell pb-28"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#47a8ff]">MatchUp Tournaments</p><h1 className="mt-1 text-3xl font-black text-white">{title}</h1><p className="mt-1 max-w-xl text-sm leading-6 text-[#86a1bb]">Browse real public tournaments and find your next competition.</p></div><Link href="/tournaments/new" className="hidden items-center gap-2 rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white sm:flex"><Plus size={15}/>Create</Link></div><div className="mt-5 flex gap-3"><label className="flex flex-1 items-center gap-2 rounded-2xl border border-[#18365f] bg-[#071426] px-4 py-3"><Search size={17} className="text-[#47a8ff]"/><input value={query} onChange={e=>setQuery(e.target.value)} className="w-full bg-transparent text-sm text-white outline-none" placeholder={idMode?"Paste tournament ID":"Search tournaments"}/></label><button type="button" onClick={()=>router.push("/tournaments/new")} className="rounded-2xl bg-[linear-gradient(100deg,#126bc0,#2497ff)] px-4 py-3 text-xs font-black text-white">Create</button></div>{loading?<div className="mt-7"><TournamentCardSkeleton count={2}/></div>:filtered.length?<div className="mt-7 grid gap-4 sm:grid-cols-2">{filtered.map(row=><TournamentCard key={row.id} row={row}/>)}</div>:<div className="surface-card mt-7 border-[#153c68] p-8 text-center"><Search className="mx-auto text-[#47a8ff]"/><p className="mt-3 font-bold text-white">No tournaments found</p><p className="mt-1 text-sm text-[#7892ac]">Try a different search.</p></div>}</main>;}
