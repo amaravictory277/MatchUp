@@ -43,7 +43,9 @@ export function TournamentCard({
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [participantProfiles, setParticipantProfiles] = useState<Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>>([]);
   const [joined, setJoined] = useState(false);
-  const [joining, setJoining] = useState(false);\n  const [tournamentGroupId, setTournamentGroupId] = useState<string | null>(row.tournament_group_id || null);\n  const [actionOpen, setActionOpen] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [tournamentGroupId, setTournamentGroupId] = useState<string | null>(row.tournament_group_id || null);
+  const [actionOpen, setActionOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moved = useRef(false);
   const start = useRef<{ x: number; y: number } | null>(null);
@@ -65,7 +67,8 @@ export function TournamentCard({
         ? await supabase.from("profiles").select("id,display_name,username,avatar_path").in("id", previewIds)
         : { data: [] as Array<{id:string}> };
       if (!cancelled) {
-        setTournamentGroupId((tournamentRow as { tournament_group_id?: string | null } | null)?.tournament_group_id || row.tournament_group_id || null);\n        setParticipantIds(ids);
+        setTournamentGroupId((tournamentRow as { tournament_group_id?: string | null } | null)?.tournament_group_id || row.tournament_group_id || null);
+        setParticipantIds(ids);
         setParticipantProfiles((profiles || []) as Array<{id:string;display_name?:string|null;username?:string|null;avatar_path?:string|null}>);
         setJoined(Boolean(uid && ids.includes(uid)));
       }
