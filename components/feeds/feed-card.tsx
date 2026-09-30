@@ -244,7 +244,8 @@ export function FeedCard({
     setEditing(false);
   };
 
-  const isTextPost = !post.media.length && !post.videoUrl;\n  const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
+  const isTextPost = !post.media.length && !post.videoUrl;
+  const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
   const quickComments = post.commentList;
 
   return (
