@@ -38,7 +38,7 @@ type Group = {
   name: string;
   created_by: string;
   created_at: string;
-  kind: "general" | "private" | "group" | "match";
+  kind: "general" | "private" | "group" | "match" | "tournament";
   locked: boolean;
   member_limit?: number;
   image_path?: string | null;
@@ -150,7 +150,7 @@ function chatBodyError(body: string) {
   return null;
 }
 
-export function ChatHub({ initialGroupId }: { initialGroupId?: string }) {
+export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onViewDetails }: { initialGroupId?: string; tournamentMode?: boolean; onBack?: () => void; onViewDetails?: () => void }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const { preferences } = usePersonalization();
   const [user, setUser] = useState<{ id: string; displayName: string }>({
