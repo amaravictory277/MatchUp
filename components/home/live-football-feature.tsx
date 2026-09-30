@@ -190,7 +190,7 @@ function DiscoveryCarousel({ onOpenMatch, showLive = true }: { onOpenMatch: () =
             <p className="mt-4 max-w-[520px] text-sm leading-6 text-[#c8d9e9] sm:text-base">Create, discover and run competitive football tournaments—all in one match-ready place.</p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#167bd1] px-5 py-3 text-xs font-black text-white"><Trophy size={16}/>Search Tournaments</Link>
-              <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white"><Search size={16}/>Find Tournament</Link><Link href="/live-scores" className="inline-flex items-center justify-center rounded-xl border border-[#28547e] bg-[#071426]/50 px-5 py-3 text-xs font-black text-[#bfe3ff]">Live Scores</Link>
+              <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white"><Search size={16}/>Find Tournament</Link>
             </div>
           </div>
         </article>
