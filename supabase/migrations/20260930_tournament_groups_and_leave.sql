@@ -2,6 +2,8 @@ begin;
 
 alter table public.chat_groups drop constraint if exists chat_groups_kind_check;
 alter table public.chat_groups add constraint chat_groups_kind_check check (kind in ('general','private','group','match','tournament'));
+alter table public.chat_groups drop constraint if exists chat_groups_member_limit_check;
+alter table public.chat_groups add constraint chat_groups_member_limit_check check ((kind='tournament' and member_limit between 2 and 128) or (kind<>'tournament' and member_limit between 2 and 50));
 alter table public.chat_groups add column if not exists tournament_id uuid references public.tournaments(id) on delete cascade;
 create unique index if not exists chat_groups_tournament_unique on public.chat_groups(tournament_id) where kind='tournament' and tournament_id is not null;
 create index if not exists chat_groups_tournament_idx on public.chat_groups(tournament_id);
