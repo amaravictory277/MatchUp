@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
+  ArrowLeft,\n  Check,
   CheckCheck,
   Lock,
   Menu,
@@ -1242,13 +1242,8 @@ export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onView
           className={`matchup-chat-header border-b border-[#18365f] bg-[#08182b] px-3 py-3 sm:px-5 overflow-hidden transition-[max-height,transform,opacity] duration-200 ${headerVisible ? "max-h-24 translate-y-0 opacity-100" : "max-h-0 -translate-y-full opacity-0 pointer-events-none"}`}
         >
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowRooms((v) => !v)}
-              className="icon-button"
-              aria-label="Open chats and groups"
-            >
-              <Menu size={19} />
+            <button type="button" onClick={() => tournamentMode ? onBack?.() : setShowRooms((v) => !v)} className="icon-button" aria-label={tournamentMode ? "Back" : "Open chats and groups"}>
+              {tournamentMode ? <ArrowLeft size={19} /> : <Menu size={19} />}
             </button>
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-3">
@@ -1311,14 +1306,7 @@ export function ChatHub({ initialGroupId, tournamentMode = false, onBack, onView
               </div>
             </div>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowChatOptions((v) => !v)}
-                className="icon-button"
-                aria-label="Chat options"
-              >
-                <MoreVertical size={19} />
-              </button>
+              {tournamentMode ? <button type="button" onClick={() => onViewDetails?.()} className="shrink-0 rounded-xl bg-[#1674cf] px-3 py-2 text-[11px] font-black text-white">View Details</button> : <button type="button" onClick={() => setShowChatOptions((v) => !v)} className="icon-button" aria-label="Chat options"><MoreVertical size={19} /></button>}
               {showChatOptions ? (
                 <div className="absolute right-0 top-11 z-50 min-w-44 rounded-2xl border border-[#214a78] bg-[#08182b] p-1.5 shadow-2xl">
                   <button
