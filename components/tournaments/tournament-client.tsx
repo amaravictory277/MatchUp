@@ -5,6 +5,7 @@ import { ArrowLeft, BarChart3, CalendarDays, Check, ChevronRight, Clipboard, Cop
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 import { statsFromFixtures } from "../../lib/tournament/engine";
+import { TournamentDetailSkeleton } from "../ui/content-skeletons";
 
 type Team = { id: string; team_name: string; short_name: string; country: string; league: string; crest_path?: string | null; seed?: number | null; group_name?: string | null };
 type Fixture = { id: string; round_number: number; position: number; round_label: string; group_name?: string | null; home_team_id?: string | null; away_team_id?: string | null; winner_team_id?: string | null; home_score?: number | null; away_score?: number | null; status: string; scheduled_at?: string | null; venue_id?: string | null; duration_minutes?: number; referee_name?: string | null; home_penalties?: number | null; away_penalties?: number | null; cancelled?: boolean };
@@ -102,7 +103,7 @@ export function TournamentClient() {
   const copyShare = async () => { await navigator.clipboard?.writeText(window.location.href); setToast("Tournament link copied"); };
   const setWinnerName = (f: Fixture) => f.winner_team_id ? team(f.winner_team_id)?.team_name : undefined;
 
-  if (loading) return <main className="app-shell"><div className="surface-card p-8 text-sm text-[#9694aa]">Loading tournament…</div></main>;
+  if (loading) return <TournamentDetailSkeleton />;
   if (!tournament) return <main className="app-shell"><div className="surface-card p-8"><p className="font-bold text-white">Tournament not found</p><p className="mt-1 text-sm text-[#9694aa]">{error || "This tournament may be private or no longer available."}</p></div></main>;
 
   return <main className="app-shell pb-28">
