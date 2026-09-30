@@ -244,13 +244,13 @@ export function FeedCard({
     setEditing(false);
   };
 
-  const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
+  const isTextPost = !post.media.length && !post.videoUrl;\n  const displayGame = post.author.game ? (/efootball/i.test(post.author.game) ? "eFootball" : (/fifa/i.test(post.author.game) ? "FIFA" : post.author.game)) : null;
   const quickComments = post.commentList;
 
   return (
     <article
       id={`post-${post.id}`}
-      className="matchup-feed-card relative aspect-[4/3] w-full overflow-hidden rounded-[24px] border border-white/20 bg-[#07111d] text-white"
+      className={`matchup-feed-card relative w-full overflow-hidden rounded-[24px] border text-white ${isTextPost ? "min-h-[220px] border-[#214a78] bg-[#071426]" : "aspect-[4/3] border-white/20 bg-[#07111d]"}`}
       onContextMenu={(event) => event.preventDefault()}
     >
       {post.media.length ? (
@@ -302,7 +302,7 @@ export function FeedCard({
         </div>
       )}
 
-      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/45 pointer-events-none" />
+      {!isTextPost ? <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/35 via-transparent to-black/45 pointer-events-none" /> : null}
 
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4 sm:p-5">
         <div className="min-w-0">
@@ -383,7 +383,7 @@ export function FeedCard({
           aria-label={post.liked ? "Unlike post" : "Like post"}
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} /><span className="text-[10px] font-black">{formatCount(post.likes)}</span>
+          <Heart size={20} fill={post.liked ? "currentColor" : "none"} className={post.liked ? "text-[#ff445d]" : ""} />{isTextPost ? <span className="text-[10px] font-black">{formatCount(post.likes)}</span> : null}
         </button>
         <button
           type="button"
@@ -391,7 +391,7 @@ export function FeedCard({
           aria-label="Open comments"
           className="grid size-10 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-[0_5px_16px_rgba(0,0,0,.24)] sm:size-10"
         >
-          <MessageCircle size={20} /><span className="text-[10px] font-black">{formatCount(post.comments)}</span>
+          <MessageCircle size={20} />{isTextPost ? <span className="text-[10px] font-black">{formatCount(post.comments)}</span> : null}
         </button>
       </div>
 
