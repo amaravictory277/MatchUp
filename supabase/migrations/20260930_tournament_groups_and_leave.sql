@@ -79,4 +79,52 @@ grant execute on function public.get_tournament_group(uuid) to authenticated;
 create or replace function public.get_tournament_group_info(p_tournament uuid) returns table(group_id uuid,tournament_id uuid,tournament_name text,participant_count integer) language sql security definer set search_path=public as $$ select t.tournament_group_id,t.id,t.name,(select count(*)::integer from public.tournament_players tp where tp.tournament_id=t.id and tp.status='joined') from public.tournaments t where t.id=p_tournament and exists(select 1 from public.tournament_players tp where tp.tournament_id=t.id and tp.player_id=auth.uid() and tp.status='joined'); $$;
 grant execute on function public.get_tournament_group_info(uuid) to authenticated;
 
+
+drop policy if exists tournament_chat_group_select on public.chat_groups;
+create policy tournament_chat_group_select on public.chat_groups for select to authenticated using (
+  kind <> 'tournament'
+  or created_by=auth.uid()
+  or exists(select 1 from public.tournament_players tp where tp.tournament_id=chat_groups.tournament_id and tp.player_id=auth.uid() and tp.status='joined')
+);
+
+drop policy if exists tournament_chat_member_select on public.chat_group_members;
+create policy tournament_chat_member_select on public.chat_group_members for select to authenticated using (
+  user_id=auth.uid()
+  or exists(select 1 from public.chat_groups g where g.id=chat_group_members.group_id and (
+    g.kind <> 'tournament'
+    or exists(select 1 from public.tournament_players tp where tp.tournament_id=g.tournament_id and tp.player_id=auth.uid() and tp.status='joined')
+  ))
+);
+
+drop policy if exists tournament_chat_member_insert on public.chat_group_members;
+create policy tournament_chat_member_insert on public.chat_group_members for insert to authenticated with check (
+  exists(select 1 from public.chat_groups g where g.id=chat_group_members.group_id and (
+    g.kind <> 'tournament'
+    or exists(select 1 from public.tournament_players tp where tp.tournament_id=g.tournament_id and tp.player_id=auth.uid() and tp.status='joined')
+  ))
+);
+
+drop policy if exists tournament_chat_member_delete on public.chat_group_members;
+create policy tournament_chat_member_delete on public.chat_group_members for delete to authenticated using (
+  user_id=auth.uid() or exists(select 1 from public.chat_groups g where g.id=chat_group_members.group_id and g.created_by=auth.uid())
+);
+
+drop policy if exists tournament_chat_message_select on public.chat_messages;
+create policy tournament_chat_message_select on public.chat_messages for select to authenticated using (
+  exists(select 1 from public.chat_groups g where g.id=chat_messages.group_id and (
+    g.kind <> 'tournament'
+    or exists(select 1 from public.tournament_players tp where tp.tournament_id=g.tournament_id and tp.player_id=auth.uid() and tp.status='joined')
+  ))
+);
+
+drop policy if exists tournament_chat_message_insert on public.chat_messages;
+create policy tournament_chat_message_insert on public.chat_messages for insert to authenticated with check (
+  sender_id=auth.uid()
+  and exists(select 1 from public.chat_group_members m where m.group_id=chat_messages.group_id and m.user_id=auth.uid())
+  and exists(select 1 from public.chat_groups g where g.id=chat_messages.group_id and (
+    g.kind <> 'tournament'
+    or exists(select 1 from public.tournament_players tp where tp.tournament_id=g.tournament_id and tp.player_id=auth.uid() and tp.status='joined')
+  ))
+);
+
 commit;
