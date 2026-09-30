@@ -441,7 +441,7 @@ export function HomeApp() {
           verified: Boolean(p2.is_verified),
         })),
       } as Post;
-    }).filter((p) => p.media.length > 0).slice(0, 6);
+    }).slice(0, 6);
     setPosts(feed);
 
     const readyRows = ((readyResult.data || []) as any[])
