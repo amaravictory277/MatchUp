@@ -23,7 +23,7 @@ begin
  if p_prize_pool is null or p_prize_pool<0 then raise exception 'Prize pool cannot be negative.'; end if;
  if jsonb_array_length(coalesce(p_teams,'[]'::jsonb))<2 or jsonb_array_length(p_teams)>128 then raise exception 'Tournament must have between 2 and 128 teams.'; end if;
  insert into public.tournaments(organizer_id,name,description,format,max_players,starts_at,visibility,entry_information,game_title,prize_pool) values(auth.uid(),btrim(p_name),coalesce(p_description,''),p_format,p_max_players,p_starts_at,p_visibility,coalesce(p_entry_information,''),coalesce(nullif(btrim(p_game_title),''),'Football'),p_prize_pool) returning id into t;
- insert into public.chat_groups(name,created_by,kind,locked,member_limit,tournament_id) values(btrim(p_name),auth.uid(),'tournament',false,128,t) returning id into g;
+ insert into public.chat_groups(name,created_by,kind,locked,member_limit,tournament_id) values(btrim(p_name),auth.uid(),'tournament',false,p_max_players,t) returning id into g;
  update public.tournaments set tournament_group_id=g where id=t;
  insert into public.chat_group_members(group_id,user_id,last_seen_at) values(g,auth.uid(),now()) on conflict do nothing;
  for row in select value from jsonb_array_elements(p_teams) loop
