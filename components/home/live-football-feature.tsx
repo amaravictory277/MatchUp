@@ -167,7 +167,7 @@ function GameHero() {
         <div className="max-w-[620px]">
           <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9bd3ff]">THE HOME OF FOOTBALL TOURNAMENTS</p>
           <h1 className="mt-4 max-w-[620px] text-[43px] font-black leading-[.95] tracking-[-.055em] text-white sm:text-6xl">
-            Find your next <span className="text-[#70c1ff]">competition.</span>
+            Find Your <span className="text-[#70c1ff]">Competition</span>
           </h1>
           <p className="mt-4 max-w-[520px] text-sm leading-6 text-[#c8d9e9] sm:text-base">
             Create, discover and run competitive football tournaments—all in one match-ready place.
