@@ -39,6 +39,7 @@ begin
  end loop;
  return t;
 end; $$;
+revoke execute on function public.create_tournament_atomic(text,text,text,smallint,timestamptz,text,text,text,numeric,jsonb,jsonb) from public, anon;
 grant execute on function public.create_tournament_atomic(text,text,text,smallint,timestamptz,text,text,text,numeric,jsonb,jsonb) to authenticated;
 
 create or replace function public.leave_tournament(p_tournament uuid) returns uuid language plpgsql security definer set search_path=public as $$
@@ -50,6 +51,7 @@ begin
  update public.tournaments set status='open' where id=p_tournament and status='full' and (select count(*) from public.tournament_players tp where tp.tournament_id=p_tournament and tp.status='joined') < max_players;
  return p_tournament;
 end; $$;
+revoke execute on function public.leave_tournament(uuid) from public, anon;
 grant execute on function public.leave_tournament(uuid) to authenticated;
 
 create or replace function public.join_tournament(p_tournament uuid) returns uuid language plpgsql security definer set search_path=public as $$
@@ -73,12 +75,15 @@ begin
  if joined_count + 1 >= t.max_players then update public.tournaments set status='full' where id=p_tournament; end if;
  return p_tournament;
 end; $$;
+revoke execute on function public.join_tournament(uuid) from public, anon;
 grant execute on function public.join_tournament(uuid) to authenticated;
 
 create or replace function public.get_tournament_group(p_tournament uuid) returns uuid language sql security definer set search_path=public as $$ select t.tournament_group_id from public.tournaments t where t.id=p_tournament and exists(select 1 from public.tournament_players tp where tp.tournament_id=t.id and tp.player_id=auth.uid() and tp.status='joined'); $$;
+revoke execute on function public.get_tournament_group(uuid) from public, anon;
 grant execute on function public.get_tournament_group(uuid) to authenticated;
 
 create or replace function public.get_tournament_group_info(p_tournament uuid) returns table(group_id uuid,tournament_id uuid,tournament_name text,participant_count integer) language sql security definer set search_path=public as $$ select t.tournament_group_id,t.id,t.name,(select count(*)::integer from public.tournament_players tp where tp.tournament_id=t.id and tp.status='joined') from public.tournaments t where t.id=p_tournament and exists(select 1 from public.tournament_players tp where tp.tournament_id=t.id and tp.player_id=auth.uid() and tp.status='joined'); $$;
+revoke execute on function public.get_tournament_group_info(uuid) from public, anon;
 grant execute on function public.get_tournament_group_info(uuid) to authenticated;
 
 
