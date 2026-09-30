@@ -113,3 +113,22 @@ export function FeedCardSkeleton({ count = 1 }: { count?: number }) {
     </div>
   );
 }
+
+
+export function TournamentDetailSkeleton() {
+  return (
+    <main className="app-shell animate-pulse">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="size-10 rounded-full bg-[#12385a]" />
+        <div className="flex-1 space-y-2"><div className="h-2.5 w-24 rounded bg-[#12385a]" /><div className="h-5 w-48 rounded bg-[#12385a]" /></div>
+        <div className="size-10 rounded-full bg-[#12385a]" />
+      </div>
+      <section className="rounded-2xl border border-[#18365f] bg-[#071426] p-5">
+        <div className="flex items-start gap-4"><div className="size-16 rounded-3xl bg-[#12385a]" /><div className="flex-1 space-y-3"><div className="h-7 w-2/3 rounded bg-[#12385a]" /><div className="h-3 w-40 rounded bg-[#0d2945]" /><div className="h-3 w-full rounded bg-[#0d2945]" /></div></div>
+        <div className="mt-5 grid grid-cols-3 gap-2"><div className="h-16 rounded-2xl bg-[#0d2945]" /><div className="h-16 rounded-2xl bg-[#0d2945]" /><div className="h-16 rounded-2xl bg-[#0d2945]" /></div>
+      </section>
+      <div className="mt-4 flex gap-2"><div className="h-9 w-24 rounded-full bg-[#12385a]" /><div className="h-9 w-24 rounded-full bg-[#0d2945]" /><div className="h-9 w-24 rounded-full bg-[#0d2945]" /></div>
+      <section className="mt-4 rounded-2xl border border-[#18365f] bg-[#071426] p-5"><div className="h-4 w-32 rounded bg-[#12385a]" /><div className="mt-4 h-20 rounded-2xl bg-[#0d2945]" /><div className="mt-3 h-20 rounded-2xl bg-[#0d2945]" /></section>
+    </main>
+  );
+}
