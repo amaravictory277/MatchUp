@@ -6,13 +6,14 @@ import { createBrowserSupabaseClient } from "../../lib/supabase/client";
 type Gender = "male" | "female";
 type Phase = "setup" | "match";
 type Vec3 = { x: number; y: number; z: number };
+type Scale3 = readonly [number, number, number];
 
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 
 function identityForGender(gender: Gender) {
   return gender === "female"
-    ? { skin: [0.54, 0.32, 0.2], kit: [0.96, 0.96, 0.96], shorts: [0.12, 0.16, 0.2], scale: [0.92, 1.02, 0.92] as Vec3 }
-    : { skin: [0.38, 0.22, 0.13], kit: [0.97, 0.97, 0.97], shorts: [0.1, 0.14, 0.2], scale: [1, 1.06, 1] as Vec3 };
+    ? { skin: [0.54, 0.32, 0.2], kit: [0.96, 0.96, 0.96], shorts: [0.12, 0.16, 0.2], scale: [0.92, 1.02, 0.92] as Scale3 }
+    : { skin: [0.38, 0.22, 0.13], kit: [0.97, 0.97, 0.97], shorts: [0.1, 0.14, 0.2], scale: [1, 1.06, 1] as Scale3 };
 }
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
