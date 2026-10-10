@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type Team = "blue" | "red";
@@ -83,7 +82,7 @@ export function PlayGame() {
   const [fullSpeed, setFullSpeed] = useState(false);
   const [power, setPower] = useState(0);
   const [goalNotice, setGoalNotice] = useState<{team:string; score:string; id:number} | null>(null);
-  const [celebrationId, setCelebrationId] = useState(0);
+  const [, setCelebrationId] = useState(0);
   const [mode, setMode] = useState<"single" | "multi">("single");
   const [started, setStarted] = useState(false);
   const [, setVersion] = useState(0);
@@ -187,6 +186,43 @@ export function PlayGame() {
       }
     }
     pointerRef.current = null; g.aim = null; setVersion(v => v + 1);
+  };
+  useEffect(() => {
+    if (!goalNotice) return;
+    const timer = window.setTimeout(() => setGoalNotice(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [goalNotice]);
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/");
+  };
+  const moveSelected = (dx: number, dy: number) => {
+    const state = gameRef.current;
+    const d = state.discs.find(item => item.id === state.selected) || state.discs.find(item => item.team === "blue" && !item.keeper);
+    if (!d) return;
+    state.selected = d.id;
+    d.vx += dx * (fullSpeed ? 260 : 170);
+    d.vy += dy * (fullSpeed ? 260 : 170);
+    setVersion(v => v + 1);
+  };
+  const actBall = (kind: "pass" | "shoot") => {
+    const state = gameRef.current;
+    const d = state.discs.find(item => item.id === state.selected) || state.discs.find(item => item.team === "blue" && !item.keeper);
+    if (!d) return;
+    state.selected = d.id;
+    const b = state.ball;
+    const near = dist(d.x, d.y, b.x, b.y);
+    if (near < 170) {
+      const dx = kind === "shoot" ? W - b.x : W / 2 - b.x;
+      const dy = kind === "shoot" ? H / 2 - b.y : H / 2 - b.y;
+      const len = Math.hypot(dx, dy) || 1;
+      b.vx += dx / len * (kind === "shoot" ? 430 : 260);
+      b.vy += dy / len * (kind === "shoot" ? 430 : 260);
+    } else {
+      d.vx += (W / 2 - d.x) / (Math.abs(W / 2 - d.x) || 1) * 180;
+    }
+    setStatus(kind === "shoot" ? "Shot attempted" : "Pass attempted");
+    setVersion(v => v + 1);
   };
   const g = gameRef.current;
   return (
