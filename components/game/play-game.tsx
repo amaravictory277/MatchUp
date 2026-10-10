@@ -125,7 +125,13 @@ export function PlayGame() {
           d.x += d.vx * dt; d.y += d.vy * dt;
           d.vx *= Math.pow(.22, dt); d.vy *= Math.pow(.22, dt);
           if (Math.hypot(d.vx, d.vy) < 3) { d.vx = 0; d.vy = 0; }
-          d.x = clamp(d.x, 45, W - 45); d.y = clamp(d.y, 45, H - 45);
+          if (d.keeper) {
+            d.x = d.team === "blue" ? clamp(d.x, 45, 150) : clamp(d.x, W - 150, W - 45);
+            d.y = clamp(d.y, 175, 425);
+          } else {
+            d.x = clamp(d.x, 45, W - 45);
+            d.y = clamp(d.y, 45, H - 45);
+          }
         }
         const b = g.ball; b.x += b.vx * dt; b.y += b.vy * dt; b.vx *= Math.pow(.32, dt); b.vy *= Math.pow(.32, dt);
         if (Math.abs(b.vx) < 2) b.vx = 0; if (Math.abs(b.vy) < 2) b.vy = 0;
@@ -159,10 +165,17 @@ export function PlayGame() {
             keeper.vx += clamp((W - 70 - keeper.x) * 2.2, -100, 100);
           }
           if (target && Math.hypot(b.vx, b.vy) < 420) {
-            const tx = b.x < W * .7 ? W - 70 : W - 35, ty = H / 2 + (Math.random() - .5) * 100;
+            const tx = b.x > W * .3 ? 70 : 35, ty = H / 2 + (H / 2 - b.y) * .2;
             const dx = (b.x - target.x) * .7 + (tx - target.x) * .3, dy = (b.y - target.y) * .7 + (ty - target.y) * .3, len = Math.hypot(dx, dy) || 1;
-            target.vx += dx / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
-            target.vy += dy / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
+            const aiForce = difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330;
+            target.vx += dx / len * aiForce;
+            target.vy += dy / len * aiForce;
+            if (dist(target.x, target.y, b.x, b.y) < 68) {
+              const shotX = -1, shotY = (H / 2 - b.y) / Math.max(180, Math.abs(H / 2 - b.y) + 180);
+              const shotLength = Math.hypot(shotX, shotY) || 1;
+              b.vx += shotX / shotLength * (difficulty === "hard" ? 390 : difficulty === "easy" ? 220 : 310);
+              b.vy += shotY / shotLength * (difficulty === "hard" ? 390 : difficulty === "easy" ? 220 : 310);
+            }
           }
         }
         }
@@ -245,23 +258,38 @@ export function PlayGame() {
     d.vy += dy * (fullSpeed ? 260 : 170);
     setVersion(v => v + 1);
   };
-  const actBall = (kind: "pass" | "shoot") => {
+  const actBall = (kind: "pass" | "shoot" | "cross") => {
     const state = gameRef.current;
-    const d = state.discs.find(item => item.id === state.selected) || state.discs.find(item => item.team === "blue" && !item.keeper);
+    if (state.ended) return;
+    const d = state.discs.find(item => item.id === state.selected && item.team === "blue")
+      || state.discs.find(item => item.team === "blue" && !item.keeper);
     if (!d) return;
     state.selected = d.id;
     const b = state.ball;
-    const near = dist(d.x, d.y, b.x, b.y);
-    if (near < 170) {
-      const dx = kind === "shoot" ? W - b.x : W / 2 - b.x;
-      const dy = kind === "shoot" ? H / 2 - b.y : H / 2 - b.y;
-      const len = Math.hypot(dx, dy) || 1;
-      b.vx += dx / len * (kind === "shoot" ? 430 : 260);
-      b.vy += dy / len * (kind === "shoot" ? 430 : 260);
-    } else {
-      d.vx += (W / 2 - d.x) / (Math.abs(W / 2 - d.x) || 1) * 180;
+    if (dist(d.x, d.y, b.x, b.y) >= 85) {
+      setStatus("Move the selected player closer to the ball before passing or shooting.");
+      setVersion(v => v + 1);
+      return;
     }
-    setStatus(kind === "shoot" ? "Shot attempted" : "Pass attempted");
+    let targetX = W - 35, targetY = H / 2;
+    if (kind === "pass") {
+      const teammates = state.discs.filter(item => item.team === "blue" && item.id !== d.id);
+      const forward = teammates.filter(item => item.x > d.x + 20);
+      const candidates = forward.length ? forward : teammates;
+      const receiver = candidates.reduce((best, item) => dist(item.x, item.y, b.x, b.y) < dist(best.x, best.y, b.x, b.y) ? item : best, candidates[0]);
+      if (receiver) { targetX = receiver.x; targetY = receiver.y; }
+    } else if (kind === "cross") {
+      const boxTeammates = state.discs.filter(item => item.team === "blue" && item.id !== d.id && item.x > W * .62);
+      const farSideY = b.y < H / 2 ? H * .72 : H * .28;
+      const receiver = boxTeammates.reduce((best, item) => dist(item.x, item.y, W - 80, farSideY) < dist(best.x, best.y, W - 80, farSideY) ? item : best, boxTeammates[0]);
+      targetX = receiver?.x ?? W - 55;
+      targetY = receiver?.y ?? farSideY;
+    }
+    const dx = targetX - b.x, dy = targetY - b.y, len = Math.hypot(dx, dy) || 1;
+    const force = kind === "shoot" ? 430 : kind === "cross" ? 330 : 260;
+    b.vx += dx / len * force;
+    b.vy += dy / len * force;
+    setStatus(kind === "shoot" ? "Shot taken toward goal" : kind === "cross" ? "Cross delivered into the attacking area" : "Pass played toward a teammate");
     setVersion(v => v + 1);
   };
   const g = gameRef.current;
@@ -297,7 +325,7 @@ export function PlayGame() {
             </section>
             <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>{controlMode === "direct" && pointerRef.current && <div className="mb-2 flex items-center gap-3 text-xs"><span className="font-bold text-[#bfe3ff]">{power<.33?"LOW POWER":power<.7?"MEDIUM POWER":"MAX POWER"}</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#16324d]"><div className="h-full rounded-full bg-[#47a8ff] transition-all" style={{width:(power*100)+"%"}} /></div></div>}
             <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} className={"block "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none cursor-crosshair"} aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
-            {controlMode === "analog" && !g.ended && <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md"><span /><button type="button" onClick={()=>moveSelected(0,-1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↑</button><span /><button type="button" onClick={()=>moveSelected(-1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">←</button><button type="button" onClick={()=>moveSelected(0,1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↓</button><button type="button" onClick={()=>moveSelected(1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">→</button><button type="button" onClick={()=>actBall("pass")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">PASS</button><button type="button" onClick={()=>actBall("shoot")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">SHOOT</button><button type="button" aria-pressed={fullSpeed} onClick={()=>setFullSpeed(v=>!v)} className={"min-h-12 rounded-xl border font-black "+(fullSpeed?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#071426]")}>FULL SPEED {fullSpeed?"ON":"OFF"}</button></div>}
+            {controlMode === "analog" && !g.ended && <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md"><span /><button type="button" onClick={()=>moveSelected(0,-1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↑</button><span /><button type="button" onClick={()=>moveSelected(-1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">←</button><button type="button" onClick={()=>moveSelected(0,1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↓</button><button type="button" onClick={()=>moveSelected(1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">→</button><button type="button" onClick={()=>actBall("pass")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">PASS</button><button type="button" onClick={()=>actBall("shoot")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">SHOOT</button><button type="button" onClick={()=>actBall("cross")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">CROSS</button><button type="button" aria-pressed={fullSpeed} onClick={()=>setFullSpeed(v=>!v)} className={"min-h-12 rounded-xl border font-black "+(fullSpeed?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#071426]")}>FULL SPEED {fullSpeed?"ON":"OFF"}</button></div>}
             {goalNotice && <div key={goalNotice.id} className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"><div className="confetti-cannon cannon-left" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`left-${i}`} className="confetti-particle" style={{"--dx":`${100+(i%6)*27}px`,"--dy":`${((i*37)%220)-110}px`,"--rotation":`${i*83}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="confetti-cannon cannon-right" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`right-${i}`} className="confetti-particle" style={{"--dx":`${-100-(i%6)*27}px`,"--dy":`${((i*43)%220)-110}px`,"--rotation":`${i*97}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="rounded-3xl border border-[#70c1ff] bg-[#061426]/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(71,168,255,.45)] animate-in zoom-in duration-300"><p className="text-4xl font-black tracking-widest text-white">GOAL!</p><p className="mt-2 text-lg font-black text-[#70c1ff]">{goalNotice.team}</p><p className="mt-1 text-2xl font-black tabular-nums">{goalNotice.score}</p><div className="mt-3 flex justify-center gap-5 text-2xl" aria-hidden="true">🎉 ✨ 🎉</div></div></div>}
             {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? (teamName.trim() || "MatchUp FC") + " won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Drag a blue disc toward the ball or goal to flick it.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
           </>
