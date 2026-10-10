@@ -112,6 +112,7 @@ export function MatchRoom({ roomId }: { roomId: string }) {
     const channel = supabase.channel(`match-room-${roomId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "football_match_messages", filter: `room_id=eq.${roomId}` }, () => void load())
       .on("postgres_changes", { event: "*", schema: "public", table: "football_match_message_reactions" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "football_match_votes" }, () => void load())
       .subscribe();
     const timer = window.setInterval(async () => {
       const current = match;
@@ -157,6 +158,12 @@ export function MatchRoom({ roomId }: { roomId: string }) {
     if (error) setNotice(error.message);
     else {
       const row = Array.isArray(data) ? data[0] : data;
+      setVoteState({
+        home: Number(row?.home_votes || 0),
+        away: Number(row?.away_votes || 0),
+        total: Number(row?.total_votes || (Number(row?.home_votes || 0) + Number(row?.away_votes || 0))),
+        myVote: (row?.my_vote || team) as "home" | "away",
+      });
       setNotice(`Vote recorded: ${Number(row?.home_percent || 0)}% / ${Number(row?.away_percent || 0)}%`);
     }
   };
