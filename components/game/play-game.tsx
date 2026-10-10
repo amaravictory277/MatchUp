@@ -140,7 +140,7 @@ export function PlayGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState>(freshGame(5));
   const stickRef=useRef<{id:number;x:number;y:number}|null>(null);const stickCenter=useRef<{x:number;y:number}|null>(null);const marking=useRef(false);const tackleWait=useRef(0);
-  const chargeRef=useRef<{id:number;kind:ChargedAction;startedAt:number}|null>(null);
+  const chargeRef=useRef<Partial<Record<ChargedAction,{id:number;startedAt:number}>>>({});const activeChargeRef=useRef<ChargedAction|null>(null);
   const celebrationPauseUntil=useRef(0);
   const router = useRouter();
   const [teamSize, setTeamSize] = useState(5);
@@ -165,7 +165,7 @@ export function PlayGame() {
   const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   const start = useCallback(() => {
     gameRef.current = freshGame(teamSize, duration, formation);
-    stickRef.current=null;stickCenter.current=null;marking.current=false;chargeRef.current=null;setCharging(null);setChargePower(0);setStick({x:0,y:0});
+    stickRef.current=null;stickCenter.current=null;marking.current=false;chargeRef.current={};activeChargeRef.current=null;setCharging(null);setChargePower(0);setStick({x:0,y:0});
     setGoalNotice(null);
     setStarted(true);
     setSessionId(id => id + 1);
@@ -206,7 +206,7 @@ const keeperSave=g.discs.find(d=>d.keeper&&dist(d.x,d.y,b.x,b.y)<28&&b.z<28&&(b.
 if(keeperSave){b.vx=keeperSave.team==="blue"?Math.abs(b.vx)*.48:-Math.abs(b.vx)*.48;b.vy+=(b.y-keeperSave.y)*1.8;b.x=keeperSave.team==="blue"?105:W-105;b.kind="loose";b.target=null;setStatus("Goalkeeper makes the save! Rebound in play.");}
 if(b.x<27||b.x>W-27){if(b.y>GOAL_TOP&&b.y<GOAL_BOTTOM&&b.z<18){const scorer=b.x<W/2?1:0;g.score[scorer]++;const name=scorer===0?(teamName.trim()||"MatchUp FC"):opponentName;g.lastGoal="GOAL! "+name+" scores";setStatus(g.lastGoal);setGoalNotice({team:name,score:`${g.score[0]} — ${g.score[1]}`,id:++celebrationRef.current});celebrationPauseUntil.current=performance.now()+1650;stickRef.current=null;marking.current=false;setStick({x:0,y:0});b.x=W/2;b.y=H/2;b.vx=0;b.vy=0;b.z=0;b.vz=0;b.owner=null;b.target=null;g.discs=createDiscs(teamSize,formation);const ps=g.discs.filter(d=>d.team==="blue"&&!d.keeper);g.selected=ps[Math.floor(Math.random()*ps.length)]?.id??null;}else{b.x=clamp(b.x,38,W-38);b.vx*=-.7;b.target=null;}}
 if(b.z===0&&!b.owner){const near=g.discs.filter(d=>!d.keeper).sort((p,q)=>dist(p.x,p.y,b.x,b.y)-dist(q.x,q.y,b.x,b.y))[0];if(near&&dist(near.x,near.y,b.x,b.y)<19&&Math.hypot(b.vx,b.vy)<330){b.owner=near.id;b.vx=0;b.vy=0;if(near.team==="blue"){g.selected=near.id;setStatus("Ball under control.");}}}}
-if(chargeRef.current){setChargePower(.35+.65*clamp((now-chargeRef.current.startedAt)/1400,0,1));}
+{const active=activeChargeRef.current,current=active?chargeRef.current[active]:null;if(current){setChargePower(Math.round((.35+.65*clamp((now-current.startedAt)/1400,0,1))*100)/100);}}
 uiClock+=dt;if(uiClock>.045){uiClock=0;setVersion(v=>v+1);}}}
 if(orientation==="vertical")ctx.setTransform(0,canvas.height/W,-canvas.width/H,0,canvas.width,0);else ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);drawPitch(ctx,g);raf=requestAnimationFrame(tick);};
     resize(); window.addEventListener("resize", resize); raf = requestAnimationFrame(tick);
@@ -219,8 +219,8 @@ if(orientation==="vertical")ctx.setTransform(0,canvas.height/W,-canvas.width/H,0
   const actBall=(kind:"pass"|"shoot"|"cross",power=1)=>{const g=gameRef.current,b=g.ball;if(g.ended)return;const d=g.discs.find(p=>p.id===g.selected&&p.team==="blue"&&!p.keeper);if(!d)return;const owner=g.discs.find(p=>p.id===b.owner);if(owner?.id!==d.id&&dist(d.x,d.y,b.x,b.y)>36){setStatus("Move closer to the ball to play it.");return;}if(owner?.id!==d.id){b.owner=d.id;b.vx=0;b.vy=0;b.z=0;}
 if(kind!=="shoot"){const sx=stickRef.current?.x??d.fx,sy=stickRef.current?.y??d.fy,sl=Math.hypot(sx,sy)||1,ax=sx/sl,ay=sy/sl,ts=g.discs.filter(p=>p.team==="blue"&&!p.keeper&&p.id!==d.id),rec=ts.map(p=>{const x=p.x-d.x,y=p.y-d.y,l=Math.hypot(x,y)||1,dir=x/l*ax+y/l*ay,press=g.discs.filter(o=>o.team==="red"&&!o.keeper&&dist(o.x,o.y,p.x,p.y)<38).length;return{p,score:dist(p.x,p.y,d.x,d.y)+Math.max(0,.25-dir)*220+press*55};}).sort((a,c)=>a.score-c.score)[0]?.p,tx=kind==="cross"?(rec?.x??clamp(d.x+250,80,W-45)):(rec?.x??clamp(d.x+160,80,W-45)),ty=kind==="cross"?(rec?.y??clamp(d.y+(d.y<H/2?125:-125),55,H-55)):(rec?.y??d.y),x=tx-b.x,y=ty-b.y,l=Math.hypot(x,y)||1;b.owner=null;b.target=rec?.id??null;b.kind=kind;b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=clamp(power,.35,1);b.vx=x/l*(kind==="cross"?315:270)*strength;b.vy=y/l*(kind==="cross"?315:270)*strength;b.z=kind==="cross"?4:0;b.vz=kind==="cross"?(100+220*strength):0;setStatus(kind==="cross"?"Lofted cross in flight.":"Pass played — control switches on receipt.");}
 else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,l=Math.hypot(x,y)||1,press=g.discs.filter(o=>o.team==="red"&&!o.keeper).reduce((n,o)=>Math.min(n,dist(o.x,o.y,d.x,d.y)),Infinity),accuracy=press<45?.84:press<85?.94:1;b.owner=null;b.target=null;b.kind="shot";b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=clamp(power,.35,1)*accuracy;b.vx=x/l*455*strength;b.vy=y/l*455*strength;b.z=0;b.vz=0;setStatus("Shot away · "+Math.round(power*100)+"% power.");}setVersion(v=>v+1);};
-  const chargeDown=(e:React.PointerEvent<HTMLButtonElement>,kind:ChargedAction)=>{e.preventDefault();if(gameRef.current.ended||chargeRef.current)return;e.currentTarget.setPointerCapture(e.pointerId);chargeRef.current={id:e.pointerId,kind,startedAt:performance.now()};setCharging(kind);setChargePower(.35);};
-  const chargeUp=(e:React.PointerEvent<HTMLButtonElement>,cancel=false)=>{const current=chargeRef.current;if(!current||current.id!==e.pointerId)return;const power=cancel?0:clamp(.35+.65*((performance.now()-current.startedAt)/1400),.35,1);chargeRef.current=null;if(!cancel)actBall(current.kind,power);setCharging(null);setChargePower(0);};
+  const chargeDown=(e:React.PointerEvent<HTMLButtonElement>,kind:ChargedAction)=>{e.preventDefault();if(gameRef.current.ended||chargeRef.current[kind])return;e.currentTarget.setPointerCapture(e.pointerId);chargeRef.current[kind]={id:e.pointerId,startedAt:performance.now()};activeChargeRef.current=kind;setCharging(kind);setChargePower(.35);};
+  const chargeUp=(e:React.PointerEvent<HTMLButtonElement>,cancel=false)=>{const found=(Object.entries(chargeRef.current) as [ChargedAction,{id:number;startedAt:number}][]).find(([,entry])=>entry.id===e.pointerId);if(!found)return;const [kind,current]=found;const power=cancel?0:Math.round(clamp(.35+.65*((performance.now()-current.startedAt)/1400),.35,1)*100)/100;delete chargeRef.current[kind];if(!cancel)actBall(kind,power);if(activeChargeRef.current===kind){const next=(Object.entries(chargeRef.current) as [ChargedAction,{id:number;startedAt:number}][]).at(-1);activeChargeRef.current=next?.[0]??null;setCharging(activeChargeRef.current);const nextCharge=next?.[1];setChargePower(nextCharge?Math.round((.35+.65*clamp((performance.now()-nextCharge.startedAt)/1400,0,1))*100)/100:0);}};
   const markDown=(e:React.PointerEvent<HTMLButtonElement>)=>{e.preventDefault();if(gameRef.current.ended)return;marking.current=true;e.currentTarget.setPointerCapture(e.pointerId);};const markUp=()=>{marking.current=false;};
   useEffect(() => {
     if (!goalNotice) return;
