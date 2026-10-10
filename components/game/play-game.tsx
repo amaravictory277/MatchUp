@@ -91,6 +91,7 @@ export function PlayGame() {
   const celebrationRef = useRef(0);
   const [mode, setMode] = useState<"single" | "multi">("single");
   const [started, setStarted] = useState(false);
+  const [sessionId, setSessionId] = useState(0);
   const [, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const [status, setStatus] = useState("Ready for kickoff");
@@ -98,7 +99,13 @@ export function PlayGame() {
   const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   const start = useCallback(() => {
     gameRef.current = freshGame(teamSize, duration);
-    setStarted(true); setNotice(""); setStatus("Kickoff! Drag a blue disc to pass or shoot.");
+    pointerRef.current = null;
+    setPower(0);
+    setGoalNotice(null);
+    setStarted(true);
+    setSessionId(id => id + 1);
+    setNotice("");
+    setStatus("Kickoff! Drag a blue disc to pass or shoot.");
     setVersion(v => v + 1);
   }, [teamSize, duration]);
   useEffect(() => {
@@ -144,6 +151,10 @@ export function PlayGame() {
             g.lastGoal = `GOAL! ${scoringTeam} scores`;
             setStatus(g.lastGoal);
             setGoalNotice({ team: scoringTeam, score: `${g.score[0]} — ${g.score[1]}`, id: ++celebrationRef.current });
+            pointerRef.current = null;
+            g.selected = null;
+            g.aim = null;
+            setPower(0);
             b.x = W / 2; b.y = H / 2; b.vx = 0; b.vy = 0;
             g.discs = createDiscs(teamSize);
           } else { b.x = clamp(b.x, 38, W - 38); b.vx *= -.78; }
@@ -192,7 +203,7 @@ export function PlayGame() {
     };
     resize(); window.addEventListener("resize", resize); raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, [started, teamSize, difficulty, duration, teamName, opponentName, orientation]);
+  }, [started, sessionId, teamSize, difficulty, duration, teamName, opponentName, orientation]);
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const horizontal = (event.clientX - rect.left) / rect.width;
@@ -300,6 +311,7 @@ export function PlayGame() {
           <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#70c1ff]">MATCHUP · PLAY GAME</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Disc Football</h1><p className="mt-1 text-xs text-[#8da7bf]">Swipe, pass, shoot. Win the match.</p></div>
           <button type="button" onClick={goBack} className="rounded-xl border border-[#214a78] px-3 py-2 text-xs font-bold text-[#bfe3ff]">← Back</button>
         </header>
+        {notice && <p role="alert" className="mb-4 rounded-xl border border-red-400/40 bg-red-950/40 px-4 py-3 text-sm text-red-100">{notice}</p>}
         {!started ? (
           <section className="mx-auto max-w-3xl rounded-[28px] border border-[#174978] bg-[radial-gradient(circle_at_85%_0%,rgba(36,151,255,.18),transparent_42%),#071426] p-5 sm:p-8">
             <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#70c1ff]">Choose your match</p><h2 className="mt-2 text-3xl font-black sm:text-4xl">Football, played with discs.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[#9fb6cc]">Control the blue team. Flick a disc toward the ball or goal, use rebounds, and beat the red AI team. No keyboard required.</p>
