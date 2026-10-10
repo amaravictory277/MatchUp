@@ -139,20 +139,28 @@ function GameLiveSwitcher({ active }: { active: "game" | "live" }) {
   const router = useRouter();
 
   return (
-    <div className="mb-5 grid grid-cols-2 rounded-2xl border border-[#214a78] bg-[#071426] p-1.5 shadow-[0_12px_35px_rgba(0,25,55,.2)]" aria-label="Game navigation">
+    <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-[#214a78] bg-[#071426] p-1.5 shadow-[0_12px_35px_rgba(0,25,55,.2)]" aria-label="Game navigation">
       <button
         type="button"
         onClick={() => router.push("/game")}
         aria-pressed={active === "game"}
-        className={`min-h-11 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[.08em] transition ${active === "game" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
+        className={`min-h-11 rounded-xl px-2 py-3 text-[10px] font-black uppercase tracking-[.04em] transition sm:text-xs ${active === "game" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
       >
-        GAME
+        GAMES
+      </button>
+      <button
+        type="button"
+        onClick={() => router.push("/play-game")}
+        aria-pressed={false}
+        className="min-h-11 rounded-xl px-2 py-3 text-[10px] font-black uppercase tracking-[.04em] text-[#47a8ff] transition hover:bg-[#0a2946] sm:text-xs"
+      >
+        PLAY GAME
       </button>
       <button
         type="button"
         onClick={() => router.push("/live-scores")}
         aria-pressed={active === "live"}
-        className={`min-h-11 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[.08em] transition ${active === "live" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
+        className={`min-h-11 rounded-xl px-2 py-3 text-[10px] font-black uppercase tracking-[.04em] transition sm:text-xs ${active === "live" ? "bg-[#167bd1] text-white shadow-[0_8px_22px_rgba(22,123,209,.25)]" : "bg-transparent text-[#47a8ff] hover:bg-[#0a2946]"}`}
       >
         LIVE SCORES
       </button>
@@ -178,6 +186,9 @@ function GameHero() {
             </Link>
             <Link href="/tournaments" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#28547e] bg-[#071426]/70 px-5 py-3 text-xs font-black text-white">
               <Search size={16} />Find Tournament
+            </Link>
+            <Link href="/play-game" className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#70c1ff]/60 bg-[#0b3154] px-5 py-3 text-xs font-black text-white">
+              <Radio size={16} />Play Disc Football
             </Link>
           </div>
         </div>
