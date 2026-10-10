@@ -21,7 +21,7 @@ function createDiscs(size: number): Disc[] {
   formation.forEach((p, i) => discs.push({ id: size + i + 1, team: "red", x: W - p.x, y: H - p.y, vx: 0, vy: 0, keeper: i === 0 }));
   return discs;
 }
-function freshGame(size: number): GameState {
+function freshGame(size: number, duration = 2): GameState {
   return { discs: createDiscs(size), ball: { x: W / 2, y: H / 2, vx: 0, vy: 0 }, score: [0, 0], seconds: duration * 60, ended: false, lastGoal: "", selected: null, aim: null };
 }
 function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
