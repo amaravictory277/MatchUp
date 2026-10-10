@@ -115,7 +115,12 @@ export function PlayGame() {
       const g = gameRef.current;
       if (!g.ended) {
         g.seconds = Math.max(0, g.seconds - dt);
-        if (g.seconds <= 0) { g.ended = true; setStatus(g.score[0] === g.score[1] ? "Full time — it's a draw" : g.score[0] > g.score[1] ? "Full time — MatchUp wins!" : "Full time — opponents win"); }
+        if (g.seconds <= 0) {
+          g.seconds = 0;
+          g.ended = true;
+          setStatus(g.score[0] === g.score[1] ? "Full time — it's a draw" : g.score[0] > g.score[1] ? "Full time — MatchUp wins!" : "Full time — opponents win");
+        }
+        if (!g.ended) {
         for (const d of g.discs) {
           d.x += d.vx * dt; d.y += d.vy * dt;
           d.vx *= Math.pow(.22, dt); d.vy *= Math.pow(.22, dt);
@@ -160,6 +165,7 @@ export function PlayGame() {
             target.vy += dy / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
           }
         }
+        }
         uiClock += dt;
         if (uiClock > .2) { uiClock = 0; setVersion(v => v + 1); }
       }
@@ -187,7 +193,14 @@ export function PlayGame() {
     const p = point(event), g = gameRef.current;
     const nearest = g.discs.filter(d => d.team === "blue").map(d => ({ d, distance: dist(d.x, d.y, p.x, p.y) })).sort((a, b) => a.distance - b.distance)[0];
     if (!nearest || nearest.distance > 35) return;
-    g.selected = nearest.d.id; g.aim = { x: 0, y: 0 };
+    g.selected = nearest.d.id;
+    if (controlMode === "analog") {
+      g.aim = null;
+      pointerRef.current = null;
+      setVersion(v => v + 1);
+      return;
+    }
+    g.aim = { x: 0, y: 0 };
     pointerRef.current = { id: nearest.d.id, x: p.x, y: p.y, px: p.x, py: p.y };
     event.currentTarget.setPointerCapture(event.pointerId); setVersion(v => v + 1);
   };
@@ -198,6 +211,7 @@ export function PlayGame() {
     g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setPower(clamp(Math.hypot(g.aim.x, g.aim.y) / 220, 0, 1)); setVersion(v => v + 1);
   };
   const onUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (controlMode !== "direct") return;
     const drag = pointerRef.current; if (!drag) return;
     const p = point(event), g = gameRef.current, d = g.discs.find(item => item.id === drag.id);
     if (d) {
