@@ -98,6 +98,7 @@ export function PlayGame() {
   const gameRef = useRef<GameState>(freshGame(5));
   const stickRef=useRef<{id:number;x:number;y:number}|null>(null);const stickCenter=useRef<{x:number;y:number}|null>(null);const marking=useRef(false);const tackleWait=useRef(0);
   const chargeRef=useRef<{id:number;kind:ChargedAction;startedAt:number}|null>(null);
+  const celebrationPauseUntil=useRef(0);
   const router = useRouter();
   const [teamSize, setTeamSize] = useState(5);
   const [teamName, setTeamName] = useState("MatchUp FC");
@@ -138,7 +139,7 @@ export function PlayGame() {
       const rect = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(1, Math.floor(rect.width * dpr)); canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     };
-    const tick=(now:number)=>{const dt=Math.min(.035,Math.max(0,(now-previous)/1000));previous=now;const g=gameRef.current,b=g.ball;tackleWait.current=Math.max(0,tackleWait.current-dt);
+    const tick=(now:number)=>{const dt=Math.min(.035,Math.max(0,(now-previous)/1000));previous=now;if(now<celebrationPauseUntil.current){drawPitch(ctx,gameRef.current);raf=requestAnimationFrame(tick);return;}const g=gameRef.current,b=g.ball;tackleWait.current=Math.max(0,tackleWait.current-dt);
 if(!g.ended){g.seconds=Math.max(0,g.seconds-dt);if(g.seconds<=0){g.seconds=0;g.ended=true;setStatus(g.score[0]===g.score[1]?"Full time — it's a draw":g.score[0]>g.score[1]?`Full time — ${teamName.trim()||"MatchUp FC"} wins!`:`Full time — ${opponentName} wins`);}
 if(!g.ended){const user=g.discs.find(d=>d.id===g.selected&&d.team==="blue"&&!d.keeper),red=g.discs.find(d=>d.id===b.owner&&d.team==="red");
 if(user&&stickRef.current){let x=stickRef.current.x,y=stickRef.current.y;if(orientation==="vertical"){const t=x;x=y;y=-t;}const m=Math.hypot(x,y);if(m>.08){user.fx=x/m;user.fy=y/m;user.vx=user.vx*.2+user.fx*210*Math.min(1,m);user.vy=user.vy*.2+user.fy*210*Math.min(1,m);}}
@@ -152,7 +153,7 @@ else{b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.z>0||b.vz>0){b.z=Math.max(0,b.z+b.vz*dt);b.v
 if(b.z<20){const target=b.target?g.discs.find(d=>d.id===b.target):null,near=g.discs.filter(d=>!d.keeper).sort((p,q)=>dist(p.x,p.y,b.x,b.y)-dist(q.x,q.y,b.x,b.y))[0],recv=target&&dist(target.x,target.y,b.x,b.y)<32?target:near;if(recv&&dist(recv.x,recv.y,b.x,b.y)<22&&Math.hypot(b.vx,b.vy)<430){b.owner=recv.id;b.target=null;b.vx=0;b.vy=0;b.z=0;b.vz=0;if(recv.team==="blue"){g.selected=recv.id;setStatus("Pass received — now controlling the receiver.");}else setStatus("Red United intercepts.");}}
 const keeperSave=g.discs.find(d=>d.keeper&&dist(d.x,d.y,b.x,b.y)<28&&b.z<28&&(b.kind==="shot"||b.kind==="cross"));
 if(keeperSave){b.vx=keeperSave.team==="blue"?Math.abs(b.vx)*.48:-Math.abs(b.vx)*.48;b.vy+=(b.y-keeperSave.y)*1.8;b.x=keeperSave.team==="blue"?105:W-105;b.kind="loose";b.target=null;setStatus("Goalkeeper makes the save! Rebound in play.");}
-if(b.x<27||b.x>W-27){if(b.y>GOAL_TOP&&b.y<GOAL_BOTTOM&&b.z<18){const scorer=b.x<W/2?1:0;g.score[scorer]++;const name=scorer===0?(teamName.trim()||"MatchUp FC"):opponentName;g.lastGoal="GOAL! "+name+" scores";setStatus(g.lastGoal);setGoalNotice({team:name,score:`${g.score[0]} — ${g.score[1]}`,id:++celebrationRef.current});stickRef.current=null;marking.current=false;setStick({x:0,y:0});b.x=W/2;b.y=H/2;b.vx=0;b.vy=0;b.z=0;b.vz=0;b.owner=null;b.target=null;g.discs=createDiscs(teamSize,formation);const ps=g.discs.filter(d=>d.team==="blue"&&!d.keeper);g.selected=ps[Math.floor(Math.random()*ps.length)]?.id??null;}else{b.x=clamp(b.x,38,W-38);b.vx*=-.7;b.target=null;}}
+if(b.x<27||b.x>W-27){if(b.y>GOAL_TOP&&b.y<GOAL_BOTTOM&&b.z<18){const scorer=b.x<W/2?1:0;g.score[scorer]++;const name=scorer===0?(teamName.trim()||"MatchUp FC"):opponentName;g.lastGoal="GOAL! "+name+" scores";setStatus(g.lastGoal);setGoalNotice({team:name,score:`${g.score[0]} — ${g.score[1]}`,id:++celebrationRef.current});celebrationPauseUntil.current=performance.now()+1650;stickRef.current=null;marking.current=false;setStick({x:0,y:0});b.x=W/2;b.y=H/2;b.vx=0;b.vy=0;b.z=0;b.vz=0;b.owner=null;b.target=null;g.discs=createDiscs(teamSize,formation);const ps=g.discs.filter(d=>d.team==="blue"&&!d.keeper);g.selected=ps[Math.floor(Math.random()*ps.length)]?.id??null;}else{b.x=clamp(b.x,38,W-38);b.vx*=-.7;b.target=null;}}
 if(b.z===0&&!b.owner){const near=g.discs.filter(d=>!d.keeper).sort((p,q)=>dist(p.x,p.y,b.x,b.y)-dist(q.x,q.y,b.x,b.y))[0];if(near&&dist(near.x,near.y,b.x,b.y)<19&&Math.hypot(b.vx,b.vy)<330){b.owner=near.id;b.vx=0;b.vy=0;if(near.team==="blue"){g.selected=near.id;setStatus("Ball under control.");}}}}
 if(chargeRef.current){setChargePower(clamp((now-chargeRef.current.startedAt)/1400,0,1));}
 uiClock+=dt;if(uiClock>.045){uiClock=0;setVersion(v=>v+1);}}}
@@ -215,7 +216,7 @@ else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,
             <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}>
               <canvas ref={canvasRef} className={"block max-h-[min(54vh,560px)] "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none"} aria-label="Unobstructed football pitch controlled with the analog joystick."/>
             </div>
-            {!g.ended && <section aria-label="Football controls" className="mt-3 grid grid-cols-[minmax(112px,1fr)_minmax(190px,1.35fr)] items-center gap-3 rounded-2xl border border-[#214a78] bg-[#071426] p-3 sm:gap-5 sm:p-4">
+            {!g.ended && <section aria-label="Football controls" className={"mt-3 grid grid-cols-[minmax(112px,1fr)_minmax(190px,1.35fr)] items-center gap-3 rounded-2xl border border-[#214a78] bg-[#071426] p-3 sm:gap-5 sm:p-4 "+(goalNotice?"pointer-events-none opacity-40":"")}>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[9px] font-black uppercase tracking-[.18em] text-[#7892ac]">Movement</span>
                 <div onPointerDown={joystickDown} onPointerMove={joystickMove} onPointerUp={joystickUp} onPointerCancel={joystickUp} onLostPointerCapture={joystickUp} className="relative flex h-[112px] w-[112px] touch-none select-none items-center justify-center rounded-full border-2 border-white/35 bg-slate-950/55 sm:h-[132px] sm:w-[132px]" style={{touchAction:"none"}}>
