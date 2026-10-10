@@ -4,17 +4,25 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Team = "blue" | "red";
+type Formation = "4-4-2" | "4-3-3" | "4-2-3-1" | "3-5-2" | "5-3-2";
+type ChargedAction = "pass" | "shoot" | "cross";
 type Disc = { id:number;team:Team;x:number;y:number;vx:number;vy:number;fx:number;fy:number;keeper?:boolean };
 type Ball = { x:number;y:number;vx:number;vy:number;z:number;vz:number;owner:number|null;target:number|null;kind:"loose"|"pass"|"cross"|"shot" };
 type GameState = { discs: Disc[]; ball: Ball; score: [number, number]; seconds: number; ended: boolean; lastGoal: string; selected: number | null; aim: { x: number; y: number } | null };
 const W = 1000, H = 600, GOAL_TOP = 235, GOAL_BOTTOM = 365;
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
 const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
-function createDiscs(size: number): Disc[] {
+function createDiscs(size: number, shape: Formation = "4-3-3"): Disc[] {
   const discs: Disc[] = [];
-  const formation = Array.from({ length: size }, (_, i) => {
-    const row = Math.floor(i / 3), col = i % 3;
-    return { x: 105 + row * (size > 6 ? 55 : 75), y: 160 + col * (size > 6 ? 140 : 140) };
+  const lines: Record<Formation, number[]> = { "4-4-2":[4,4,2], "4-3-3":[4,3,3], "4-2-3-1":[4,2,3,1], "3-5-2":[3,5,2], "5-3-2":[5,3,2] };
+  const desired = lines[shape];
+  const outfield = size - 1;
+  const rowCounts = desired.map((_, i) => Math.floor(outfield / desired.length) + (i < outfield % desired.length ? 1 : 0));
+  const formation = Array.from({ length: outfield }, (_, i) => {
+    let row = 0, index = i;
+    while (row < rowCounts.length - 1 && index >= rowCounts[row]) { index -= rowCounts[row]; row++; }
+    const count = Math.max(1, rowCounts[row]);
+    return { x: 155 + row * (size > 6 ? 115 : 150), y: count === 1 ? H / 2 : 105 + index * (390 / (count - 1)) };
   });
   formation.forEach((p, i) => {
     const keeper = i === 0;
@@ -26,8 +34,8 @@ function createDiscs(size: number): Disc[] {
   });
   return discs;
 }
-function freshGame(size: number, duration = 2): GameState {
-  const discs=createDiscs(size),p=discs.filter(d=>d.team==="blue"&&!d.keeper);return {discs,ball:{x:W/2,y:H/2,vx:0,vy:0,z:0,vz:0,owner:null,target:null,kind:"loose"},score:[0,0],seconds:duration*60,ended:false,lastGoal:"",selected:p[Math.floor(Math.random()*p.length)]?.id??null,aim:null};
+function freshGame(size: number, duration = 2, formation: Formation = "4-3-3"): GameState {
+  const discs=createDiscs(size, formation),p=discs.filter(d=>d.team==="blue"&&!d.keeper);return {discs,ball:{x:W/2,y:H/2,vx:0,vy:0,z:0,vz:0,owner:null,target:null,kind:"loose"},score:[0,0],seconds:duration*60,ended:false,lastGoal:"",selected:p[Math.floor(Math.random()*p.length)]?.id??null,aim:null};
 }
 function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.clearRect(0, 0, W, H);
@@ -89,11 +97,15 @@ export function PlayGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState>(freshGame(5));
   const stickRef=useRef<{id:number;x:number;y:number}|null>(null);const stickCenter=useRef<{x:number;y:number}|null>(null);const marking=useRef(false);const tackleWait=useRef(0);
+  const chargeRef=useRef<{id:number;kind:ChargedAction;startedAt:number}|null>(null);
   const router = useRouter();
   const [teamSize, setTeamSize] = useState(5);
   const [teamName, setTeamName] = useState("MatchUp FC");
   const [opponentName] = useState("Red United");
   const [duration, setDuration] = useState(2);
+  const [formation, setFormation] = useState<Formation>("4-3-3");
+  const [charging, setCharging] = useState<ChargedAction | null>(null);
+  const [chargePower, setChargePower] = useState(0);
 
   const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
   const [stick, setStick] = useState({x:0,y:0});
@@ -108,15 +120,15 @@ export function PlayGame() {
   const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard">("normal");
   const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   const start = useCallback(() => {
-    gameRef.current = freshGame(teamSize, duration);
-    stickRef.current=null;stickCenter.current=null;marking.current=false;setStick({x:0,y:0});
+    gameRef.current = freshGame(teamSize, duration, formation);
+    stickRef.current=null;stickCenter.current=null;marking.current=false;chargeRef.current=null;setCharging(null);setChargePower(0);setStick({x:0,y:0});
     setGoalNotice(null);
     setStarted(true);
     setSessionId(id => id + 1);
     setNotice("");
     setStatus("Kickoff! Left stick to move · A pass · B shoot · C cross · hold MARK to defend.");
     setVersion(v => v + 1);
-  }, [teamSize, duration]);
+  }, [teamSize, duration, formation]);
   useEffect(() => {
     if (!started) return;
     const canvas = canvasRef.current, ctx = canvas?.getContext("2d");
@@ -149,9 +161,11 @@ if(orientation==="vertical")ctx.setTransform(0,canvas.height/W,-canvas.width/H,0
   const joystickDown=(e:React.PointerEvent<HTMLDivElement>)=>{if(gameRef.current.ended)return;e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);const r=e.currentTarget.getBoundingClientRect();stickCenter.current={x:r.left+r.width/2,y:r.top+r.height/2};stickRef.current={id:e.pointerId,x:0,y:0};stickUpdate(e);};
   const joystickMove=(e:React.PointerEvent<HTMLDivElement>)=>{if(stickRef.current?.id!==e.pointerId)return;e.preventDefault();stickUpdate(e);};
   const joystickUp=(e:React.PointerEvent<HTMLDivElement>)=>{if(stickRef.current?.id!==e.pointerId)return;stickRef.current=null;stickCenter.current=null;setStick({x:0,y:0});};
-  const actBall=(kind:"pass"|"shoot"|"cross")=>{const g=gameRef.current,b=g.ball;if(g.ended)return;const d=g.discs.find(p=>p.id===g.selected&&p.team==="blue"&&!p.keeper);if(!d)return;const owner=g.discs.find(p=>p.id===b.owner);if(owner?.id!==d.id&&dist(d.x,d.y,b.x,b.y)>36){setStatus("Move closer to the ball to play it.");return;}if(owner?.id!==d.id){b.owner=d.id;b.vx=0;b.vy=0;b.z=0;}
-if(kind!=="shoot"){const sx=stickRef.current?.x??d.fx,sy=stickRef.current?.y??d.fy,sl=Math.hypot(sx,sy)||1,ax=sx/sl,ay=sy/sl,ts=g.discs.filter(p=>p.team==="blue"&&!p.keeper&&p.id!==d.id),rec=ts.map(p=>{const x=p.x-d.x,y=p.y-d.y,l=Math.hypot(x,y)||1,dir=x/l*ax+y/l*ay,press=g.discs.filter(o=>o.team==="red"&&!o.keeper&&dist(o.x,o.y,p.x,p.y)<38).length;return{p,score:dist(p.x,p.y,d.x,d.y)+Math.max(0,.25-dir)*220+press*55};}).sort((a,c)=>a.score-c.score)[0]?.p,tx=kind==="cross"?(rec?.x??clamp(d.x+250,80,W-45)):(rec?.x??clamp(d.x+160,80,W-45)),ty=kind==="cross"?(rec?.y??clamp(d.y+(d.y<H/2?125:-125),55,H-55)):(rec?.y??d.y),x=tx-b.x,y=ty-b.y,l=Math.hypot(x,y)||1;b.owner=null;b.target=rec?.id??null;b.kind=kind;b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;b.vx=x/l*(kind==="cross"?315:270);b.vy=y/l*(kind==="cross"?315:270);b.z=kind==="cross"?4:0;b.vz=kind==="cross"?255:0;setStatus(kind==="cross"?"Lofted cross in flight.":"Pass played — control switches on receipt.");}
-else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,l=Math.hypot(x,y)||1,press=g.discs.filter(o=>o.team==="red"&&!o.keeper).reduce((n,o)=>Math.min(n,dist(o.x,o.y,d.x,d.y)),Infinity),accuracy=press<45?.84:press<85?.94:1;b.owner=null;b.target=null;b.kind="shot";b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;b.vx=x/l*455*accuracy;b.vy=y/l*455*accuracy;b.z=0;b.vz=0;setStatus("Shot toward goal!");}setVersion(v=>v+1);};
+  const actBall=(kind:"pass"|"shoot"|"cross",power=1)=>{const g=gameRef.current,b=g.ball;if(g.ended)return;const d=g.discs.find(p=>p.id===g.selected&&p.team==="blue"&&!p.keeper);if(!d)return;const owner=g.discs.find(p=>p.id===b.owner);if(owner?.id!==d.id&&dist(d.x,d.y,b.x,b.y)>36){setStatus("Move closer to the ball to play it.");return;}if(owner?.id!==d.id){b.owner=d.id;b.vx=0;b.vy=0;b.z=0;}
+if(kind!=="shoot"){const sx=stickRef.current?.x??d.fx,sy=stickRef.current?.y??d.fy,sl=Math.hypot(sx,sy)||1,ax=sx/sl,ay=sy/sl,ts=g.discs.filter(p=>p.team==="blue"&&!p.keeper&&p.id!==d.id),rec=ts.map(p=>{const x=p.x-d.x,y=p.y-d.y,l=Math.hypot(x,y)||1,dir=x/l*ax+y/l*ay,press=g.discs.filter(o=>o.team==="red"&&!o.keeper&&dist(o.x,o.y,p.x,p.y)<38).length;return{p,score:dist(p.x,p.y,d.x,d.y)+Math.max(0,.25-dir)*220+press*55};}).sort((a,c)=>a.score-c.score)[0]?.p,tx=kind==="cross"?(rec?.x??clamp(d.x+250,80,W-45)):(rec?.x??clamp(d.x+160,80,W-45)),ty=kind==="cross"?(rec?.y??clamp(d.y+(d.y<H/2?125:-125),55,H-55)):(rec?.y??d.y),x=tx-b.x,y=ty-b.y,l=Math.hypot(x,y)||1;b.owner=null;b.target=rec?.id??null;b.kind=kind;b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=0.32+0.68*clamp(power,0,1);b.vx=x/l*(kind==="cross"?315:270)*strength;b.vy=y/l*(kind==="cross"?315:270)*strength;b.z=kind==="cross"?4:0;b.vz=kind==="cross"?(150+145*power):0;setStatus(kind==="cross"?"Lofted cross in flight.":"Pass played — control switches on receipt.");}
+else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,l=Math.hypot(x,y)||1,press=g.discs.filter(o=>o.team==="red"&&!o.keeper).reduce((n,o)=>Math.min(n,dist(o.x,o.y,d.x,d.y)),Infinity),accuracy=press<45?.84:press<85?.94:1;b.owner=null;b.target=null;b.kind="shot";b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=(0.32+0.68*clamp(power,0,1))*accuracy;b.vx=x/l*455*strength;b.vy=y/l*455*strength;b.z=0;b.vz=0;setStatus("Shot away · "+Math.round(power*100)+"% power.");}setVersion(v=>v+1);};
+  const chargeDown=(e:React.PointerEvent<HTMLButtonElement>,kind:ChargedAction)=>{e.preventDefault();if(gameRef.current.ended||chargeRef.current)return;e.currentTarget.setPointerCapture(e.pointerId);chargeRef.current={id:e.pointerId,kind,startedAt:performance.now()};setCharging(kind);setChargePower(0);};
+  const chargeUp=(e:React.PointerEvent<HTMLButtonElement>,cancel=false)=>{const current=chargeRef.current;if(!current||current.id!==e.pointerId)return;const power=cancel?0:clamp((performance.now()-current.startedAt)/1400,0,1);chargeRef.current=null;setCharging(null);setChargePower(0);if(!cancel)actBall(current.kind,power);};
   const markDown=(e:React.PointerEvent<HTMLButtonElement>)=>{e.preventDefault();if(gameRef.current.ended)return;marking.current=true;e.currentTarget.setPointerCapture(e.pointerId);};const markUp=()=>{marking.current=false;};
   useEffect(() => {
     if (!goalNotice) return;
@@ -181,6 +195,7 @@ else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,
             {mode === "multi" ? <div role="status" className="mt-4 rounded-2xl border border-[#7a6030] bg-[#241e12] p-4 text-sm leading-6 text-[#f4d99c]"><strong className="block">Online multiplayer needs match-room infrastructure.</strong>The current project has real-time Match Room infrastructure for football discussions, but it does not yet have an authoritative disc-game session schema. Online play is not enabled here; this screen will not pretend an AI match is a real opponent match.</div> : <>
               <div className="mt-5"><label htmlFor="team-name" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Your team name</label><input id="team-name" maxLength={24} value={teamName} onChange={e=>setTeamName(e.target.value.slice(0,24))} placeholder="MatchUp FC" className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs" /><p className="mt-1 text-[10px] text-[#7892ac]">Up to 24 characters. Leave blank to use MatchUp FC.</p></div>
               <div className="mt-5"><label htmlFor="duration" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Match duration</label><select id="duration" value={duration} onChange={e=>setDuration(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n} minute{n>1?"s":""}</option>)}</select></div>
+              <div className="mt-5"><label className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Formation</label><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{(["4-4-2","4-3-3","4-2-3-1","3-5-2","5-3-2"] as Formation[]).map(item=><button key={item} type="button" onClick={()=>setFormation(item)} className={"rounded-xl border p-3 text-sm font-bold "+(formation===item?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>{item}</button>)}</div><p className="mt-1 text-[10px] text-[#7892ac]">Formation sets your team's kickoff shape and support lanes.</p></div>
               <div className="mt-5"><label className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Field orientation</label><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={()=>setOrientation("horizontal")} className={"rounded-xl border p-3 text-sm font-bold "+(orientation==="horizontal"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Horizontal</button><button type="button" onClick={()=>setOrientation("vertical")} className={"rounded-xl border p-3 text-sm font-bold "+(orientation==="vertical"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Vertical</button></div><p className="mt-1 text-[10px] text-[#7892ac]">The pitch rotates to match your selected orientation.</p></div>
               <div className="mt-6"><label htmlFor="team-size" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Players per team</label><select id="team-size" value={teamSize} onChange={e => setTeamSize(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[3,5,6,8,11].map(n => <option key={n} value={n}>{n} vs {n}</option>)}</select></div>
               <div className="mt-5"><label htmlFor="difficulty" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">AI difficulty</label><select id="difficulty" value={difficulty} onChange={e => setDifficulty(e.target.value as "easy" | "normal" | "hard")} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div>
@@ -194,23 +209,42 @@ else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,
               <div className="flex items-center gap-4"><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Score</p><p className="text-2xl font-black tabular-nums">{g.score[0]} — {g.score[1]}</p></div><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Time</p><p className="text-2xl font-black tabular-nums">{formatTime(Math.ceil(g.seconds))}</p></div></div>
             </section>
             <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>
-            <div className={"relative overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}>
-              <canvas ref={canvasRef} className={"block "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none"} aria-label="Football pitch controlled with the analog joystick."/>
-              {!g.ended&&<div className="pointer-events-none absolute inset-0 flex items-end justify-between p-3 sm:p-5">
-                <div className="pointer-events-auto"><div onPointerDown={joystickDown} onPointerMove={joystickMove} onPointerUp={joystickUp} onPointerCancel={joystickUp} className="relative flex h-[116px] w-[116px] touch-none select-none items-center justify-center rounded-full border-2 border-white/35 bg-slate-950/35 sm:h-[136px] sm:w-[136px]" style={{touchAction:"none"}}><span className="absolute h-[72%] w-[72%] rounded-full border border-white/20"/><span className="absolute text-[9px] font-black text-white/45">MOVE</span><span className="absolute h-12 w-12 rounded-full border-2 border-white/80 bg-[#167bd1]/90 shadow-lg sm:h-14 sm:w-14" style={{transform:`translate(${stick.x*42}px,${stick.y*42}px)`}}/></div></div>
-                <div className="pointer-events-auto grid grid-cols-2 items-end gap-2 sm:gap-3"><button type="button" onClick={()=>actBall("pass")} className="h-12 w-12 rounded-full border-2 border-white/70 bg-[#167bd1] font-black active:scale-95 sm:h-14 sm:w-14" aria-label="A pass">A</button><button type="button" onClick={()=>actBall("shoot")} className="mb-5 h-14 w-14 rounded-full border-2 border-white/80 bg-[#e64c55] font-black active:scale-95 sm:mb-7 sm:h-16 sm:w-16" aria-label="B shoot">B</button><button type="button" onClick={()=>actBall("cross")} className="h-12 w-12 rounded-full border-2 border-white/70 bg-[#167bd1] font-black active:scale-95 sm:h-14 sm:w-14" aria-label="C cross">C</button><button type="button" onPointerDown={markDown} onPointerUp={markUp} onPointerCancel={markUp} onLostPointerCapture={markUp} className="mb-1 h-12 w-12 rounded-full border-2 border-white/70 bg-[#34465c] text-[10px] font-black active:scale-95 sm:h-14 sm:w-14" aria-label="Hold to mark and pressure">MARK</button></div>
-              </div>}
+            <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}>
+              <canvas ref={canvasRef} className={"block max-h-[min(54vh,560px)] "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none"} aria-label="Unobstructed football pitch controlled with the analog joystick."/>
             </div>
+            {!g.ended && <section aria-label="Football controls" className="mt-3 grid grid-cols-[minmax(112px,1fr)_minmax(190px,1.35fr)] items-center gap-3 rounded-2xl border border-[#214a78] bg-[#071426] p-3 sm:gap-5 sm:p-4">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[9px] font-black uppercase tracking-[.18em] text-[#7892ac]">Movement</span>
+                <div onPointerDown={joystickDown} onPointerMove={joystickMove} onPointerUp={joystickUp} onPointerCancel={joystickUp} onLostPointerCapture={joystickUp} className="relative flex h-[112px] w-[112px] touch-none select-none items-center justify-center rounded-full border-2 border-white/35 bg-slate-950/55 sm:h-[132px] sm:w-[132px]" style={{touchAction:"none"}}>
+                  <span className="absolute h-[72%] w-[72%] rounded-full border border-white/20"/>
+                  <span className="absolute text-[9px] font-black text-white/45">MOVE</span>
+                  <span className="absolute h-11 w-11 rounded-full border-2 border-white/80 bg-[#167bd1]/95 shadow-lg sm:h-12 sm:w-12" style={{transform:"translate("+stick.x*38+"px,"+stick.y*38+"px)"}}/>
+                </div>
+              </div>
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="min-h-[38px] rounded-lg border border-white/10 bg-black/25 px-2 py-1.5">
+                  {charging ? <div><div className="mb-1 flex justify-between text-[9px] font-black uppercase tracking-wider text-[#bfe3ff]"><span>{charging==="pass"?"PASS":charging==="shoot"?"SHOOT":"CROSS"} POWER</span><span>{Math.round(chargePower*100)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-gradient-to-r from-[#47a8ff] to-[#d5eaff]" style={{width:chargePower*100+"%"}}/></div></div> : <p className="py-1 text-center text-[9px] font-bold uppercase tracking-wider text-[#7892ac]">Hold A / B / C to charge</p>}
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                  <button type="button" onPointerDown={e=>chargeDown(e,"pass")} onPointerUp={e=>chargeUp(e)} onPointerCancel={e=>chargeUp(e,true)} onLostPointerCapture={e=>chargeUp(e,true)} className="flex min-h-14 min-w-0 flex-col items-center justify-center rounded-full border-2 border-white/65 bg-[#167bd1] text-[10px] font-black active:scale-95 sm:min-h-16" aria-label="Hold A to charge pass"><span className="text-lg leading-5">A</span><span>PASS</span></button>
+                  <button type="button" onPointerDown={e=>chargeDown(e,"shoot")} onPointerUp={e=>chargeUp(e)} onPointerCancel={e=>chargeUp(e,true)} onLostPointerCapture={e=>chargeUp(e,true)} className="flex min-h-14 min-w-0 flex-col items-center justify-center rounded-full border-2 border-white/75 bg-[#e64c55] text-[10px] font-black active:scale-95 sm:min-h-16" aria-label="Hold B to charge shot"><span className="text-lg leading-5">B</span><span>SHOOT</span></button>
+                  <button type="button" onPointerDown={e=>chargeDown(e,"cross")} onPointerUp={e=>chargeUp(e)} onPointerCancel={e=>chargeUp(e,true)} onLostPointerCapture={e=>chargeUp(e,true)} className="flex min-h-14 min-w-0 flex-col items-center justify-center rounded-full border-2 border-white/65 bg-[#167bd1] text-[10px] font-black active:scale-95 sm:min-h-16" aria-label="Hold C to charge cross"><span className="text-lg leading-5">C</span><span>CROSS</span></button>
+                  <button type="button" onPointerDown={markDown} onPointerUp={markUp} onPointerCancel={markUp} onLostPointerCapture={markUp} className="flex min-h-14 min-w-0 flex-col items-center justify-center rounded-full border-2 border-white/65 bg-[#34465c] text-[9px] font-black active:scale-95 sm:min-h-16" aria-label="Hold to mark and pressure"><span className="text-xs leading-5">MARK</span><span>PRESS</span></button>
+                </div>
+              </div>
+            </section>}
             <p className="mt-3 text-[10px] text-[#7892ac]">A · Pass   B · Shoot   C · Lofted cross   Hold MARK · Pressure/tackle.</p>
-            {goalNotice && <div key={goalNotice.id} className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"><div className="confetti-cannon cannon-left" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`left-${i}`} className="confetti-particle" style={{"--dx":`${100+(i%6)*27}px`,"--dy":`${((i*37)%220)-110}px`,"--rotation":`${i*83}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="confetti-cannon cannon-right" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`right-${i}`} className="confetti-particle" style={{"--dx":`${-100-(i%6)*27}px`,"--dy":`${((i*43)%220)-110}px`,"--rotation":`${i*97}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="rounded-3xl border border-[#70c1ff] bg-[#061426]/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(71,168,255,.45)] animate-in zoom-in duration-300"><p className="text-4xl font-black tracking-widest text-white">GOAL!</p><p className="mt-2 text-lg font-black text-[#70c1ff]">{goalNotice.team}</p><p className="mt-1 text-2xl font-black tabular-nums">{goalNotice.score}</p><div className="mt-3 flex justify-center gap-5 text-2xl" aria-hidden="true">🎉 ✨ 🎉</div></div></div>}
+            {goalNotice && <div key={goalNotice.id} className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"><div className="confetti-cannon cannon-left" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`left-${i}`} className="confetti-particle" style={{"--dx":`${100+(i%6)*27}px`,"--dy":`${((i*37)%220)-110}px`,"--rotation":`${i*83}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="confetti-cannon cannon-right" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`right-${i}`} className="confetti-particle" style={{"--dx":`${-100-(i%6)*27}px`,"--dy":`${((i*43)%220)-110}px`,"--rotation":`${i*97}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="rounded-3xl border border-[#70c1ff] bg-[#061426]/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(71,168,255,.45)] animate-in zoom-in duration-300"><p className="goal-celebration-title">GOAL</p><p className="mt-3 inline-flex rounded-lg border border-[#70c1ff]/80 bg-[#061426]/95 px-5 py-2 text-lg font-black text-[#70c1ff]">{goalNotice.team}</p><p className="mt-2 text-2xl font-black tabular-nums">{goalNotice.score}</p></div></div>}
             {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? (teamName.trim() || "MatchUp FC") + " won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Move the selected footballer with the left analog stick.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
           </>
         )}
       </div>
       <style jsx global>{`
         .confetti-cannon { position: fixed; top: 50%; z-index: 45; width: 0; height: 0; pointer-events: none; }
-        .cannon-left { left: 0; }
-        .cannon-right { right: 0; }
+        .cannon-left { left: 0; transform: rotate(-18deg); }
+        .cannon-right { right: 0; transform: rotate(198deg); }
+        .goal-celebration-title { color:#fff; font-size:clamp(3rem,9vw,6rem); font-weight:1000; font-style:italic; letter-spacing:.12em; line-height:1; text-shadow:0 0 12px rgba(71,168,255,.9),0 0 38px rgba(22,123,209,.8); animation:matchup-goal-pop .45s cubic-bezier(.16,1,.3,1) both; }
+        @keyframes matchup-goal-pop { from { opacity:0; transform:scale(.55) translateY(14px); } to { opacity:1; transform:scale(1) translateY(0); } }
         .confetti-particle { position: absolute; left: 0; top: 0; width: 8px; height: 13px; border-radius: 2px; opacity: 0; background: #47a8ff; animation: matchup-confetti-burst 1.65s cubic-bezier(.12,.65,.25,1) forwards; }
         .confetti-particle:nth-child(3n) { background: #fff; }
         .confetti-particle:nth-child(3n + 1) { background: #70c1ff; }
