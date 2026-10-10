@@ -238,6 +238,13 @@ export function PlayGame() {
     if (controlMode !== "direct") return;
     const drag = pointerRef.current; if (!drag) return;
     const p = point(event), g = gameRef.current, d = g.discs.find(item => item.id === drag.id);
+    if (g.ended) {
+      pointerRef.current = null;
+      g.aim = null;
+      setPower(0);
+      setVersion(v => v + 1);
+      return;
+    }
     if (d) {
       const dx = p.x - drag.x, dy = p.y - drag.y, length = Math.hypot(dx, dy);
       if (length > 8) {
@@ -250,6 +257,12 @@ export function PlayGame() {
       }
     }
     pointerRef.current = null; g.aim = null; setPower(0); setVersion(v => v + 1);
+  };
+  const onCancel = () => {
+    pointerRef.current = null;
+    gameRef.current.aim = null;
+    setPower(0);
+    setVersion(v => v + 1);
   };
   useEffect(() => {
     if (!goalNotice) return;
@@ -336,7 +349,7 @@ export function PlayGame() {
               <div className="flex items-center gap-4"><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Score</p><p className="text-2xl font-black tabular-nums">{g.score[0]} — {g.score[1]}</p></div><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Time</p><p className="text-2xl font-black tabular-nums">{formatTime(Math.ceil(g.seconds))}</p></div></div>
             </section>
             <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>{controlMode === "direct" && pointerRef.current && <div className="mb-2 flex items-center gap-3 text-xs"><span className="font-bold text-[#bfe3ff]">{power<.33?"LOW POWER":power<.7?"MEDIUM POWER":"MAX POWER"}</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#16324d]"><div className="h-full rounded-full bg-[#47a8ff] transition-all" style={{width:(power*100)+"%"}} /></div></div>}
-            <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} className={"block "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none cursor-crosshair"} aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
+            <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel} className={"block "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none cursor-crosshair"} aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
             {controlMode === "analog" && !g.ended && <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md"><span /><button type="button" onClick={()=>moveSelected(0,-1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↑</button><span /><button type="button" onClick={()=>moveSelected(-1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">←</button><button type="button" onClick={()=>moveSelected(0,1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↓</button><button type="button" onClick={()=>moveSelected(1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">→</button><button type="button" onClick={()=>actBall("pass")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">PASS</button><button type="button" onClick={()=>actBall("shoot")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">SHOOT</button><button type="button" onClick={()=>actBall("cross")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">CROSS</button><button type="button" aria-pressed={fullSpeed} onClick={()=>setFullSpeed(v=>!v)} className={"min-h-12 rounded-xl border font-black "+(fullSpeed?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#071426]")}>FULL SPEED {fullSpeed?"ON":"OFF"}</button></div>}
             {goalNotice && <div key={goalNotice.id} className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"><div className="confetti-cannon cannon-left" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`left-${i}`} className="confetti-particle" style={{"--dx":`${100+(i%6)*27}px`,"--dy":`${((i*37)%220)-110}px`,"--rotation":`${i*83}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="confetti-cannon cannon-right" aria-hidden="true">{Array.from({length:18},(_,i)=><span key={`right-${i}`} className="confetti-particle" style={{"--dx":`${-100-(i%6)*27}px`,"--dy":`${((i*43)%220)-110}px`,"--rotation":`${i*97}deg`,"animationDelay":`${(i%6)*25}ms`} as React.CSSProperties} />)}</div><div className="rounded-3xl border border-[#70c1ff] bg-[#061426]/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(71,168,255,.45)] animate-in zoom-in duration-300"><p className="text-4xl font-black tracking-widest text-white">GOAL!</p><p className="mt-2 text-lg font-black text-[#70c1ff]">{goalNotice.team}</p><p className="mt-1 text-2xl font-black tabular-nums">{goalNotice.score}</p><div className="mt-3 flex justify-center gap-5 text-2xl" aria-hidden="true">🎉 ✨ 🎉</div></div></div>}
             {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? (teamName.trim() || "MatchUp FC") + " won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Drag a blue disc toward the ball or goal to flick it.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
