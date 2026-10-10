@@ -232,7 +232,7 @@ export function PlayGame() {
     if (controlMode !== "direct") return;
     const drag = pointerRef.current; if (!drag) return;
     const p = point(event), g = gameRef.current; drag.px = p.x; drag.py = p.y;
-    g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setPower(clamp(Math.hypot(g.aim.x, g.aim.y) / 220, 0, 1)); setVersion(v => v + 1);
+    g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setPower(clamp(Math.hypot(g.aim.x, g.aim.y) / 165, 0, 1)); setVersion(v => v + 1);
   };
   const onUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (controlMode !== "direct") return;
