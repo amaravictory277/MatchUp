@@ -45,12 +45,23 @@ function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.strokeStyle = "rgba(255,255,255,.24)"; ctx.lineWidth = 1;
   for (let y = GOAL_TOP + 8; y < GOAL_BOTTOM; y += 12) { ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(25, y); ctx.moveTo(W - 25, y); ctx.lineTo(W - 2, y); ctx.stroke(); }
   game.discs.forEach(d => {
-    const r = d.keeper ? 20 : 17;
-    ctx.beginPath(); ctx.ellipse(d.x + 2, d.y + 5, r + 1, r - 1, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fill();
-    ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, Math.PI * 2); ctx.fillStyle = d.team === "blue" ? "#1788f5" : "#f04452"; ctx.fill();
-    ctx.lineWidth=game.selected===d.id?4:2;ctx.strokeStyle=game.selected===d.id?"#fff4a3":d.team==="blue"?"#a9d9ff":"#ffc0c5";ctx.stroke();if(game.ball.owner===d.id){ctx.beginPath();ctx.arc(d.x,d.y,r+7,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
-    ctx.beginPath(); ctx.arc(d.x - 4, d.y - 5, 5, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,.32)"; ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(d.id > game.discs.length / 2 ? d.id - game.discs.length / 2 : d.id), d.x, d.y + 1);
+    const radius=d.keeper?20:17,angle=Math.atan2(d.fy,d.fx);
+    ctx.save();
+    ctx.translate(d.x,d.y);
+    ctx.beginPath();ctx.ellipse(2,7,radius*.9,radius*.48,0,0,Math.PI*2);ctx.fillStyle="rgba(0,0,0,.28)";ctx.fill();
+    ctx.rotate(angle);
+    // Small top-down footballer sprite: legs, arms, kit, and head facing the player's movement direction.
+    ctx.lineCap="round";ctx.lineWidth=4;ctx.strokeStyle="#17212b";
+    ctx.beginPath();ctx.moveTo(-5,-4);ctx.lineTo(-11,-7);ctx.moveTo(-5,4);ctx.lineTo(-11,7);ctx.stroke();
+    ctx.strokeStyle=d.team==="blue"?"#7fc7ff":"#ffb1b7";ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(5,-9);ctx.moveTo(0,6);ctx.lineTo(5,9);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(0,0,d.keeper?10:8,d.keeper?8:7,0,0,Math.PI*2);ctx.fillStyle=d.team==="blue"?"#1788f5":"#f04452";ctx.fill();
+    ctx.lineWidth=1.5;ctx.strokeStyle=d.team==="blue"?"#b9e2ff":"#ffd0d4";ctx.stroke();
+    ctx.beginPath();ctx.arc(10,0,d.keeper?5.5:4.8,0,Math.PI*2);ctx.fillStyle="#f0c7a6";ctx.fill();ctx.strokeStyle="#633e2e";ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+    if(game.selected===d.id){ctx.beginPath();ctx.arc(d.x,d.y,radius+5,0,Math.PI*2);ctx.strokeStyle="#fff4a3";ctx.lineWidth=3;ctx.stroke();}
+    if(game.ball.owner===d.id){ctx.beginPath();ctx.arc(d.x,d.y,radius+9,0,Math.PI*2);ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+    ctx.fillStyle="#fff";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(String(d.id>game.discs.length/2?d.id-game.discs.length/2:d.id),d.x,d.y+1);
   });
   if (game.aim && game.selected !== null) {
     const d = game.discs.find(item => item.id === game.selected);
