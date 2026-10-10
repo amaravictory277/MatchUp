@@ -1,239 +1,216 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createBrowserSupabaseClient } from "../../lib/supabase/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
-type Gender = "male" | "female";
-type Phase = "setup" | "match";
-type Vec3 = { x: number; y: number; z: number };
-type Scale3 = readonly [number, number, number];
-
+type Team = "blue" | "red";
+type Disc = { id: number; team: Team; x: number; y: number; vx: number; vy: number; keeper?: boolean };
+type Ball = { x: number; y: number; vx: number; vy: number };
+type GameState = { discs: Disc[]; ball: Ball; score: [number, number]; seconds: number; ended: boolean; lastGoal: string; selected: number | null; aim: { x: number; y: number } | null };
+const W = 1000, H = 600, GOAL_TOP = 235, GOAL_BOTTOM = 365;
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-
-function identityForGender(gender: Gender) {
-  return gender === "female"
-    ? { skin: [0.54, 0.32, 0.2], kit: [0.96, 0.96, 0.96], shorts: [0.12, 0.16, 0.2], scale: [0.92, 1.02, 0.92] as Scale3 }
-    : { skin: [0.38, 0.22, 0.13], kit: [0.97, 0.97, 0.97], shorts: [0.1, 0.14, 0.2], scale: [1, 1.06, 1] as Scale3 };
+const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+function createDiscs(size: number): Disc[] {
+  const discs: Disc[] = [];
+  const formation = Array.from({ length: size }, (_, i) => {
+    const row = Math.floor(i / 3), col = i % 3;
+    return { x: 105 + row * (size > 6 ? 55 : 75), y: 160 + col * (size > 6 ? 140 : 140) };
+  });
+  formation.forEach((p, i) => discs.push({ id: i + 1, team: "blue", x: p.x, y: p.y, vx: 0, vy: 0, keeper: i === 0 }));
+  formation.forEach((p, i) => discs.push({ id: size + i + 1, team: "red", x: W - p.x, y: H - p.y, vx: 0, vy: 0, keeper: i === 0 }));
+  return discs;
 }
-
-function compile(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) throw new Error("WebGL shader creation failed");
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(shader) || "WebGL shader compilation failed");
-  }
-  return shader;
+function freshGame(size: number): GameState {
+  return { discs: createDiscs(size), ball: { x: W / 2, y: H / 2, vx: 0, vy: 0 }, score: [0, 0], seconds: 120, ended: false, lastGoal: "", selected: null, aim: null };
 }
-
-function makeProgram(gl: WebGLRenderingContext) {
-  const vs = compile(gl, gl.VERTEX_SHADER, `
-    attribute vec3 a_position;
-    attribute vec3 a_normal;
-    uniform mat4 u_mvp;
-    uniform mat4 u_model;
-    varying vec3 v_normal;
-    varying vec3 v_world;
-    void main() {
-      vec4 world = u_model * vec4(a_position, 1.0);
-      v_world = world.xyz;
-      v_normal = mat3(u_model) * a_normal;
-      gl_Position = u_mvp * vec4(a_position, 1.0);
-    }
-  `);
-  const fs = compile(gl, gl.FRAGMENT_SHADER, `
-    precision mediump float;
-    uniform vec3 u_color;
-    uniform vec3 u_light;
-    varying vec3 v_normal;
-    varying vec3 v_world;
-    void main() {
-      vec3 n = normalize(v_normal);
-      float diffuse = max(dot(n, normalize(u_light - v_world)), 0.0);
-      float ambient = 0.32;
-      float rim = pow(1.0 - max(dot(n, vec3(0.0, 0.0, 1.0)), 0.0), 2.0) * 0.08;
-      vec3 c = u_color * (ambient + diffuse * 0.68 + rim);
-      gl_FragColor = vec4(c, 1.0);
-    }
-  `);
-  const program = gl.createProgram();
-  if (!program) throw new Error("WebGL program creation failed");
-  gl.attachShader(program, vs);
-  gl.attachShader(program, fs);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(program) || "WebGL program linking failed");
-  }
-  return program;
-}
-
-function perspective(fov: number, aspect: number, near: number, far: number) {
-  const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far);
-  return new Float32Array([
-    f / aspect, 0, 0, 0,
-    0, f, 0, 0,
-    0, 0, (far + near) * nf, -1,
-    0, 0, (2 * far * near) * nf, 0,
-  ]);
-}
-
-function lookAt(eye: Vec3, center: Vec3, up: Vec3) {
-  let zx = eye.x - center.x, zy = eye.y - center.y, zz = eye.z - center.z;
-  const zl = Math.hypot(zx, zy, zz) || 1; zx /= zl; zy /= zl; zz /= zl;
-  let xx = up.y * zz - up.z * zy, xy = up.z * zx - up.x * zz, xz = up.x * zy - up.y * zx;
-  const xl = Math.hypot(xx, xy, xz) || 1; xx /= xl; xy /= xl; xz /= xl;
-  const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
-  return new Float32Array([
-    xx, yx, zx, 0,
-    xy, yy, zy, 0,
-    xz, yz, zz, 0,
-    -(xx * eye.x + xy * eye.y + xz * eye.z),
-    -(yx * eye.x + yy * eye.y + yz * eye.z),
-    -(zx * eye.x + zy * eye.y + zz * eye.z),
-    1,
-  ]);
-}
-
-function multiply(a: Float32Array, b: Float32Array) {
-  const out = new Float32Array(16);
-  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
-    out[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
-  }
-  return out;
-}
-
-function model(position: Vec3, scale: Vec3 = { x: 1, y: 1, z: 1 }, rotationY = 0) {
-  const c = Math.cos(rotationY), s = Math.sin(rotationY);
-  return new Float32Array([
-    c * scale.x, 0, -s * scale.x, 0,
-    0, scale.y, 0, 0,
-    s * scale.z, 0, c * scale.z, 0,
-    position.x, position.y, position.z, 1,
-  ]);
-}
-
-function geometryCube() {
-  const p = [
-    -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1,
-    -1,-1,1, 1,-1,1, 1,1,1, -1,1,1,
-  ];
-  const faces = [
-    [0,1,2,3, 0,0,-1], [4,7,6,5, 0,0,1], [0,4,5,1, 0,-1,0],
-    [3,2,6,7, 0,1,0], [1,5,6,2, 1,0,0], [0,3,7,4, -1,0,0],
-  ];
-  const data:number[] = [];
-  for (const f of faces) {
-    const ids = f.slice(0,4) as number[], nx=f[4],ny=f[5],nz=f[6];
-    for (const id of [ids[0],ids[1],ids[2],ids[0],ids[2],ids[3]]) data.push(p[id*3],p[id*3+1],p[id*3+2],nx,ny,nz);
-  }
-  return new Float32Array(data);
-}
-
-function geometrySphere(rows=10, cols=16) {
-  const data:number[] = [];
-  for(let r=0;r<rows;r++){
-    const a0=r*Math.PI/rows, a1=(r+1)*Math.PI/rows;
-    for(let c=0;c<cols;c++){
-      const b0=c*2*Math.PI/cols, b1=(c+1)*2*Math.PI/cols;
-      const pts=[[a0,b0],[a1,b0],[a1,b1],[a0,b1]];
-      for(const [a,b] of [[...pts[0],...pts[1],...pts[2]],[...pts[0],...pts[2],...pts[3]]]){
-        const [aa,bb,cc,dd,ee,ff]=[a,b,a,b,a,b];
-        void aa; void bb; void cc; void dd; void ee; void ff;
-      }
-      const tris=[[pts[0],pts[1],pts[2]],[pts[0],pts[2],pts[3]]];
-      for(const tri of tris) for(const [a,b] of tri){ const x=Math.sin(a)*Math.cos(b), y=Math.cos(a), z=Math.sin(a)*Math.sin(b); data.push(x,y,z,x,y,z); }
+function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#0b442d"; ctx.fillRect(0, 0, W, H);
+  for (let i = 0; i < 10; i++) { ctx.fillStyle = i % 2 ? "rgba(255,255,255,.025)" : "rgba(0,0,0,.035)"; ctx.fillRect(i * W / 10, 0, W / 10, H); }
+  ctx.strokeStyle = "rgba(229,248,239,.78)"; ctx.lineWidth = 3;
+  ctx.strokeRect(25, 25, W - 50, H - 50);
+  ctx.beginPath(); ctx.moveTo(W / 2, 25); ctx.lineTo(W / 2, H - 25); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, 82, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(W / 2, H / 2, 4, 0, Math.PI * 2); ctx.fillStyle = "#e5f8ef"; ctx.fill();
+  ctx.strokeRect(25, 175, 125, 250); ctx.strokeRect(W - 150, 175, 125, 250);
+  ctx.strokeRect(25, 225, 48, 150); ctx.strokeRect(W - 73, 225, 48, 150);
+  ctx.beginPath(); ctx.arc(118, H / 2, 3, 0, Math.PI * 2); ctx.arc(W - 118, H / 2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#d8e8ff"; ctx.fillRect(0, GOAL_TOP, 27, GOAL_BOTTOM - GOAL_TOP); ctx.fillRect(W - 27, GOAL_TOP, 27, GOAL_BOTTOM - GOAL_TOP);
+  ctx.strokeStyle = "rgba(255,255,255,.24)"; ctx.lineWidth = 1;
+  for (let y = GOAL_TOP + 8; y < GOAL_BOTTOM; y += 12) { ctx.beginPath(); ctx.moveTo(2, y); ctx.lineTo(25, y); ctx.moveTo(W - 25, y); ctx.lineTo(W - 2, y); ctx.stroke(); }
+  game.discs.forEach(d => {
+    const r = d.keeper ? 20 : 17;
+    ctx.beginPath(); ctx.ellipse(d.x + 2, d.y + 5, r + 1, r - 1, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, Math.PI * 2); ctx.fillStyle = d.team === "blue" ? "#1788f5" : "#f04452"; ctx.fill();
+    ctx.lineWidth = game.selected === d.id ? 4 : 2; ctx.strokeStyle = game.selected === d.id ? "#fff4a3" : d.team === "blue" ? "#a9d9ff" : "#ffc0c5"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(d.x - 4, d.y - 5, 5, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,.32)"; ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(d.id > game.discs.length / 2 ? d.id - game.discs.length / 2 : d.id), d.x, d.y + 1);
+  });
+  if (game.aim && game.selected !== null) {
+    const d = game.discs.find(item => item.id === game.selected);
+    if (d) {
+      ctx.save(); ctx.setLineDash([8, 7]); ctx.strokeStyle = "#fff4a3"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + game.aim.x * 3.2, d.y + game.aim.y * 3.2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(d.x + game.aim.x * 3.2, d.y + game.aim.y * 3.2, 7, 0, Math.PI * 2); ctx.fillStyle = "#fff4a3"; ctx.fill(); ctx.restore();
     }
   }
-  return new Float32Array(data);
+  const b = game.ball;
+  ctx.beginPath(); ctx.ellipse(b.x + 2, b.y + 4, 11, 8, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.fill();
+  ctx.beginPath(); ctx.arc(b.x, b.y, 10, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = "#142235"; ctx.lineWidth = 2; ctx.stroke();
+  for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; ctx.beginPath(); ctx.arc(b.x + Math.cos(a) * 4, b.y + Math.sin(a) * 4, 1.8, 0, Math.PI * 2); ctx.fillStyle = "#142235"; ctx.fill(); }
 }
-
-function drawObject(gl: WebGLRenderingContext, program: WebGLProgram, buffer: WebGLBuffer, count: number, vp: Float32Array, position: Vec3, scale: Vec3, color: number[], rotation=0) {
-  const m=model(position,scale,rotation), mvp=multiply(vp,m);
-  gl.uniformMatrix4fv(gl.getUniformLocation(program,"u_model"),false,m);
-  gl.uniformMatrix4fv(gl.getUniformLocation(program,"u_mvp"),false,mvp);
-  gl.uniform3fv(gl.getUniformLocation(program,"u_color"),new Float32Array(color));
-  gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-  const pos=gl.getAttribLocation(program,"a_position"), normal=gl.getAttribLocation(program,"a_normal");
-  gl.enableVertexAttribArray(pos); gl.enableVertexAttribArray(normal);
-  gl.vertexAttribPointer(pos,3,gl.FLOAT,false,24,0);
-  gl.vertexAttribPointer(normal,3,gl.FLOAT,false,24,12);
-  gl.drawArrays(gl.TRIANGLES,0,count);
-}
-
-function drawPlayer(gl:WebGLRenderingContext, program:WebGLProgram, cube:WebGLBuffer, sphere:WebGLBuffer, vp:Float32Array, p:Vec3, color:number[], skin:number[], scale=1, running=0){
-  const body={x:0.42*scale,y:0.82*scale,z:0.24*scale};
-  drawObject(gl,program,cube,36,vp,{x:p.x,y:p.y+1.05*scale,z:p.z},body,color);
-  drawObject(gl,program,sphere,10*16*6,vp,{x:p.x,y:p.y+2.05*scale,z:p.z},{x:0.3*scale,y:0.3*scale,z:0.3*scale},skin);
-  const stride=Math.sin(running)*0.22*scale;
-  drawObject(gl,program,cube,36,vp,{x:p.x-0.22*scale,y:p.y+0.3*scale,z:p.z+stride},{x:0.13*scale,y:0.48*scale,z:0.13*scale},color, stride);
-  drawObject(gl,program,cube,36,vp,{x:p.x+0.22*scale,y:p.y+0.3*scale,z:p.z-stride},{x:0.13*scale,y:0.48*scale,z:0.13*scale},color, -stride);
-  drawObject(gl,program,cube,36,vp,{x:p.x-0.58*scale,y:p.y+1.12*scale,z:p.z+stride*0.4},{x:0.12*scale,y:0.5*scale,z:0.12*scale},skin, stride);
-  drawObject(gl,program,cube,36,vp,{x:p.x+0.58*scale,y:p.y+1.12*scale,z:p.z-stride*0.4},{x:0.12*scale,y:0.5*scale,z:0.12*scale},skin, -stride);
+function resolveCollision(a: { x: number; y: number; vx: number; vy: number }, b: { x: number; y: number; vx: number; vy: number }, min: number, restitution = 0.84) {
+  let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+  if (!d || d >= min) return;
+  const nx = dx / d, ny = dy / d, overlap = min - d;
+  a.x -= nx * overlap * .5; a.y -= ny * overlap * .5; b.x += nx * overlap * .5; b.y += ny * overlap * .5;
+  const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+  if (rel < 0) { const impulse = -(1 + restitution) * rel * .5; a.vx -= impulse * nx; a.vy -= impulse * ny; b.vx += impulse * nx; b.vy += impulse * ny; }
 }
 
 export function PlayGame() {
-  const canvasRef=useRef<HTMLCanvasElement>(null);
-  const [phase,setPhase]=useState<Phase>("setup");
-  const [nameMode,setNameMode]=useState<"username"|"custom">("username");
-  const [customName,setCustomName]=useState("");
-  const [username,setUsername]=useState("@MatchUpPlayer");
-  const [gender,setGender]=useState<Gender>("male");
-  const [error,setError]=useState("");
-  const [cameraDistance,setCameraDistance]=useState(7);
-  const [touchMove,setTouchMove]=useState({x:0,y:0});
-  const [action,setAction]=useState<"pass"|"shoot"|null>(null);
-
-  useEffect(()=>{let alive=true; const load=async()=>{try{const supabase=createBrowserSupabaseClient();const {data}=await supabase.auth.getUser();if(!data.user)return;const {data:p}=await supabase.from("profiles").select("username").eq("id",data.user.id).maybeSingle();if(alive&&p?.username)setUsername("@"+p.username.replace(/^@/,""));}catch{}};void load();return()=>{alive=false}},[]);
-
-  useEffect(()=>{
-    if(phase!=="match") return;
-    const canvas=canvasRef.current; if(!canvas) return;
-    const gl=canvas.getContext("webgl",{antialias:true,alpha:false}); if(!gl) return;
-    const program=makeProgram(gl); gl.useProgram(program);
-    const cube=gl.createBuffer()!, sphere=gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER,cube); gl.bufferData(gl.ARRAY_BUFFER,geometryCube(),gl.STATIC_DRAW);
-    const sg=geometrySphere(); gl.bindBuffer(gl.ARRAY_BUFFER,sphere); gl.bufferData(gl.ARRAY_BUFFER,sg,gl.STATIC_DRAW);
-    gl.uniform3f(gl.getUniformLocation(program,"u_light"),-10,18,10);
-    let raf=0,last=performance.now(),t=0,px=0,pz=4,bx=0,bz=0,ballVX=0,ballVZ=0,camYaw=0;
-    const keys=new Set<string>();
-    const down=(e:KeyboardEvent)=>keys.add(e.key.toLowerCase()), up=(e:KeyboardEvent)=>keys.delete(e.key.toLowerCase());
-    window.addEventListener("keydown",down);window.addEventListener("keyup",up);
-    const resize=()=>{const d=Math.min(window.devicePixelRatio||1,2);canvas.width=canvas.clientWidth*d;canvas.height=canvas.clientHeight*d;gl.viewport(0,0,canvas.width,canvas.height)};
-    window.addEventListener("resize",resize);resize();
-    const loop=(now:number)=>{
-      const dt=Math.min(0.033,(now-last)/1000);last=now;t+=dt;
-      let mx=touchMove.x+(keys.has("a")?-1:0)+(keys.has("d")?1:0), mz=touchMove.y+(keys.has("w")?-1:0)+(keys.has("s")?1:0);
-      const len=Math.hypot(mx,mz)||1;if(Math.hypot(mx,mz)>0){mx/=len;mz/=len;px=clamp(px+mx*dt*4.4,-48,48);pz=clamp(pz+mz*dt*4.4,-31,31);}
-      if(action==="pass"){ballVX=mx*8;ballVZ=mz*8;setAction(null)}
-      if(action==="shoot"){ballVX=mx*13;ballVZ=mz*13;setAction(null)}
-      bx+=ballVX*dt;bz+=ballVZ*dt;ballVX*=Math.pow(.18,dt);ballVZ*=Math.pow(.18,dt);
-      if(Math.hypot(px-bx,pz-bz)<1.6){bx=px; bz=pz+0.7; if(Math.hypot(ballVX,ballVZ)<1){ballVX=0;ballVZ=0}}
-      const target={x:px,y:1.1,z:pz}; const eye={x:px+Math.sin(camYaw)*cameraDistance,y:4.2,z:pz+Math.cos(camYaw)*cameraDistance};
-      const vp=multiply(perspective(Math.PI/3,canvas.width/canvas.height,.1,200),lookAt(eye,target,{x:0,y:1,z:0}));
-      gl.enable(gl.DEPTH_TEST);gl.clearColor(.015,.055,.095,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-      drawObject(gl,program,cube,36,vp,{x:0,y:-.12,z:0},{x:50,y:.12,z:32},[.055,.33,.16]);
-      for(let x=-45;x<=45;x+=5) drawObject(gl,program,cube,36,vp,{x,y:-.005,z:0},{x:.015,y:.015,z:32},[.78,.9,.82]);
-      for(let z=-28;z<=28;z+=7) drawObject(gl,program,cube,36,vp,{x:0,y:0,z},{x:50,y:.012,z:.015},[.78,.9,.82]);
-      drawObject(gl,program,cube,36,vp,{x:0,y:.03,z:0},{x:.08,y:.03,z:32},[1,1,1]);
-      drawObject(gl,program,cube,36,vp,{x:-50,y:3,z:0},{x:1.2,y:3,z:36},[.12,.15,.2]);
-      drawObject(gl,program,cube,36,vp,{x:50,y:3,z:0},{x:1.2,y:3,z:36},[.12,.15,.2]);
-      drawObject(gl,program,cube,36,vp,{x:0,y:3,z:-33},{x:51,y:3,z:1.2},[.13,.08,.08]);
-      drawObject(gl,program,cube,36,vp,{x:0,y:3,z:33},{x:51,y:3,z:1.2},[.13,.08,.08]);
-      for(let i=0;i<28;i++){const a=i/28*Math.PI*2;const r=45;drawObject(gl,program,sphere,sg.length/6,vp,{x:Math.cos(a)*r,y:4+Math.sin(i*3)*.5,z:Math.sin(a)*r},{x:.55,y:.55,z:.55},i%2?[.75,.75,.8]:[.18,.23,.28]);}
-      const me=identityForGender(gender);drawPlayer(gl,program,cube,sphere,vp,{x:px,y:0,z:pz},me.kit,me.skin,1,t*7);
-      const teammates=[[-12,-5],[-8,10],[8,-10],[17,7],[28,0]];teammates.forEach((q,i)=>drawPlayer(gl,program,cube,sphere,vp,{x:q[0]+Math.sin(t+i)*1.5,y:0,z:q[1] },[.12,.42,.82],[.45,.28,.18],.95,t*5+i));
-      const opponents=[[-20,-2],[-8,-14],[4,12],[18,-6],[30,10]];opponents.forEach((q,i)=>drawPlayer(gl,program,cube,sphere,vp,{x:q[0]+Math.cos(t+i)*1.2,y:0,z:q[1]},[.72,.08,.09],[.32,.17,.1],.98,t*5+i));
-      drawPlayer(gl,program,cube,sphere,vp,{x:0,y:0,z:-29},[.85,.72,.12],[.78,.5,.28],1,t*4);
-      drawObject(gl,program,sphere,sg.length/6,vp,{x:bx,y:.34+Math.abs(Math.sin(t*10))*.08,z:bz},{x:.32,y:.32,z:.32},[.96,.96,.96]);
-      raf=requestAnimationFrame(loop);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameRef = useRef<GameState>(freshGame(5));
+  const pointerRef = useRef<{ id: number; x: number; y: number; px: number; py: number } | null>(null);
+  const [teamSize, setTeamSize] = useState(5);
+  const [mode, setMode] = useState<"single" | "multi">("single");
+  const [started, setStarted] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [notice, setNotice] = useState("");
+  const [status, setStatus] = useState("Ready for kickoff");
+  const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard">("normal");
+  const [onlineInfo, setOnlineInfo] = useState(false);
+  const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
+  const start = useCallback(() => {
+    gameRef.current = freshGame(teamSize);
+    setStarted(true); setNotice(""); setStatus("Kickoff! Drag a blue disc to pass or shoot.");
+    setVersion(v => v + 1);
+  }, [teamSize]);
+  useEffect(() => {
+    if (!started) return;
+    const canvas = canvasRef.current, ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) { setNotice("This browser could not start the 2D game canvas."); return; }
+    let raf = 0, previous = performance.now(), aiClock = 0, uiClock = 0;
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr)); canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     };
-    raf=requestAnimationFrame(loop);
-    return()=>{cancelAnimationFrame(raf);window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);window.removeEventListener("resize",resize)};
-  },[phase,touchMove,action,gender,cameraDistance]);
-
-  const selectedName=nameMode==="username"?username:(customName.trim()||"MatchUp Player");
-  if(phase==="setup") return <main className="min-h-[100dvh] bg-[#020a14] text-white"><div className="mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col lg:flex-row"><section className="relative min-h-[45vh] flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_25%,rgba(36,151,255,.28),transparent_40%),linear-gradient(180deg,#06182c,#020a14)]"><div className="absolute inset-0 opacity-30" style={{backgroundImage:"linear-gradient(rgba(71,168,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(71,168,255,.08) 1px,transparent 1px)",backgroundSize:"44px 44px"}}/><div className="relative flex h-full min-h-[45vh] items-center justify-center"><div className="relative mt-8"><div className="absolute -inset-16 rounded-full bg-[#167bd1]/20 blur-3xl"/><div className="relative h-[330px] w-[220px]"><div className="absolute left-1/2 top-10 h-28 w-24 -translate-x-1/2 rounded-full bg-[#7a4d32] shadow-[0_12px_35px_rgba(0,0,0,.5)]"/><div className="absolute left-1/2 top-32 h-48 w-40 -translate-x-1/2 rounded-[44px_44px_24px_24px] bg-white shadow-[0_18px_55px_rgba(0,0,0,.45)]"/><div className="absolute left-[42px] top-[185px] h-32 w-12 rotate-[8deg] rounded-full bg-[#111827]"/><div className="absolute right-[42px] top-[185px] h-32 w-12 -rotate-[8deg] rounded-full bg-[#111827]"/><div className="absolute left-2 top-36 h-40 w-9 rotate-[18deg] rounded-full bg-[#7a4d32]"/><div className="absolute right-2 top-36 h-40 w-9 -rotate-[18deg] rounded-full bg-[#7a4d32]"/></div></div></div><div className="absolute bottom-7 left-7"><img src="/matchup-logo.svg" alt="MatchUp" className="h-8 w-auto"/></div></section><section className="flex w-full max-w-xl flex-col justify-center border-t border-[#163b61] bg-[#071426] p-6 sm:p-10 lg:w-[500px] lg:border-l lg:border-t-0"><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#47a8ff]">MATCHUP PLAY GAME</p><h1 className="mt-3 text-4xl font-black tracking-[-.04em] sm:text-5xl">How do you want to play?</h1><p className="mt-3 text-sm leading-6 text-[#8da7bf]">Create your football-game identity before entering the match.</p><div className="mt-7 grid grid-cols-2 gap-2"><button onClick={()=>setNameMode("username")} className={`rounded-2xl border p-4 text-left ${nameMode==="username"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#061426]"}`}><span className="text-[10px] font-black uppercase tracking-[.12em] text-[#70c1ff]">Use MatchUp Username</span><strong className="mt-2 block truncate text-lg">{username}</strong></button><button onClick={()=>setNameMode("custom")} className={`rounded-2xl border p-4 text-left ${nameMode==="custom"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#061426]"}`}><span className="text-[10px] font-black uppercase tracking-[.12em] text-[#70c1ff]">Use Different Name</span><strong className="mt-2 block text-lg">Custom</strong></button></div>{nameMode==="custom"?<input value={customName} onChange={e=>setCustomName(e.target.value)} maxLength={20} placeholder="Enter player name..." className="mt-3 w-full rounded-2xl border border-[#214a78] bg-[#061426] px-4 py-4 text-sm text-white outline-none focus:border-[#47a8ff]"/>:null}<p className="mt-7 text-[10px] font-black uppercase tracking-[.18em] text-[#70c1ff]">Player Gender</p><div className="mt-3 grid grid-cols-2 gap-2">{(["male","female"] as Gender[]).map(g=><button key={g} onClick={()=>setGender(g)} className={`rounded-2xl border px-4 py-4 text-sm font-black capitalize ${gender===g?"border-[#47a8ff] bg-[#0b3154] text-white":"border-[#214a78] bg-[#061426] text-[#9fb6cc]"}`}>{g}</button>)}</div>{error?<p className="mt-3 text-xs font-bold text-[#ff9eab]">{error}</p>:null}<button onClick={()=>{if(nameMode==="custom"&&!customName.trim()){setError("Enter a player name or choose Use MatchUp Username.");return}setError("");setPhase("match")}} className="mt-8 rounded-2xl bg-[#167bd1] px-5 py-4 text-sm font-black text-white shadow-[0_14px_35px_rgba(22,123,209,.28)]">Enter Match as {selectedName}</button></section></div></main>;
-
-  return <main className="relative min-h-[100dvh] overflow-hidden bg-[#020a14] text-white"><canvas ref={canvasRef} className="absolute inset-0 h-full w-full touch-none"/><div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 sm:p-6"><div className="pointer-events-auto rounded-2xl border border-white/10 bg-[#04111f]/80 px-4 py-3 backdrop-blur-md"><p className="text-[9px] font-black uppercase tracking-[.15em] text-[#70c1ff]">MATCHUP · PLAY GAME</p><p className="mt-1 text-sm font-black">{selectedName}</p><p className="mt-1 text-[10px] text-[#91aac1]">LIVE PROTOTYPE · 1 PLAYER</p></div><div className="pointer-events-auto rounded-2xl border border-white/10 bg-[#04111f]/80 px-4 py-3 text-right backdrop-blur-md"><p className="text-[10px] font-black text-[#70c1ff]">YOUR TEAM</p><p className="text-lg font-black">MATCHUP FC</p><p className="text-[10px] text-[#91aac1]">0 — 0</p></div></div><div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 p-5 sm:p-8"><div className="pointer-events-auto"><div className="grid size-28 place-items-center rounded-full border border-white/20 bg-[#061426]/55 backdrop-blur-md"><div className="relative size-20"><div className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-white/10"/><div className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 bg-white/10"/><div className="absolute left-1/2 top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15"/><div className="absolute left-1/2 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#47a8ff]" style={{transform:`translate(calc(-50% + ${touchMove.x*28}px),calc(-50% + ${touchMove.y*28}px))`}}/></div></div></div><div className="pointer-events-auto flex gap-2"><button onClick={()=>setAction("pass")} className="grid size-16 place-items-center rounded-full border border-[#70c1ff]/50 bg-[#0b3154]/85 text-[10px] font-black backdrop-blur-md">PASS</button><button onClick={()=>setAction("shoot")} className="grid size-20 place-items-center rounded-full border border-white/30 bg-white/15 text-[10px] font-black backdrop-blur-md">SHOOT</button><button onClick={()=>setCameraDistance(d=>d>8?5:d+1)} className="grid size-12 place-items-center rounded-full border border-white/15 bg-[#061426]/75 text-[9px] font-black backdrop-blur-md">CAM</button></div></div><div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 text-center sm:block"><p className="text-[10px] font-black uppercase tracking-[.2em] text-white/60">MOVE · PASS · SHOOT</p><p className="mt-1 text-xs text-white/45">WASD / touch controls</p></div><div className="absolute inset-0" onPointerMove={e=>{if(e.buttons!==1)return;const r=(e.currentTarget as HTMLElement).getBoundingClientRect();setTouchMove({x:clamp((e.clientX-r.left-r.width/2)/(r.width/2),-1,1),y:clamp((e.clientY-r.top-r.height/2)/(r.height/2),-1,1)})}} onPointerUp={()=>setTouchMove({x:0,y:0})} onPointerLeave={()=>setTouchMove({x:0,y:0})}/></main>;
+    const tick = (now: number) => {
+      const dt = Math.min(.035, (now - previous) / 1000); previous = now;
+      const g = gameRef.current;
+      if (!g.ended) {
+        g.seconds = Math.max(0, g.seconds - dt);
+        if (g.seconds <= 0) { g.ended = true; setStatus(g.score[0] === g.score[1] ? "Full time — it's a draw" : g.score[0] > g.score[1] ? "Full time — MatchUp wins!" : "Full time — opponents win"); }
+        for (const d of g.discs) {
+          d.x += d.vx * dt; d.y += d.vy * dt;
+          d.vx *= Math.pow(.22, dt); d.vy *= Math.pow(.22, dt);
+          if (Math.hypot(d.vx, d.vy) < 3) { d.vx = 0; d.vy = 0; }
+          d.x = clamp(d.x, 45, W - 45); d.y = clamp(d.y, 45, H - 45);
+        }
+        const b = g.ball; b.x += b.vx * dt; b.y += b.vy * dt; b.vx *= Math.pow(.32, dt); b.vy *= Math.pow(.32, dt);
+        if (Math.abs(b.vx) < 2) b.vx = 0; if (Math.abs(b.vy) < 2) b.vy = 0;
+        if (b.y < 37 || b.y > H - 37) { b.y = clamp(b.y, 37, H - 37); b.vy *= -.72; }
+        if (b.x < 27 || b.x > W - 27) {
+          if (b.y > GOAL_TOP && b.y < GOAL_BOTTOM) {
+            const scorer = b.x < W / 2 ? 1 : 0;
+            g.score[scorer]++; g.lastGoal = scorer === 0 ? "GOAL! MatchUp scores" : "GOAL! Opponents score";
+            setStatus(g.lastGoal); b.x = W / 2; b.y = H / 2; b.vx = 0; b.vy = 0;
+            g.discs = createDiscs(teamSize);
+          } else { b.x = clamp(b.x, 38, W - 38); b.vx *= -.78; }
+        }
+        for (let i = 0; i < g.discs.length; i++) {
+          const d = g.discs[i]; resolveCollision(d, b, (d.keeper ? 20 : 17) + 10, .91);
+          for (let j = i + 1; j < g.discs.length; j++) resolveCollision(d, g.discs[j], (d.keeper ? 20 : 17) + (g.discs[j].keeper ? 20 : 17), .8);
+        }
+        aiClock += dt;
+        if (aiClock > (difficulty === "easy" ? 1.8 : difficulty === "hard" ? .65 : 1.15)) {
+          aiClock = 0;
+          const opponents = g.discs.filter(d => d.team === "red");
+          const target = opponents.reduce((best, d) => dist(d.x, d.y, b.x, b.y) < dist(best.x, best.y, b.x, b.y) ? d : best, opponents[0]);
+          if (target && Math.hypot(b.vx, b.vy) < 320) {
+            const tx = b.x < W * .7 ? W - 70 : W - 35, ty = H / 2 + (Math.random() - .5) * 100;
+            const dx = (b.x - target.x) * .7 + (tx - target.x) * .3, dy = (b.y - target.y) * .7 + (ty - target.y) * .3, len = Math.hypot(dx, dy) || 1;
+            target.vx += dx / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
+            target.vy += dy / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
+          }
+        }
+        uiClock += dt;
+        if (uiClock > .2) { uiClock = 0; setVersion(v => v + 1); }
+      }
+      ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+      drawPitch(ctx, g);
+      raf = requestAnimationFrame(tick);
+    };
+    resize(); window.addEventListener("resize", resize); raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+  }, [started, teamSize, difficulty]);
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) / rect.width * W, y: (event.clientY - rect.top) / rect.height * H };
+  };
+  const onDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (gameRef.current.ended) return;
+    const p = point(event), g = gameRef.current;
+    const nearest = g.discs.filter(d => d.team === "blue").map(d => ({ d, distance: dist(d.x, d.y, p.x, p.y) })).sort((a, b) => a.distance - b.distance)[0];
+    if (!nearest || nearest.distance > 35) return;
+    g.selected = nearest.d.id; g.aim = { x: 0, y: 0 };
+    pointerRef.current = { id: nearest.d.id, x: p.x, y: p.y, px: p.x, py: p.y };
+    event.currentTarget.setPointerCapture(event.pointerId); setVersion(v => v + 1);
+  };
+  const onMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const drag = pointerRef.current; if (!drag) return;
+    const p = point(event), g = gameRef.current; drag.px = p.x; drag.py = p.y;
+    g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setVersion(v => v + 1);
+  };
+  const onUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const drag = pointerRef.current; if (!drag) return;
+    const p = point(event), g = gameRef.current, d = g.discs.find(item => item.id === drag.id);
+    if (d) {
+      const dx = p.x - drag.x, dy = p.y - drag.y, length = Math.hypot(dx, dy);
+      if (length > 8) {
+        const power = clamp(length * 3.4, 80, 560);
+        d.vx += dx / length * power; d.vy += dy / length * power;
+        setStatus(length > 100 ? "Power shot!" : "Pass in play");
+      } else {
+        const b = g.ball, bx = b.x - d.x, by = b.y - d.y, near = Math.hypot(bx, by);
+        if (near < 65) { b.vx += (bx / (near || 1)) * 250; b.vy += (by / (near || 1)) * 250; setStatus("Ball played forward"); }
+      }
+    }
+    pointerRef.current = null; g.aim = null; setVersion(v => v + 1);
+  };
+  const g = gameRef.current;
+  return (
+    <main className="min-h-[100dvh] bg-[#020a14] px-3 pb-24 pt-4 text-white sm:px-6 sm:pt-6">
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-4 flex items-center justify-between gap-3">
+          <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#70c1ff]">MATCHUP · PLAY GAME</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Disc Football</h1><p className="mt-1 text-xs text-[#8da7bf]">Swipe, pass, shoot. Win the match.</p></div>
+          <Link href="/game" className="rounded-xl border border-[#214a78] px-3 py-2 text-xs font-bold text-[#bfe3ff]">Games</Link>
+        </header>
+        {!started ? (
+          <section className="mx-auto max-w-3xl rounded-[28px] border border-[#174978] bg-[radial-gradient(circle_at_85%_0%,rgba(36,151,255,.18),transparent_42%),#071426] p-5 sm:p-8">
+            <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#70c1ff]">Choose your match</p><h2 className="mt-2 text-3xl font-black sm:text-4xl">Football, played with discs.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[#9fb6cc]">Control the blue team. Flick a disc toward the ball or goal, use rebounds, and beat the red AI team. No keyboard required.</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => setMode("single")} className={"rounded-2xl border p-4 text-left " + (mode === "single" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Single Player</span><strong className="mt-2 block text-lg">Play vs AI</strong><span className="mt-1 block text-xs text-[#9fb6cc]">A complete local match against computer-controlled opponents.</span></button>
+              <button type="button" onClick={() => { setMode("multi"); setOnlineInfo(true); }} className={"rounded-2xl border p-4 text-left " + (mode === "multi" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Multiplayer</span><strong className="mt-2 block text-lg">Online Match</strong><span className="mt-1 block text-xs text-[#9fb6cc]">Play against another MatchUp user.</span></button>
+            </div>
+            {mode === "multi" ? <div role="status" className="mt-4 rounded-2xl border border-[#7a6030] bg-[#241e12] p-4 text-sm leading-6 text-[#f4d99c]"><strong className="block">Online multiplayer needs match-room infrastructure.</strong>The current project has real-time Match Room infrastructure for football discussions, but it does not yet have an authoritative disc-game session schema. Online play is not enabled here; this screen will not pretend an AI match is a real opponent match.</div> : <>
+              <div className="mt-6"><label htmlFor="team-size" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Players per team</label><select id="team-size" value={teamSize} onChange={e => setTeamSize(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[3,5,6,8,11].map(n => <option key={n} value={n}>{n} vs {n}</option>)}</select></div>
+              <div className="mt-5"><label htmlFor="difficulty" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">AI difficulty</label><select id="difficulty" value={difficulty} onChange={e => setDifficulty(e.target.value as "easy" | "normal" | "hard")} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div>
+              <button type="button" onClick={start} className="mt-6 w-full rounded-2xl bg-[#167bd1] px-5 py-4 text-sm font-black shadow-[0_12px_30px_rgba(22,123,209,.25)] sm:w-auto">Start Single-Player Match</button>
+            </>}
+          </section>
+        ) : (
+          <>
+            <section className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#214a78] bg-[#071426] px-4 py-3">
+              <div><p className="text-[9px] font-black uppercase tracking-widest text-[#70c1ff]">MATCHUP FC <span className="text-[#7892ac]">vs</span> RED AI</p><p className="mt-1 text-xs text-[#9fb6cc]">{teamSize} vs {teamSize} · {difficulty.toUpperCase()} AI</p></div>
+              <div className="flex items-center gap-4"><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Score</p><p className="text-2xl font-black tabular-nums">{g.score[0]} — {g.score[1]}</p></div><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Time</p><p className="text-2xl font-black tabular-nums">{formatTime(Math.ceil(g.seconds))}</p></div></div>
+            </section>
+            <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>
+            <div className="overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)]"><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} className="block aspect-[5/3] w-full touch-none cursor-crosshair" aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
+            {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? "You won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Drag a blue disc toward the ball or goal to flick it.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
+          </>
+        )}
+      </div>
+    </main>
+  );
 }
