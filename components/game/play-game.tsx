@@ -16,8 +16,14 @@ function createDiscs(size: number): Disc[] {
     const row = Math.floor(i / 3), col = i % 3;
     return { x: 105 + row * (size > 6 ? 55 : 75), y: 160 + col * (size > 6 ? 140 : 140) };
   });
-  formation.forEach((p, i) => discs.push({ id: i + 1, team: "blue", x: p.x, y: p.y, vx: 0, vy: 0, keeper: i === 0 }));
-  formation.forEach((p, i) => discs.push({ id: size + i + 1, team: "red", x: W - p.x, y: H - p.y, vx: 0, vy: 0, keeper: i === 0 }));
+  formation.forEach((p, i) => {
+    const keeper = i === 0;
+    discs.push({ id: i + 1, team: "blue", x: keeper ? 70 : p.x, y: keeper ? H / 2 : p.y, vx: 0, vy: 0, keeper });
+  });
+  formation.forEach((p, i) => {
+    const keeper = i === 0;
+    discs.push({ id: size + i + 1, team: "red", x: keeper ? W - 70 : W - p.x, y: keeper ? H / 2 : H - p.y, vx: 0, vy: 0, keeper });
+  });
   return discs;
 }
 function freshGame(size: number, duration = 2): GameState {
