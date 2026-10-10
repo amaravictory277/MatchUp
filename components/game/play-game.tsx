@@ -37,6 +37,49 @@ function createDiscs(size: number, shape: Formation = "4-3-3"): Disc[] {
 function freshGame(size: number, duration = 2, formation: Formation = "4-3-3"): GameState {
   const discs=createDiscs(size, formation),p=discs.filter(d=>d.team==="blue"&&!d.keeper);return {discs,ball:{x:W/2,y:H/2,vx:0,vy:0,z:0,vz:0,owner:null,target:null,kind:"loose"},score:[0,0],seconds:duration*60,ended:false,lastGoal:"",selected:p[Math.floor(Math.random()*p.length)]?.id??null,aim:null};
 }
+
+function tacticalTarget(d: Disc, discs: Disc[], ball: Ball, formation: Formation, teamSize: number) {
+  const lines: Record<Formation, number[]> = { "4-4-2":[4,4,2], "4-3-3":[4,3,3], "4-2-3-1":[4,2,3,1], "3-5-2":[3,5,2], "5-3-2":[5,3,2] };
+  const shape = lines[formation];
+  const direction = d.team === "blue" ? 1 : -1;
+  const outfield = discs.filter(p => p.team === d.team && !p.keeper).sort((a,b)=>a.id-b.id);
+  const index = Math.max(0, outfield.findIndex(p=>p.id===d.id));
+  const slots = Math.max(1, teamSize - 1);
+  const roleSlot = Math.min(9, Math.floor(index * 10 / slots));
+  let line = 0, within = roleSlot;
+  while (line < shape.length - 1 && within >= shape[line]) { within -= shape[line]; line++; }
+  const count = shape[line];
+  const lane = count <= 1 ? 0 : within / (count - 1) * 2 - 1;
+  const isForwardLine = line === shape.length - 1;
+  const isDefensiveLine = line === 0;
+  const isWideRole = Math.abs(lane) > .45 && (isForwardLine || line === shape.length - 2);
+  const own = discs.find(p => p.id === ball.owner);
+  const attacking = own?.team === d.team;
+  const defending = Boolean(own && own.team !== d.team);
+  const progress = clamp((direction * (ball.x - W / 2) + 240) / 650, 0, 1);
+  const baseProgress = 130 + line / Math.max(1, shape.length - 1) * 620;
+  let x = direction === 1 ? baseProgress : W - baseProgress;
+  let y = H / 2 + lane * (isWideRole ? 190 : 135);
+  if (attacking) {
+    const run = isForwardLine ? 112 : line === shape.length - 2 ? 62 : isDefensiveLine ? 8 : 34;
+    x += direction * run * progress;
+    if (isForwardLine && progress > .58) x += direction * 42;
+    // Wide forwards stay available for crosses; central forwards attack the channel.
+    if (isForwardLine && Math.abs(lane) < .45) y += (ball.y - H / 2) * .16;
+    if (isWideRole) y = H / 2 + lane * (190 + 18 * progress);
+  } else if (defending) {
+    const compact = clamp((direction * (ball.x - W / 2) + 500) / 1000, 0, 1);
+    x -= direction * (isDefensiveLine ? 24 : isForwardLine ? 12 : 32) * compact;
+    y = H / 2 + lane * (isWideRole ? 172 : 122);
+  } else {
+    // With no clear owner, keep a connected shape around the ball rather than chasing it.
+    x += direction * clamp(direction * (ball.x - W / 2), -180, 180) * (isDefensiveLine ? .08 : .15);
+  }
+  // Keep useful width and prevent tactical targets from becoming impossible or bunching at the touchline.
+  x = clamp(x, 65, W - 65);
+  y = clamp(y, 55, H - 55);
+  return { x, y, attacking, defending, isForwardLine, isDefensiveLine, isWideRole };
+}
 function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "#0b442d"; ctx.fillRect(0, 0, W, H);
@@ -144,7 +187,15 @@ if(!g.ended){g.seconds=Math.max(0,g.seconds-dt);if(g.seconds<=0){g.seconds=0;g.e
 if(!g.ended){const user=g.discs.find(d=>d.id===g.selected&&d.team==="blue"&&!d.keeper),red=g.discs.find(d=>d.id===b.owner&&d.team==="red");
 if(user&&stickRef.current){let x=stickRef.current.x,y=stickRef.current.y;if(orientation==="vertical"){const t=x;x=y;y=-t;}const m=Math.hypot(x,y);if(m>.08){user.fx=x/m;user.fy=y/m;user.vx=user.vx*.2+user.fx*210*Math.min(1,m);user.vy=user.vy*.2+user.fy*210*Math.min(1,m);}}
 if(marking.current&&user&&red){const x=red.x-user.x,y=red.y-user.y,m=Math.hypot(x,y)||1;user.fx=x/m;user.fy=y/m;user.vx+=x/m*250*dt;user.vy+=y/m*250*dt;if(m<38&&tackleWait.current===0){tackleWait.current=1.1;if(Math.random()<.42){b.owner=user.id;b.target=null;b.vx=0;b.vy=0;b.z=0;b.vz=0;setStatus("Tackle won — possession recovered!");}else{red.vx-=red.fx*80;red.vy-=red.fy*80;setStatus("Tackle missed — keep pressing.");}}}
-for(const d of g.discs){if(d.keeper){const gx=d.team==="blue"?70:W-70;d.vy+=clamp((clamp(b.y,GOAL_TOP+20,GOAL_BOTTOM-20)-d.y)*1.6,-120,120)*dt;d.vx+=clamp((gx-d.x)*1.6,-75,75)*dt;}else if(d.id!==g.selected){const own=g.discs.find(p=>p.id===b.owner);let tx=b.x,ty=b.y;if(own?.team==="blue"){tx=d.team==="blue"?clamp(own.x+70,60,W-60):own.x;ty=own.y+(d.id%2?60:-60);}else if(own?.team==="red"){tx=d.team==="red"?clamp(own.x-65,55,W-55):own.x;ty=own.y+(d.id%2?55:-55);}const x=tx-d.x,y=ty-d.y,m=Math.hypot(x,y)||1,acc=d.team==="red"?(difficulty==="hard"?170:115):55;d.vx+=x/m*acc*dt;d.vy+=y/m*acc*dt;if(m>2){d.fx=x/m;d.fy=y/m;}const v=Math.hypot(d.vx,d.vy),max=d.team==="red"?150:120;if(v>max){d.vx=d.vx/v*max;d.vy=d.vy/v*max;}}}
+for(const d of g.discs){if(d.keeper){const gx=d.team==="blue"?70:W-70;d.vy+=clamp((clamp(b.y,GOAL_TOP+20,GOAL_BOTTOM-20)-d.y)*1.6,-120,120)*dt;d.vx+=clamp((gx-d.x)*1.6,-75,75)*dt;}else if(d.id!==g.selected){const target=tacticalTarget(d,g.discs,b,formation,teamSize);let tx=target.x,ty=target.y;
+if(d.team==="blue"&&target.attacking&&b.owner===d.id){tx=clamp(tx+stickRef.current?.x*42||tx,55,W-55);ty=clamp(ty+(stickRef.current?.y??0)*36,50,H-50);}
+const x=tx-d.x,y=ty-d.y,m=Math.hypot(x,y)||1;
+const baseAcc=d.team==="red"?(difficulty==="hard"?170:difficulty==="normal"?135:105):105;
+const acc=target.attacking?baseAcc*1.15:target.defending?baseAcc*1.05:baseAcc;
+d.vx+=x/m*acc*dt;d.vy+=y/m*acc*dt;
+if(m>2){d.fx=x/m;d.fy=y/m;}
+const v=Math.hypot(d.vx,d.vy),max=d.team==="red"?(difficulty==="hard"?165:145):138;
+if(v>max){d.vx=d.vx/v*max;d.vy=d.vy/v*max;}}}
 for(const d of g.discs){d.x+=d.vx*dt;d.y+=d.vy*dt;const drag=d.id===g.selected&&stickRef.current ? 0.84 : 0.16;d.vx*=Math.pow(drag,dt);d.vy*=Math.pow(drag,dt);d.x=clamp(d.x,d.keeper?(d.team==="blue"?45:W-150):45,d.keeper?(d.team==="blue"?150:W-45):W-45);d.y=clamp(d.y,d.keeper?GOAL_TOP-55:45,d.keeper?GOAL_BOTTOM+55:H-45);}
 for(let i=0;i<g.discs.length;i++)for(let j=i+1;j<g.discs.length;j++)resolveCollision(g.discs[i],g.discs[j],(g.discs[i].keeper?20:17)+(g.discs[j].keeper?20:17),.22);
 const owner=g.discs.find(d=>d.id===b.owner);if(owner){const m=Math.hypot(owner.fx,owner.fy)||1;b.x=owner.x+owner.fx/m*(23+(Math.hypot(owner.vx,owner.vy)>80?Math.sin(now/90)*4:0));b.y=owner.y+owner.fy/m*23;b.z=0;b.vz=0;b.vx=0;b.vy=0;for(const d of g.discs){if(d.team!==owner.team&&!d.keeper&&dist(d.x,d.y,b.x,b.y)<24&&Math.hypot(d.vx-owner.vx,d.vy-owner.vy)>45){b.owner=d.id;b.target=null;if(d.team==="blue")g.selected=d.id;setStatus(d.team==="red"?"Opponent intercepts!":"Possession recovered!");break;}}
@@ -155,7 +206,7 @@ const keeperSave=g.discs.find(d=>d.keeper&&dist(d.x,d.y,b.x,b.y)<28&&b.z<28&&(b.
 if(keeperSave){b.vx=keeperSave.team==="blue"?Math.abs(b.vx)*.48:-Math.abs(b.vx)*.48;b.vy+=(b.y-keeperSave.y)*1.8;b.x=keeperSave.team==="blue"?105:W-105;b.kind="loose";b.target=null;setStatus("Goalkeeper makes the save! Rebound in play.");}
 if(b.x<27||b.x>W-27){if(b.y>GOAL_TOP&&b.y<GOAL_BOTTOM&&b.z<18){const scorer=b.x<W/2?1:0;g.score[scorer]++;const name=scorer===0?(teamName.trim()||"MatchUp FC"):opponentName;g.lastGoal="GOAL! "+name+" scores";setStatus(g.lastGoal);setGoalNotice({team:name,score:`${g.score[0]} — ${g.score[1]}`,id:++celebrationRef.current});celebrationPauseUntil.current=performance.now()+1650;stickRef.current=null;marking.current=false;setStick({x:0,y:0});b.x=W/2;b.y=H/2;b.vx=0;b.vy=0;b.z=0;b.vz=0;b.owner=null;b.target=null;g.discs=createDiscs(teamSize,formation);const ps=g.discs.filter(d=>d.team==="blue"&&!d.keeper);g.selected=ps[Math.floor(Math.random()*ps.length)]?.id??null;}else{b.x=clamp(b.x,38,W-38);b.vx*=-.7;b.target=null;}}
 if(b.z===0&&!b.owner){const near=g.discs.filter(d=>!d.keeper).sort((p,q)=>dist(p.x,p.y,b.x,b.y)-dist(q.x,q.y,b.x,b.y))[0];if(near&&dist(near.x,near.y,b.x,b.y)<19&&Math.hypot(b.vx,b.vy)<330){b.owner=near.id;b.vx=0;b.vy=0;if(near.team==="blue"){g.selected=near.id;setStatus("Ball under control.");}}}}
-if(chargeRef.current){setChargePower(clamp((now-chargeRef.current.startedAt)/1400,0,1));}
+if(chargeRef.current){setChargePower(.35+.65*clamp((now-chargeRef.current.startedAt)/1400,0,1));}
 uiClock+=dt;if(uiClock>.045){uiClock=0;setVersion(v=>v+1);}}}
 if(orientation==="vertical")ctx.setTransform(0,canvas.height/W,-canvas.width/H,0,canvas.width,0);else ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);drawPitch(ctx,g);raf=requestAnimationFrame(tick);};
     resize(); window.addEventListener("resize", resize); raf = requestAnimationFrame(tick);
@@ -166,10 +217,10 @@ if(orientation==="vertical")ctx.setTransform(0,canvas.height/W,-canvas.width/H,0
   const joystickMove=(e:React.PointerEvent<HTMLDivElement>)=>{if(stickRef.current?.id!==e.pointerId)return;e.preventDefault();stickUpdate(e);};
   const joystickUp=(e:React.PointerEvent<HTMLDivElement>)=>{if(stickRef.current?.id!==e.pointerId)return;stickRef.current=null;stickCenter.current=null;setStick({x:0,y:0});};
   const actBall=(kind:"pass"|"shoot"|"cross",power=1)=>{const g=gameRef.current,b=g.ball;if(g.ended)return;const d=g.discs.find(p=>p.id===g.selected&&p.team==="blue"&&!p.keeper);if(!d)return;const owner=g.discs.find(p=>p.id===b.owner);if(owner?.id!==d.id&&dist(d.x,d.y,b.x,b.y)>36){setStatus("Move closer to the ball to play it.");return;}if(owner?.id!==d.id){b.owner=d.id;b.vx=0;b.vy=0;b.z=0;}
-if(kind!=="shoot"){const sx=stickRef.current?.x??d.fx,sy=stickRef.current?.y??d.fy,sl=Math.hypot(sx,sy)||1,ax=sx/sl,ay=sy/sl,ts=g.discs.filter(p=>p.team==="blue"&&!p.keeper&&p.id!==d.id),rec=ts.map(p=>{const x=p.x-d.x,y=p.y-d.y,l=Math.hypot(x,y)||1,dir=x/l*ax+y/l*ay,press=g.discs.filter(o=>o.team==="red"&&!o.keeper&&dist(o.x,o.y,p.x,p.y)<38).length;return{p,score:dist(p.x,p.y,d.x,d.y)+Math.max(0,.25-dir)*220+press*55};}).sort((a,c)=>a.score-c.score)[0]?.p,tx=kind==="cross"?(rec?.x??clamp(d.x+250,80,W-45)):(rec?.x??clamp(d.x+160,80,W-45)),ty=kind==="cross"?(rec?.y??clamp(d.y+(d.y<H/2?125:-125),55,H-55)):(rec?.y??d.y),x=tx-b.x,y=ty-b.y,l=Math.hypot(x,y)||1;b.owner=null;b.target=rec?.id??null;b.kind=kind;b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=0.32+0.68*clamp(power,0,1);b.vx=x/l*(kind==="cross"?315:270)*strength;b.vy=y/l*(kind==="cross"?315:270)*strength;b.z=kind==="cross"?4:0;b.vz=kind==="cross"?(150+145*power):0;setStatus(kind==="cross"?"Lofted cross in flight.":"Pass played — control switches on receipt.");}
-else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,l=Math.hypot(x,y)||1,press=g.discs.filter(o=>o.team==="red"&&!o.keeper).reduce((n,o)=>Math.min(n,dist(o.x,o.y,d.x,d.y)),Infinity),accuracy=press<45?.84:press<85?.94:1;b.owner=null;b.target=null;b.kind="shot";b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=(0.32+0.68*clamp(power,0,1))*accuracy;b.vx=x/l*455*strength;b.vy=y/l*455*strength;b.z=0;b.vz=0;setStatus("Shot away · "+Math.round(power*100)+"% power.");}setVersion(v=>v+1);};
-  const chargeDown=(e:React.PointerEvent<HTMLButtonElement>,kind:ChargedAction)=>{e.preventDefault();if(gameRef.current.ended||chargeRef.current)return;e.currentTarget.setPointerCapture(e.pointerId);chargeRef.current={id:e.pointerId,kind,startedAt:performance.now()};setCharging(kind);setChargePower(0);};
-  const chargeUp=(e:React.PointerEvent<HTMLButtonElement>,cancel=false)=>{const current=chargeRef.current;if(!current||current.id!==e.pointerId)return;const power=cancel?0:clamp((performance.now()-current.startedAt)/1400,0,1);chargeRef.current=null;setCharging(null);setChargePower(0);if(!cancel)actBall(current.kind,power);};
+if(kind!=="shoot"){const sx=stickRef.current?.x??d.fx,sy=stickRef.current?.y??d.fy,sl=Math.hypot(sx,sy)||1,ax=sx/sl,ay=sy/sl,ts=g.discs.filter(p=>p.team==="blue"&&!p.keeper&&p.id!==d.id),rec=ts.map(p=>{const x=p.x-d.x,y=p.y-d.y,l=Math.hypot(x,y)||1,dir=x/l*ax+y/l*ay,press=g.discs.filter(o=>o.team==="red"&&!o.keeper&&dist(o.x,o.y,p.x,p.y)<38).length;return{p,score:dist(p.x,p.y,d.x,d.y)+Math.max(0,.25-dir)*220+press*55};}).sort((a,c)=>a.score-c.score)[0]?.p,tx=kind==="cross"?(rec?.x??clamp(d.x+250,80,W-45)):(rec?.x??clamp(d.x+160,80,W-45)),ty=kind==="cross"?(rec?.y??clamp(d.y+(d.y<H/2?125:-125),55,H-55)):(rec?.y??d.y),x=tx-b.x,y=ty-b.y,l=Math.hypot(x,y)||1;b.owner=null;b.target=rec?.id??null;b.kind=kind;b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=clamp(power,.35,1);b.vx=x/l*(kind==="cross"?315:270)*strength;b.vy=y/l*(kind==="cross"?315:270)*strength;b.z=kind==="cross"?4:0;b.vz=kind==="cross"?(100+220*strength):0;setStatus(kind==="cross"?"Lofted cross in flight.":"Pass played — control switches on receipt.");}
+else{const x=W-22-b.x,y=clamp(H/2+(d.y-H/2)*.16,GOAL_TOP+10,GOAL_BOTTOM-10)-b.y,l=Math.hypot(x,y)||1,press=g.discs.filter(o=>o.team==="red"&&!o.keeper).reduce((n,o)=>Math.min(n,dist(o.x,o.y,d.x,d.y)),Infinity),accuracy=press<45?.84:press<85?.94:1;b.owner=null;b.target=null;b.kind="shot";b.x=d.x+d.fx*23;b.y=d.y+d.fy*23;const strength=clamp(power,.35,1)*accuracy;b.vx=x/l*455*strength;b.vy=y/l*455*strength;b.z=0;b.vz=0;setStatus("Shot away · "+Math.round(power*100)+"% power.");}setVersion(v=>v+1);};
+  const chargeDown=(e:React.PointerEvent<HTMLButtonElement>,kind:ChargedAction)=>{e.preventDefault();if(gameRef.current.ended||chargeRef.current)return;e.currentTarget.setPointerCapture(e.pointerId);chargeRef.current={id:e.pointerId,kind,startedAt:performance.now()};setCharging(kind);setChargePower(.35);};
+  const chargeUp=(e:React.PointerEvent<HTMLButtonElement>,cancel=false)=>{const current=chargeRef.current;if(!current||current.id!==e.pointerId)return;const power=cancel?0:clamp(.35+.65*((performance.now()-current.startedAt)/1400),.35,1);chargeRef.current=null;if(!cancel)actBall(current.kind,power);setCharging(null);setChargePower(0);};
   const markDown=(e:React.PointerEvent<HTMLButtonElement>)=>{e.preventDefault();if(gameRef.current.ended)return;marking.current=true;e.currentTarget.setPointerCapture(e.pointerId);};const markUp=()=>{marking.current=false;};
   useEffect(() => {
     if (!goalNotice) return;
