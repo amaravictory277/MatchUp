@@ -75,11 +75,10 @@ export function PlayGame() {
   const [teamSize, setTeamSize] = useState(5);
   const [mode, setMode] = useState<"single" | "multi">("single");
   const [started, setStarted] = useState(false);
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const [status, setStatus] = useState("Ready for kickoff");
   const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard">("normal");
-  const [onlineInfo, setOnlineInfo] = useState(false);
   const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   const start = useCallback(() => {
     gameRef.current = freshGame(teamSize);
@@ -191,7 +190,7 @@ export function PlayGame() {
             <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#70c1ff]">Choose your match</p><h2 className="mt-2 text-3xl font-black sm:text-4xl">Football, played with discs.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[#9fb6cc]">Control the blue team. Flick a disc toward the ball or goal, use rebounds, and beat the red AI team. No keyboard required.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <button type="button" onClick={() => setMode("single")} className={"rounded-2xl border p-4 text-left " + (mode === "single" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Single Player</span><strong className="mt-2 block text-lg">Play vs AI</strong><span className="mt-1 block text-xs text-[#9fb6cc]">A complete local match against computer-controlled opponents.</span></button>
-              <button type="button" onClick={() => { setMode("multi"); setOnlineInfo(true); }} className={"rounded-2xl border p-4 text-left " + (mode === "multi" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Multiplayer</span><strong className="mt-2 block text-lg">Online Match</strong><span className="mt-1 block text-xs text-[#9fb6cc]">Play against another MatchUp user.</span></button>
+              <button type="button" onClick={() => setMode("multi")} className={"rounded-2xl border p-4 text-left " + (mode === "multi" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Multiplayer</span><strong className="mt-2 block text-lg">Online Match</strong><span className="mt-1 block text-xs text-[#9fb6cc]">Play against another MatchUp user.</span></button>
             </div>
             {mode === "multi" ? <div role="status" className="mt-4 rounded-2xl border border-[#7a6030] bg-[#241e12] p-4 text-sm leading-6 text-[#f4d99c]"><strong className="block">Online multiplayer needs match-room infrastructure.</strong>The current project has real-time Match Room infrastructure for football discussions, but it does not yet have an authoritative disc-game session schema. Online play is not enabled here; this screen will not pretend an AI match is a real opponent match.</div> : <>
               <div className="mt-6"><label htmlFor="team-size" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Players per team</label><select id="team-size" value={teamSize} onChange={e => setTeamSize(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[3,5,6,8,11].map(n => <option key={n} value={n}>{n} vs {n}</option>)}</select></div>
