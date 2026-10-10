@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Team = "blue" | "red";
 type Disc = { id: number; team: Team; x: number; y: number; vx: number; vy: number; keeper?: boolean };
@@ -21,7 +22,7 @@ function createDiscs(size: number): Disc[] {
   return discs;
 }
 function freshGame(size: number): GameState {
-  return { discs: createDiscs(size), ball: { x: W / 2, y: H / 2, vx: 0, vy: 0 }, score: [0, 0], seconds: 120, ended: false, lastGoal: "", selected: null, aim: null };
+  return { discs: createDiscs(size), ball: { x: W / 2, y: H / 2, vx: 0, vy: 0 }, score: [0, 0], seconds: duration * 60, ended: false, lastGoal: "", selected: null, aim: null };
 }
 function drawPitch(ctx: CanvasRenderingContext2D, game: GameState) {
   ctx.clearRect(0, 0, W, H);
@@ -72,7 +73,17 @@ export function PlayGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<GameState>(freshGame(5));
   const pointerRef = useRef<{ id: number; x: number; y: number; px: number; py: number } | null>(null);
+  const router = useRouter();
   const [teamSize, setTeamSize] = useState(5);
+  const [teamName, setTeamName] = useState("MatchUp FC");
+  const [opponentName] = useState("Red United");
+  const [duration, setDuration] = useState(2);
+  const [controlMode, setControlMode] = useState<"direct" | "analog">("direct");
+  const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
+  const [fullSpeed, setFullSpeed] = useState(false);
+  const [power, setPower] = useState(0);
+  const [goalNotice, setGoalNotice] = useState<{team:string; score:string; id:number} | null>(null);
+  const [celebrationId, setCelebrationId] = useState(0);
   const [mode, setMode] = useState<"single" | "multi">("single");
   const [started, setStarted] = useState(false);
   const [, setVersion] = useState(0);
@@ -81,10 +92,10 @@ export function PlayGame() {
   const [difficulty, setDifficulty] = useState<"easy" | "normal" | "hard">("normal");
   const formatTime = (seconds: number) => Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
   const start = useCallback(() => {
-    gameRef.current = freshGame(teamSize);
+    gameRef.current = freshGame(teamSize, duration);
     setStarted(true); setNotice(""); setStatus("Kickoff! Drag a blue disc to pass or shoot.");
     setVersion(v => v + 1);
-  }, [teamSize]);
+  }, [teamSize, duration]);
   useEffect(() => {
     if (!started) return;
     const canvas = canvasRef.current, ctx = canvas?.getContext("2d");
@@ -126,7 +137,7 @@ export function PlayGame() {
           aiClock = 0;
           const opponents = g.discs.filter(d => d.team === "red");
           const target = opponents.reduce((best, d) => dist(d.x, d.y, b.x, b.y) < dist(best.x, best.y, b.x, b.y) ? d : best, opponents[0]);
-          if (target && Math.hypot(b.vx, b.vy) < 320) {
+          if (target && Math.hypot(b.vx, b.vy) < 420) {
             const tx = b.x < W * .7 ? W - 70 : W - 35, ty = H / 2 + (Math.random() - .5) * 100;
             const dx = (b.x - target.x) * .7 + (tx - target.x) * .3, dy = (b.y - target.y) * .7 + (ty - target.y) * .3, len = Math.hypot(dx, dy) || 1;
             target.vx += dx / len * (difficulty === "hard" ? 420 : difficulty === "easy" ? 245 : 330);
@@ -142,7 +153,7 @@ export function PlayGame() {
     };
     resize(); window.addEventListener("resize", resize); raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, [started, teamSize, difficulty]);
+  }, [started, teamSize, difficulty, duration, teamName, opponentName]);
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     return { x: (event.clientX - rect.left) / rect.width * W, y: (event.clientY - rect.top) / rect.height * H };
@@ -157,9 +168,9 @@ export function PlayGame() {
     event.currentTarget.setPointerCapture(event.pointerId); setVersion(v => v + 1);
   };
   const onMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const drag = pointerRef.current; if (!drag) return;
+    if (controlMode !== "direct") return;\n    const drag = pointerRef.current; if (!drag) return;
     const p = point(event), g = gameRef.current; drag.px = p.x; drag.py = p.y;
-    g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setVersion(v => v + 1);
+    g.aim = { x: p.x - drag.x, y: p.y - drag.y }; setPower(clamp(Math.hypot(g.aim.x, g.aim.y) / 220, 0, 1)); setVersion(v => v + 1);
   };
   const onUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const drag = pointerRef.current; if (!drag) return;
@@ -183,7 +194,7 @@ export function PlayGame() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-4 flex items-center justify-between gap-3">
           <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#70c1ff]">MATCHUP · PLAY GAME</p><h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Disc Football</h1><p className="mt-1 text-xs text-[#8da7bf]">Swipe, pass, shoot. Win the match.</p></div>
-          <Link href="/game" className="rounded-xl border border-[#214a78] px-3 py-2 text-xs font-bold text-[#bfe3ff]">Games</Link>
+          <button type="button" onClick={goBack} className="rounded-xl border border-[#214a78] px-3 py-2 text-xs font-bold text-[#bfe3ff]">← Back</button>
         </header>
         {!started ? (
           <section className="mx-auto max-w-3xl rounded-[28px] border border-[#174978] bg-[radial-gradient(circle_at_85%_0%,rgba(36,151,255,.18),transparent_42%),#071426] p-5 sm:p-8">
@@ -193,6 +204,10 @@ export function PlayGame() {
               <button type="button" onClick={() => setMode("multi")} className={"rounded-2xl border p-4 text-left " + (mode === "multi" ? "border-[#47a8ff] bg-[#0b3154]" : "border-[#214a78] bg-[#061426]")}><span className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Multiplayer</span><strong className="mt-2 block text-lg">Online Match</strong><span className="mt-1 block text-xs text-[#9fb6cc]">Play against another MatchUp user.</span></button>
             </div>
             {mode === "multi" ? <div role="status" className="mt-4 rounded-2xl border border-[#7a6030] bg-[#241e12] p-4 text-sm leading-6 text-[#f4d99c]"><strong className="block">Online multiplayer needs match-room infrastructure.</strong>The current project has real-time Match Room infrastructure for football discussions, but it does not yet have an authoritative disc-game session schema. Online play is not enabled here; this screen will not pretend an AI match is a real opponent match.</div> : <>
+              <div className="mt-5"><label htmlFor="team-name" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Your team name</label><input id="team-name" maxLength={24} value={teamName} onChange={e=>setTeamName(e.target.value.slice(0,24))} placeholder="MatchUp FC" className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs" /><p className="mt-1 text-[10px] text-[#7892ac]">Up to 24 characters. Leave blank to use MatchUp FC.</p></div>
+              <div className="mt-5"><label htmlFor="duration" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Match duration</label><select id="duration" value={duration} onChange={e=>setDuration(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n} minute{n>1?"s":""}</option>)}</select></div>
+              <div className="mt-5"><label className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Controls</label><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={()=>setControlMode("direct")} className={"rounded-xl border p-3 text-sm font-bold "+(controlMode==="direct"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Direct Swipe</button><button type="button" onClick={()=>setControlMode("analog")} className={"rounded-xl border p-3 text-sm font-bold "+(controlMode==="analog"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Analog Controls</button></div></div>
+              <div className="mt-5"><label className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Field orientation</label><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={()=>setOrientation("horizontal")} className={"rounded-xl border p-3 text-sm font-bold "+(orientation==="horizontal"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Horizontal</button><button type="button" onClick={()=>setOrientation("vertical")} className={"rounded-xl border p-3 text-sm font-bold "+(orientation==="vertical"?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78]")}>Vertical</button></div><p className="mt-1 text-[10px] text-[#7892ac]">Orientation is currently a saved setup preference; in-match rotation is not yet available.</p></div>
               <div className="mt-6"><label htmlFor="team-size" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">Players per team</label><select id="team-size" value={teamSize} onChange={e => setTeamSize(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs">{[3,5,6,8,11].map(n => <option key={n} value={n}>{n} vs {n}</option>)}</select></div>
               <div className="mt-5"><label htmlFor="difficulty" className="text-[10px] font-black uppercase tracking-widest text-[#70c1ff]">AI difficulty</label><select id="difficulty" value={difficulty} onChange={e => setDifficulty(e.target.value as "easy" | "normal" | "hard")} className="mt-2 w-full rounded-xl border border-[#214a78] bg-[#061426] p-3 text-sm text-white sm:max-w-xs"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div>
               <button type="button" onClick={start} className="mt-6 w-full rounded-2xl bg-[#167bd1] px-5 py-4 text-sm font-black shadow-[0_12px_30px_rgba(22,123,209,.25)] sm:w-auto">Start Single-Player Match</button>
@@ -201,12 +216,14 @@ export function PlayGame() {
         ) : (
           <>
             <section className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#214a78] bg-[#071426] px-4 py-3">
-              <div><p className="text-[9px] font-black uppercase tracking-widest text-[#70c1ff]">MATCHUP FC <span className="text-[#7892ac]">vs</span> RED AI</p><p className="mt-1 text-xs text-[#9fb6cc]">{teamSize} vs {teamSize} · {difficulty.toUpperCase()} AI</p></div>
+              <div><p className="text-[9px] font-black uppercase tracking-widest text-[#70c1ff]">MATCHUP FC <span className="text-[#7892ac]">vs</span> RED AI</p><p className="mt-1 text-xs text-[#9fb6cc]">{teamSize} vs {teamSize} · {duration} MIN · {controlMode === "direct" ? "DIRECT SWIPE" : "ANALOG"} · {difficulty.toUpperCase()} AI</p></div>
               <div className="flex items-center gap-4"><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Score</p><p className="text-2xl font-black tabular-nums">{g.score[0]} — {g.score[1]}</p></div><div className="text-center"><p className="text-[9px] font-bold uppercase text-[#7892ac]">Time</p><p className="text-2xl font-black tabular-nums">{formatTime(Math.ceil(g.seconds))}</p></div></div>
             </section>
-            <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>
-            <div className="overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)]"><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} className="block aspect-[5/3] w-full touch-none cursor-crosshair" aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
-            {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? "You won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Drag a blue disc toward the ball or goal to flick it.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
+            <p className="mb-2 text-xs font-semibold text-[#bfe3ff]">{status}</p>{controlMode === "direct" && pointerRef.current && <div className="mb-2 flex items-center gap-3 text-xs"><span className="font-bold text-[#bfe3ff]">{power<.33?"LOW POWER":power<.7?"MEDIUM POWER":"MAX POWER"}</span><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#16324d]"><div className="h-full rounded-full bg-[#47a8ff] transition-all" style={{width:(power*100)+"%"}} /></div></div>}
+            <div className={"overflow-hidden rounded-2xl border border-[#286448] bg-[#0b442d] shadow-[0_20px_70px_rgba(0,0,0,.25)] "+(orientation==="vertical"?"mx-auto max-w-xl":"")}><canvas ref={canvasRef} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} className={"block "+(orientation==="vertical"?"aspect-[3/5]":"aspect-[5/3]")+" w-full touch-none cursor-crosshair"} aria-label="Interactive disc football pitch. Drag a blue player disc in the direction you want it to move." /></div>
+            {controlMode === "analog" && !g.ended && <div className="mt-4 grid grid-cols-3 gap-2 sm:max-w-md"><span /><button type="button" onClick={()=>moveSelected(0,-1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↑</button><span /><button type="button" onClick={()=>moveSelected(-1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">←</button><button type="button" onClick={()=>moveSelected(0,1)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">↓</button><button type="button" onClick={()=>moveSelected(1,0)} className="min-h-12 rounded-xl border border-[#214a78] bg-[#071426] font-black">→</button><button type="button" onClick={()=>actBall("pass")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">PASS</button><button type="button" onClick={()=>actBall("shoot")} className="min-h-12 rounded-xl bg-[#167bd1] font-black">SHOOT</button><button type="button" aria-pressed={fullSpeed} onClick={()=>setFullSpeed(v=>!v)} className={"min-h-12 rounded-xl border font-black "+(fullSpeed?"border-[#47a8ff] bg-[#0b3154]":"border-[#214a78] bg-[#071426]")}>FULL SPEED {fullSpeed?"ON":"OFF"}</button></div>}
+            {goalNotice && <div key={goalNotice.id} className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"><div className="absolute left-0 top-1/2 h-1 w-28 animate-ping bg-[#47a8ff] sm:w-44" /><div className="absolute right-0 top-1/2 h-1 w-28 animate-ping bg-[#47a8ff] sm:w-44" /><div className="rounded-3xl border border-[#70c1ff] bg-[#061426]/95 px-8 py-6 text-center shadow-[0_0_70px_rgba(71,168,255,.45)] animate-in zoom-in duration-300"><p className="text-4xl font-black tracking-widest text-white">GOAL!</p><p className="mt-2 text-lg font-black text-[#70c1ff]">{goalNotice.team}</p><p className="mt-1 text-2xl font-black tabular-nums">{goalNotice.score}</p><div className="mt-3 flex justify-center gap-5 text-2xl" aria-hidden="true">🎉 ✨ 🎉</div></div></div>}
+            {g.ended ? <section className="mt-4 rounded-2xl border border-[#214a78] bg-[#071426] p-5 text-center"><h2 className="text-2xl font-black">Full Time</h2><p className="mt-2 text-sm text-[#9fb6cc]">{g.score[0] === g.score[1] ? "The match ended in a draw." : g.score[0] > g.score[1] ? (teamName.trim() || "MatchUp FC") + " won the match. Nice play!" : "The AI won this one. Run it back?"}</p><button type="button" onClick={start} className="mt-4 rounded-xl bg-[#167bd1] px-5 py-3 text-sm font-black">Rematch</button><button type="button" onClick={() => setStarted(false)} className="ml-2 mt-4 rounded-xl border border-[#214a78] px-5 py-3 text-sm font-bold">Exit Match</button></section> : <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-[#7892ac]"><span>Drag a blue disc toward the ball or goal to flick it.</span><span>Team: {teamSize} vs {teamSize}</span></div>}
           </>
         )}
       </div>
