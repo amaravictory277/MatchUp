@@ -125,7 +125,7 @@ export function PlayGame() {
         if (g.seconds <= 0) {
           g.seconds = 0;
           g.ended = true;
-          setStatus(g.score[0] === g.score[1] ? "Full time — it's a draw" : g.score[0] > g.score[1] ? "Full time — MatchUp wins!" : "Full time — opponents win");
+          setStatus(g.score[0] === g.score[1] ? "Full time — it's a draw" : g.score[0] > g.score[1] ? `Full time — ${teamName.trim() || "MatchUp FC"} wins!` : `Full time — ${opponentName} wins`);
         }
         if (!g.ended) {
         for (const d of g.discs) {
