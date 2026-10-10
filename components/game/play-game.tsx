@@ -139,7 +139,14 @@ export function PlayGame() {
         if (aiClock > (difficulty === "easy" ? 1.8 : difficulty === "hard" ? .65 : 1.15)) {
           aiClock = 0;
           const opponents = g.discs.filter(d => d.team === "red");
-          const target = opponents.reduce((best, d) => dist(d.x, d.y, b.x, b.y) < dist(best.x, best.y, b.x, b.y) ? d : best, opponents[0]);
+          const fieldPlayers = opponents.filter(d => !d.keeper);
+          const target = fieldPlayers.reduce((best, d) => dist(d.x, d.y, b.x, b.y) < dist(best.x, best.y, b.x, b.y) ? d : best, fieldPlayers[0]);
+          const keeper = opponents.find(d => d.keeper);
+          if (keeper) {
+            const keeperTargetY = clamp(b.y, GOAL_TOP + 22, GOAL_BOTTOM - 22);
+            keeper.vy += clamp((keeperTargetY - keeper.y) * 2.4, -170, 170);
+            keeper.vx += clamp((W - 70 - keeper.x) * 2.2, -100, 100);
+          }
           if (target && Math.hypot(b.vx, b.vy) < 420) {
             const tx = b.x < W * .7 ? W - 70 : W - 35, ty = H / 2 + (Math.random() - .5) * 100;
             const dx = (b.x - target.x) * .7 + (tx - target.x) * .3, dy = (b.y - target.y) * .7 + (ty - target.y) * .3, len = Math.hypot(dx, dy) || 1;
